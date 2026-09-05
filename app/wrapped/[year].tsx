@@ -6,12 +6,14 @@ import { Aurora, Text, Button, Card } from '@/ui';
 import { useStore } from '@/data/store';
 import { summariseNights, formatMoney, plural } from '@/domain/stats';
 import { color, geometry, space } from '@/design/tokens';
+import { UpgradeSlide } from '@/features/billing/UpgradeSlide';
 
 /**
  * Y-12 · Wrapped.
  *
  * Leads with exploration and wellbeing. Reports volume plainly and NEVER ranks
- * the user against anyone. Slides 1–3 free, then the ROUNDS+ prompt.
+ * the user against anyone. Two slides are marked `paid`; while billing is
+ * hidden nothing is withheld and every slide shows.
  */
 export default function Wrapped() {
   const router = useRouter();
@@ -42,6 +44,8 @@ export default function Wrapped() {
   ];
 
   const slide = slides[index];
+  // `paid` is kept on the slide definitions so the split survives, but nothing
+  // is withheld while billing is hidden — see BILLING_VISIBLE.
   const locked = Boolean(slide.paid) && !plus;
 
   return (
@@ -70,15 +74,7 @@ export default function Wrapped() {
         </View>
 
         {locked ? (
-          <Card aurora>
-            <Text variant="title2">The rest is ROUNDS+</Text>
-            <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-              Two more slides, and the version you can export for Stories.
-            </Text>
-            <View style={{ marginTop: space.md }}>
-              <Button title="See it all" onPress={() => router.push('/paywall')} />
-            </View>
-          </Card>
+          <UpgradeSlide />
         ) : (
           <View>
             <Text variant="caption2" tone="tertiary" style={{ letterSpacing: 3 }}>ROUNDS {y}</Text>

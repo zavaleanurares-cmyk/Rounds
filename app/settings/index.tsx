@@ -7,7 +7,7 @@ import { space } from '@/design/tokens';
 /** S-01 · Settings home. */
 export default function Settings() {
   const router = useRouter();
-  const { profile, signOut, settings, safety , plus } = useStore();
+  const { profile, signOut, settings, safety } = useStore();
 
   return (
     <Screen title="Settings" back mood="night">
@@ -21,7 +21,6 @@ export default function Settings() {
         <NavRow title="Notifications" onPress={() => router.push('/settings/notifications')} />
         <NavRow title="Privacy" onPress={() => router.push('/settings/privacy')} />
         <NavRow title="Safety" value={safety.contacts.length ? `${safety.contacts.length} contacts` : 'Not set up'} onPress={() => router.push('/settings/safety')} />
-        <NavRow title="Subscription" value={plus ? 'ROUNDS+' : 'Free'} onPress={() => router.push('/settings/subscription')} />
         <NavRow title="System surfaces" subtitle="Live Activity, widgets, Siri, watch" onPress={() => router.push('/settings/surfaces')} last />
       </Group>
 

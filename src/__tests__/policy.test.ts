@@ -150,3 +150,112 @@ describe('one write path', () => {
     expect(store).toMatch(/id: draft\.id \?\? uuid\(\)/);
   });
 });
+
+describe('billing is hidden', () => {
+  /**
+   * The rule: while BILLING_VISIBLE is false, a user cannot reach a price, a
+   * tier name, or a purchase — by tapping, by deep link, or by typing a URL.
+   *
+   * These assertions are structural rather than behavioural on purpose. The
+   * whole point of hiding billing behind one flag is that the code stays; a
+   * test that only checked "does the paywall render" would pass just as
+   * happily with an upsell button still sitting in Settings.
+   */
+
+  /** Everything that is allowed to talk about money. */
+  const BILLING_OWNED = (p: string) => {
+    const f = p.replace(/\\/g, '/');
+    return (
+      f.startsWith('src/features/billing/') ||
+      f === 'src/services/purchases.ts' ||
+      f === 'src/config/flags.ts' ||
+      f === 'src/content/legal.ts' ||   // the terms have to describe the thing
+      f === 'src/services/analytics.ts' // event names, never rendered
+    );
+  };
+
+  const ROUTE_SHIMS = ['app/paywall.tsx', 'app/settings/subscription.tsx'];
+
+  it('the flag is off', () => {
+    const flags = read('src/config/flags.ts');
+    expect(flags).toMatch(/export const BILLING_VISIBLE = false;/);
+  });
+
+  it('no price appears anywhere a user can reach', () => {
+    const offenders: string[] = [];
+    for (const file of [...APP, ...SRC]) {
+      if (file.includes('__tests__') || BILLING_OWNED(file)) continue;
+      // €4.99, $9, 34.99 EUR, "9.99/mo"
+      if (/[€$£]\s?\d|\d+[.,]\d{2}\s*(?:€|EUR|USD|GBP)|\/\s?(?:mo|month|yr|year)\b/.test(code(file))) {
+        offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('no tier name appears anywhere a user can reach', () => {
+    const offenders: string[] = [];
+    for (const file of [...APP, ...SRC]) {
+      if (file.includes('__tests__') || BILLING_OWNED(file)) continue;
+      if (/ROUNDS\s?\+|ROUNDS plus|Crew Pass/i.test(code(file))) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('nothing routes to the paywall except the billing feature itself', () => {
+    const offenders: string[] = [];
+    for (const file of [...APP, ...SRC]) {
+      if (file.includes('__tests__') || BILLING_OWNED(file)) continue;
+      if (ROUTE_SHIMS.includes(file.replace(/\\/g, '/'))) continue;
+      if (/(?:push|replace|navigate)\(\s*['"`]\/(?:paywall|settings\/subscription)/.test(code(file))) {
+        offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('both billing routes redirect while the flag is off', () => {
+    for (const shim of ROUTE_SHIMS) {
+      const src = code(shim);
+      expect(src).toContain('BILLING_VISIBLE');
+      // The guard must come first, so the screen never mounts and never fires
+      // its analytics or loads products.
+      expect(src).toMatch(/if \(!BILLING_VISIBLE\) return <Redirect/);
+    }
+  });
+
+  it('the Settings list has no subscription row', () => {
+    const settings = code('app/settings/index.tsx');
+    expect(settings).not.toMatch(/Subscription/i);
+  });
+
+  it('everything gated on entitlement behaves as unlocked', () => {
+    const store = code('src/data/store.tsx');
+    // `plus` must short-circuit to true, not merely default to it.
+    expect(store).toMatch(/plus:\s*!BILLING_VISIBLE \|\|/);
+  });
+
+  it('the store adapter is never configured while billing is hidden', () => {
+    const store = code('src/data/store.tsx');
+    const effect = store.match(/void purchases\.configure[\s\S]{0,200}/)?.[0] ?? '';
+    expect(effect).toBeTruthy();
+    // The guard sits above the call in the same effect.
+    const before = store.slice(0, store.indexOf('void purchases.configure'));
+    expect(before.slice(-400)).toContain('if (!BILLING_VISIBLE) return;');
+  });
+
+  it('the subscriptions table, its migration and its RLS are all still there', () => {
+    const files = readdirSync('supabase/migrations');
+    const sql = files.map((f) => readFileSync(join('supabase/migrations', f), 'utf8')).join('\n');
+    expect(sql).toMatch(/create table if not exists public\.subscriptions/);
+    // And the client still has no way to grant itself one.
+    expect(sql).not.toMatch(/create policy[^;]*on public\.subscriptions[^;]*for (?:insert|update|all)/i);
+  });
+
+  it('the purchases interface is still present, unimplemented', () => {
+    const purchases = read('src/services/purchases.ts');
+    expect(purchases).toMatch(/export (?:async )?function purchase/);
+    expect(purchases).toMatch(/export (?:async )?function restore/);
+    expect(purchases).toMatch(/export type ProductId/);
+  });
+});

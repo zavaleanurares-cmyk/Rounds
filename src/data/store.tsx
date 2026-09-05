@@ -48,6 +48,7 @@ import * as analytics from '@/services/analytics';
 import * as push from '@/services/push';
 import * as purchases from '@/services/purchases';
 import { configureFeedback, releaseFeedback } from '@/services/feedback';
+import { BILLING_VISIBLE } from '@/config/flags';
 import {
   DEMO_CREWS,
   DEMO_PEOPLE,
@@ -231,7 +232,13 @@ export interface LogDraft {
 export interface Store extends State {
   queue: QueueState;
   /**
-   * Whether the paid tier is on. `entitled` is what the SERVER says;
+   * Whether the paid tier is on.
+   *
+   * While `BILLING_VISIBLE` is false this is hard TRUE. There is no way to buy
+   * anything, so there must be no way to be locked out of anything either — a
+   * feature that is both unbuyable and gated is just a broken feature.
+   *
+   * When billing comes back: `entitled` is what the SERVER says;
    * `settings.subscribed` is the optimistic mirror set the instant a purchase
    * returns, so the UI does not sit spinning while a webhook lands.
    *
@@ -407,11 +414,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
    */
   const [entitled, setEntitled] = useState(false);
   const refreshEntitlement = useCallback(async () => {
+    if (!BILLING_VISIBLE) return;
     const server = await purchases.serverEntitlement().catch(() => purchases.NO_ENTITLEMENT);
     setEntitled(server.active);
   }, []);
   useEffect(() => {
     if (!state.hydrated) return;
+    // While billing is hidden the store adapter is never configured and the
+    // entitlement endpoint is never called. Hiding an interface that still
+    // talks to RevenueCat on every cold start would be hiding nothing.
+    if (!BILLING_VISIBLE) return;
     void purchases.configure(state.auth.userId);
     void refreshEntitlement();
   }, [state.hydrated, state.auth.userId, refreshEntitlement]);
@@ -532,7 +544,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const store: Store = useMemo(() => ({
     ...state,
     queue,
-    plus: entitled || stateRef.current.settings.subscribed,
+    // Hard true while billing is hidden. See BILLING_VISIBLE.
+    plus: !BILLING_VISIBLE || entitled || stateRef.current.settings.subscribed,
     entitled,
     refreshEntitlement,
     activeSession,

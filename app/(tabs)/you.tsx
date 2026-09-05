@@ -18,7 +18,8 @@ import { color, space, radius } from '@/design/tokens';
  * for their liver, and it is the highest-signal number the app has that isn't
  * about alcohol.
  *
- * Free tier shows 90 days of heatmap and spend; the full year prompts ROUNDS+.
+ * The heatmap depth is the one thing `plus` gates. While billing is hidden it
+ * is hard true, so this shows the full range to everybody.
  */
 export default function You() {
   const router = useRouter();
@@ -142,11 +143,6 @@ export default function You() {
             <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>
               {plus ? 'LAST 400 NIGHTS' : 'LAST 90 NIGHTS'}
             </Text>
-            {!plus ? (
-              <Pressable onPress={() => router.push('/paywall')} hitSlop={8} accessibilityRole="button" accessibilityLabel="See the full year with ROUNDS plus">
-                <Text variant="caption1" color={color.brand.tintLight}>See the full year</Text>
-              </Pressable>
-            ) : null}
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: space.m }}>
             {grid.map((d) => (

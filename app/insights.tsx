@@ -20,7 +20,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  */
 export default function Insights() {
   const router = useRouter();
-  const { logs, profile, settings, venues , plus } = useStore();
+  const { logs, profile, settings, venues, plus } = useStore();
   const system = profile?.unitSystem ?? 'EU';
 
   // `cutoff` is computed INSIDE the memo. As a dependency it was a new number on
@@ -166,9 +166,6 @@ export default function Insights() {
         </Text>
       </Card>
 
-      {!plus ? (
-        <Button title="See all of it with ROUNDS+" kind="glass" onPress={() => router.push('/paywall')} />
-      ) : null}
     </Screen>
   );
 }

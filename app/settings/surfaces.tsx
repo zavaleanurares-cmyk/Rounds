@@ -8,6 +8,7 @@ import { pushDiagnostics, permissionStatus, requestPermission } from '@/services
 import { isRemoteEnabled } from '@/data/remote';
 import { isOptedOut, setOptOut, outOfAppShare } from '@/services/analytics';
 import { color, space } from '@/design/tokens';
+import { BILLING_VISIBLE } from '@/config/flags';
 
 const SURFACES = [
   { id: 'X-01', name: 'Live night HUD', ios: 'Live Activity + Dynamic Island', android: 'Ongoing notification' },
@@ -123,7 +124,9 @@ export default function Surfaces() {
 
       <Group title="DIAGNOSTICS">
         <ValueRow title="Build" value={isExpoGo() ? 'Expo Go' : nativeAvailable ? 'development' : 'web'} />
-        <ValueRow title="Entitlement (server)" value={entitled ? 'ROUNDS+' : 'free'} />
+        {BILLING_VISIBLE ? (
+          <ValueRow title="Entitlement (server)" value={entitled ? 'paid' : 'free'} />
+        ) : null}
         <ToggleRow
           title="Send diagnostics"
           subtitle="Counts and categories only — never a drink, a venue or a person"
