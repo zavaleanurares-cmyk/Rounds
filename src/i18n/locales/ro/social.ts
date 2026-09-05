@@ -179,4 +179,8 @@ export const social = {
   'social.findableSaved': 'Salvat. Cine are numărul tău te poate găsi.',
   'social.makeFindable': 'Vreau să pot fi găsit',
   'social.numberPlaceholder': '+40 700 000 000',
+
+  // a friend request the server declined
+  'social.requestSelf': "Acesta ești tu.",
+  'social.searchOffline': "Căutarea nu este posibilă acum. Verifică-ți conexiunea.",
 } satisfies Record<string, Message>;

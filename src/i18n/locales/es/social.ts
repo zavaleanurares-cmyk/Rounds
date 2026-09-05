@@ -163,4 +163,8 @@ export const social = {
   'social.findableSaved': 'Guardado. Quien tenga tu número puede encontrarte.',
   'social.makeFindable': 'Que me encuentren',
   'social.numberPlaceholder': '+34 600 00 00 00',
+
+  // a friend request the server declined
+  'social.requestSelf': "Ese eres tú.",
+  'social.searchOffline': "No se puede buscar ahora. Comprueba tu conexión.",
 } satisfies Record<string, Message>;

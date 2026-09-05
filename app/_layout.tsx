@@ -6,8 +6,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { StoreProvider, useStore } from '@/data/store';
-import { I18nProvider } from '@/i18n';
-import { ToastProvider } from '@/ui';
+import { I18nProvider, useT } from '@/i18n';
+import { ToastProvider, useToast } from '@/ui';
 import { useOnlineWatcher } from '@/hooks/useOnline';
 import { attachRemote } from '@/data/remote';
 import { useSystemSurfaces } from '@/hooks/useSystemSurfaces';
@@ -137,6 +137,32 @@ function Routes() {
  * earn them — an achievement that lands while you are on the map should still
  * be seen, and a modal owned by a screen dies when that screen unmounts.
  */
+/**
+ * Says so when a friend request did not go out.
+ *
+ * Sending is optimistic and the server answers `request_friendship` with a word
+ * rather than an error, so a request over the daily cap otherwise fails
+ * silently — the row is rolled back in the store and nothing on screen explains
+ * why. Mounted at the root because the person may well have moved on from the
+ * search screen by the time the queue drains.
+ */
+function FriendRequestNotices() {
+  const { friendRequestOutcome, clearFriendRequestOutcome } = useStore();
+  const { show } = useToast();
+  const t = useT();
+  useEffect(() => {
+    if (!friendRequestOutcome) return;
+    show({
+      message:
+        friendRequestOutcome.outcome === 'rate_limited'
+          ? t('social.rateLimited')
+          : t('social.requestSelf'),
+    });
+    clearFriendRequestOutcome();
+  }, [friendRequestOutcome, show, t, clearFriendRequestOutcome]);
+  return null;
+}
+
 function Celebrations() {
   const { celebration, dismiss } = useProgress();
   return <Celebration content={celebration} onDismiss={dismiss} />;
@@ -152,6 +178,7 @@ export default function RootLayout() {
             <AuthGate>
               <Routes />
               <Celebrations />
+              <FriendRequestNotices />
             </AuthGate>
           </ToastProvider>
         </StoreProvider>

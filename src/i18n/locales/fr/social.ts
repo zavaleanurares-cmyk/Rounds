@@ -162,4 +162,8 @@ export const social = {
   'social.findableSaved': 'Enregistré. Les gens qui ont ton numéro peuvent te trouver.',
   'social.makeFindable': 'Me rendre trouvable',
   'social.numberPlaceholder': '+33 6 00 00 00 00',
+
+  // a friend request the server declined
+  'social.requestSelf': "C'est vous.",
+  'social.searchOffline': "Recherche impossible pour l'instant. Vérifiez votre connexion.",
 } satisfies Record<string, Message>;

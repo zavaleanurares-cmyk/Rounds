@@ -397,6 +397,82 @@ describe('the app is not write-only', () => {
     expect(armBlock).toContain('contactIds');
   });
 
+  /**
+   * Rules that live in a `security definer` function are only rules while the
+   * client actually calls it.
+   *
+   * Both of these were regressions I introduced. The queue grew a writer per
+   * table, and two of those tables already had an RPC in front of them holding
+   * a rule no policy expresses:
+   *
+   *  · `request_friendship` caps an account at 25 sent requests a day. The
+   *    insert policy only checks that the requester is you, so a direct insert
+   *    passed and the cap simply stopped existing. (Self-friending was still
+   *    refused, by a CHECK constraint — noisily, as a write that failed eight
+   *    times and was dropped.)
+   *  · `resolve_safe_arrival` marks the check resolved AND deletes the unsent
+   *    `outbound` safety rows staged for it. A direct update to `resolved_at`
+   *    did the first half, leaving an SMS in the outbox addressed to a trusted
+   *    contact of somebody who had already pressed "I'm safe".
+   *
+   * Asserted structurally, because both bypasses are silent: the write
+   * succeeds, and the missing half is a rule not applied rather than an error.
+   */
+  it('sends friend requests through the RPC, never straight into the table', () => {
+    expect(remote).toContain("rpc('request_friendship'");
+    // Accepting is still a direct update — RLS scopes that one to the
+    // addressee — so the check is specifically that nothing INSERTS a
+    // friendship row.
+    const friendshipWrites = [...remote.matchAll(/from\('friendships'\)\s*\.\s*(\w+)/g)].map(
+      (m) => m[1]
+    );
+    expect(friendshipWrites).not.toContain('insert');
+    expect(friendshipWrites).not.toContain('upsert');
+    expect(OPS).toContain('request_friendship');
+    expect(OPS).not.toContain('upsert_friendship');
+  });
+
+  it('resolves a safe-arrival check through the RPC, so the unsent SMS is cancelled', () => {
+    expect(remote).toContain("rpc('resolve_safe_arrival'");
+    const checkWrites = [...remote.matchAll(/from\('safe_arrival_checks'\)\s*\.\s*(\w+)/g)].map(
+      (m) => m[1]
+    );
+    // Arming still upserts the row; resolving must not update it.
+    expect(checkWrites).not.toContain('update');
+  });
+
+  it('tells the sender when a request was declined rather than sent', () => {
+    // The RPC answers with a word instead of raising, so the queue counts a
+    // refused request as a successful write. Without the report the optimistic
+    // "pending" row stays on screen describing a request that does not exist.
+    expect(remote).toContain('friendRequestReporter');
+    expect(store).toContain('setFriendRequestReporter');
+    expect(store).toContain('friendRequestOutcome');
+  });
+
+  it('signing back in cancels a pending deletion, because the screen says it does', () => {
+    // The copy is explicit: "sign back in within 30 days and nothing has been
+    // lost." The cron reads `deletion_requested_at`; only this RPC clears it.
+    // Without the call the promise is false and the account still goes.
+    expect(remote).toContain("rpc('cancel_account_deletion')");
+    expect(store).toContain('remote.cancelAccountDeletion()');
+    const copy = read('src/i18n/locales/en/settings.ts');
+    expect(copy).toContain('sign back in within 30 days');
+  });
+
+  it('you can find somebody you do not already know', () => {
+    // The search screen filtered the local `people` array: friends, pending
+    // requests and crew-mates this device already had. A stranger's exact
+    // handle returned "No one with that username", which was false — they were
+    // there, behind an RPC nothing called. The Add Friend flow existed end to
+    // end and could not be started.
+    expect(remote).toContain("rpc('search_profiles'");
+    const screen = code('app/people/search.tsx');
+    expect(screen).toContain('searchPeople');
+    // And not by filtering what is already here.
+    expect(screen).not.toMatch(/people\.filter\([\s\S]{0,200}username/);
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

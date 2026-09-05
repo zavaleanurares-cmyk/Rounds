@@ -40,3 +40,8 @@ psql -q -d "$DB" -v ON_ERROR_STOP=1 -v harness="$HARNESS" -f "$ROOT/supabase/tes
 # written to, so it cleans up after itself rather than assuming an empty one.
 echo "  running safety escalation"
 psql -q -d "$DB" -v ON_ERROR_STOP=1 -v harness="$HARNESS" -f "$ROOT/supabase/tests/safety_escalation.sql"
+
+# The rules that live inside security-definer functions rather than in policies.
+# Runs last for the same reason: it cleans up after itself.
+echo "  running RPC rules"
+psql -q -d "$DB" -v ON_ERROR_STOP=1 -v harness="$HARNESS" -f "$ROOT/supabase/tests/rpc_rules.sql"

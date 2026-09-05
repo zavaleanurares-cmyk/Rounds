@@ -56,7 +56,14 @@ export type QueueOp =
   | 'arm_check'
   | 'resolve_check'
   /* people */
-  | 'upsert_friendship'
+  // Sending and accepting are different operations against different rules, so
+  // they are different ops. Sending goes through the `request_friendship` RPC,
+  // which holds the server-side cap of 25 a day; accepting is a status update
+  // RLS already scopes to the addressee. A single `upsert_friendship` that did
+  // both wrote the row directly, and the cap — the only spam control that does
+  // not reset when the app restarts — stopped applying to anybody.
+  | 'request_friendship'
+  | 'accept_friendship'
   | 'delete_friendship'
   | 'insert_block'
   | 'delete_block'

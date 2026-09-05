@@ -160,6 +160,18 @@ select t.count_eq('a friend does appear in search',
   (select count(*) from public.search_profiles('friend')), 1);
 select t.count_eq('you never appear in your own search results',
   (select count(*) from public.search_profiles('owner')), 0);
+-- What search may return, column by column. A `security definer` function that
+-- selected `p.*` published every column of `profiles` — including
+-- `deletion_requested_at` — to anybody who typed three letters, and would have
+-- published every future column too, by default, silently.
+select t.text_eq('search returns exactly the columns a result needs',
+  (select string_agg(n.name, ',' order by n.ord)
+     from pg_proc f,
+          lateral unnest(f.proargnames, f.proargmodes) with ordinality as n(name, mode, ord)
+    where f.proname = 'search_profiles'
+      and f.pronamespace = 'public'::regnamespace
+      and n.mode = 't'),
+  'id,username,display_name,avatar_url,avatar_tint,level');
 
 select public.set_current_user(:blockd);
 select t.count_eq('the blocker does not appear in search for the BLOCKED user either',

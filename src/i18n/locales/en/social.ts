@@ -144,4 +144,8 @@ export const social = {
   'social.findableSaved': 'Saved. People with your number can find you.',
   'social.makeFindable': 'Make me findable',
   'social.numberPlaceholder': '+40 700 000 000',
+
+  // a friend request the server declined
+  'social.requestSelf': "That's you.",
+  'social.searchOffline': "Can't search right now. Check your connection.",
 } satisfies Record<string, Message>;

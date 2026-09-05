@@ -154,6 +154,15 @@ export interface State {
   reports: Report[];
   notifications: AppNotification[];
   settings: Settings;
+  /**
+   * The last friend request the server declined, if any.
+   *
+   * Transient and never persisted: it exists for exactly as long as it takes to
+   * show a line of text. Sending is optimistic, so a request the server refuses
+   * (self, or over the daily cap) would otherwise sit on screen as "pending"
+   * forever — pending on a request that was never made.
+   */
+  friendRequestOutcome: { personId: string; outcome: 'self' | 'rate_limited' } | null;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -208,6 +217,7 @@ const INITIAL: State = {
   reports: [],
   notifications: [],
   settings: DEFAULT_SETTINGS,
+  friendRequestOutcome: null,
 };
 
 type Action =
@@ -361,6 +371,8 @@ export interface Store extends State {
   leaveSession(sessionId: string): void;
   addVenue(input: { name: string; area: string | null; category: string | null }): Venue;
   addFriend(personId: string): void;
+  /** Acknowledges a declined request so the message stops being shown. */
+  clearFriendRequestOutcome(): void;
   respondToRequest(personId: string, accept: boolean): void;
   blockUser(personId: string): void;
   unblockUser(personId: string): void;
@@ -596,6 +608,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!state.hydrated || state.auth.status !== 'signed_in') return;
     void push.registerForPush();
   }, [state.hydrated, state.auth.status]);
+
+  /**
+   * Being here at all cancels a pending deletion.
+   *
+   * The settings screen promises "sign back in within 30 days and nothing has
+   * been lost". Nothing was keeping that promise: the deletion cron only reads
+   * `deletion_requested_at`, and only `cancel_account_deletion` clears it. A
+   * returning user was on a countdown they had been told they had cancelled.
+   */
+  useEffect(() => {
+    if (!state.hydrated || state.auth.status !== 'signed_in') return;
+    void remote.cancelAccountDeletion().catch(() => {});
+  }, [state.hydrated, state.auth.status]);
+
+  /**
+   * The server's answer to a friend request that was not simply sent.
+   *
+   * `request_friendship` returns a word rather than raising, so the queue counts
+   * a declined request as a successful write. Without this the optimistic
+   * "pending" row would stay on the other person's card for good, describing a
+   * request that does not exist. Undo it, and say which of the two things
+   * happened.
+   */
+  useEffect(() => {
+    remote.setFriendRequestReporter((personId, outcome) => {
+      if (outcome === 'sent') return;
+      dispatch({
+        type: 'set',
+        payload: {
+          people: stateRef.current.people.map((x) =>
+            x.id === personId && x.status === 'pending_out' ? { ...x, status: 'none' } : x
+          ),
+          friendRequestOutcome: { personId, outcome },
+        },
+      });
+    });
+    return () => remote.setFriendRequestReporter(null);
+  }, []);
 
   /**
    * Feedback reads its switches from a module-level variable rather than a
@@ -1355,12 +1405,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           people: stateRef.current.people.map((p) => (p.id === personId ? { ...p, status: 'pending_out' } : p)),
         },
       });
-      // This device sent it, so this device is the requester.
+      // This device sent it, so this device is the requester — but it does not
+      // write the row. `request_friendship` on the server caps the day at 25; a
+      // direct insert passes the RLS policy, which only asks whether the
+      // requester is you, and the cap simply stops existing.
       logQueue.enqueue({
         id: pairKey(me, personId),
-        op: 'upsert_friendship',
-        payload: { requesterId: me, addresseeId: personId, status: 'pending' },
+        op: 'request_friendship',
+        payload: { target: personId },
       });
+    },
+    clearFriendRequestOutcome() {
+      dispatch({ type: 'set', payload: { friendRequestOutcome: null } });
     },
     respondToRequest(personId, accept) {
       const me = stateRef.current.auth.userId ?? 'me';
@@ -1378,8 +1434,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (accept) {
         logQueue.enqueue({
           id: pairKey(me, personId),
-          op: 'upsert_friendship',
-          payload: { requesterId: personId, addresseeId: me, status: 'accepted' },
+          op: 'accept_friendship',
+          payload: { requesterId: personId, addresseeId: me },
         });
       } else {
         logQueue.enqueue({

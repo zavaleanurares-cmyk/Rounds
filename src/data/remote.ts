@@ -40,6 +40,25 @@ export function getClient(): SupabaseClient | null {
 
 export const isRemoteEnabled = () => getClient() !== null;
 
+/**
+ * What the server said about a friend request that was not simply sent.
+ *
+ * `request_friendship` answers with a word instead of an error, so the queue
+ * sees a successful write for a request the server declined. The store
+ * registers a reporter here to roll the optimistic "pending" row back, which is
+ * the difference between a request that never arrives and a request the sender
+ * can see never arrived.
+ */
+export type FriendRequestOutcome = 'sent' | 'self' | 'rate_limited';
+
+let friendRequestReporter: ((personId: string, outcome: FriendRequestOutcome) => void) | null = null;
+
+export function setFriendRequestReporter(
+  fn: ((personId: string, outcome: FriendRequestOutcome) => void) | null
+): void {
+  friendRequestReporter = fn;
+}
+
 /* ------------------------------------------------------------------- push */
 
 /** Local shape → the column names in 00004. */
@@ -305,23 +324,56 @@ async function writeExtended(supabase: SupabaseClient, item: QueueItem): Promise
             { onConflict: 'id' }
           )).error
       );
+    /**
+     * Checking in goes through the RPC because resolving is two writes, not one.
+     *
+     * Marking the check resolved is the obvious half. The other half is
+     * deleting the queued-but-unsent `outbound` safety rows for it: the
+     * escalation job stages messages before the deadline, so a direct update to
+     * `resolved_at` still leaves an SMS sitting in the outbox with a trusted
+     * contact's number on it. Someone who got home and pressed "I'm safe"
+     * having their mother texted anyway is the worst bug this feature has.
+     */
     case 'resolve_check':
-      return fail(
-        (await supabase
-          .from('safe_arrival_checks')
-          .update({ resolved_at: new Date(p.resolvedAt ?? Date.now()).toISOString() })
-          .eq('id', p.id)).error
-      );
+      return fail((await supabase.rpc('resolve_safe_arrival', { p_check: p.id })).error);
 
     /* ------------------------------------------------------------ people */
-    case 'upsert_friendship':
+    /**
+     * Sending a request goes through the RPC, never the table.
+     *
+     * `request_friendship` caps an account at 25 sent requests a day and
+     * answers a self-request with a word instead of an error. The cap lives in
+     * the function, not in a policy — the insert policy only checks that the
+     * requester is you — so writing the row directly (which is what this case
+     * used to do) removed the only spam control the server had. The screen's
+     * own counter is a courtesy; it resets when the app restarts.
+     *
+     * The RPC returns a word rather than raising, so an outcome like
+     * `rate_limited` must not be thrown: throwing would stall the whole queue
+     * behind eight retries, taking the night's drink logs with it. It is
+     * reported back instead, and the store undoes the optimistic row.
+     */
+    case 'request_friendship': {
+      const { data, error } = await supabase.rpc('request_friendship', { target: p.target });
+      fail(error);
+      const outcome = (data as FriendRequestOutcome | null) ?? 'sent';
+      if (outcome !== 'sent') friendRequestReporter?.(p.target as string, outcome);
+      return;
+    }
+    /**
+     * Accepting one is an ordinary status update. RLS ("respond to a request")
+     * allows it only to the addressee, so the rule is already where it belongs
+     * and there is nothing an RPC would add. The row keeps THEIR id as the
+     * requester — writing it the other way round mirrors the friendship instead
+     * of answering it.
+     */
+    case 'accept_friendship':
       return fail(
         (await supabase
           .from('friendships')
-          .upsert(
-            { requester_id: p.requesterId, addressee_id: p.addresseeId, status: p.status },
-            { onConflict: 'requester_id,addressee_id' }
-          )).error
+          .update({ status: 'accepted' })
+          .eq('requester_id', p.requesterId)
+          .eq('addressee_id', p.addresseeId)).error
       );
     case 'delete_friendship':
       return fail(
@@ -791,6 +843,26 @@ export async function verifyAge(dob: string): Promise<boolean | null> {
   return Boolean(data);
 }
 
+/**
+ * Signing back in cancels a pending deletion.
+ *
+ * The settings screen promises exactly this — "sign back in within 30 days and
+ * nothing has been lost" — and for a while the app did not keep it. Requesting
+ * deletion stamps `deletion_requested_at` and signs the user out; a cron job
+ * cascades the account away 30 days later. `cancel_account_deletion` existed
+ * from the start and was called from nowhere, so somebody who changed their
+ * mind, signed back in and used the app for three weeks was still erased on
+ * day 30, with the screen that told them otherwise still in the app.
+ *
+ * Idempotent: it clears a column that is usually already null.
+ */
+export async function cancelAccountDeletion() {
+  const supabase = getClient();
+  if (!supabase) return;
+  const { error } = await supabase.rpc('cancel_account_deletion');
+  if (error) throw error;
+}
+
 export async function requestAccountDeletion() {
   const supabase = getClient();
   if (!supabase) return;
@@ -822,6 +894,47 @@ export async function usernameAvailable(username: string): Promise<boolean | nul
   const { data, error } = await supabase.rpc('username_available', { p_username: username });
   if (error) return null;
   return Boolean(data);
+}
+
+/**
+ * Finds people by username, on the server.
+ *
+ * This is what makes it possible to add somebody you are not already connected
+ * to. The search screen used to filter the local `people` array — the friends,
+ * pending requests and crew-mates this device already knew about — so typing a
+ * stranger's exact handle returned nothing, and the only way to acquire a new
+ * friend was to be added by one. The Add Friend flow existed end to end and
+ * could not be started.
+ *
+ * `search_profiles` is prefix-matched, capped at twenty, and already excludes
+ * you, private accounts and anybody either of you has blocked. It returns six
+ * columns, not the row.
+ *
+ * `null` means there is no backend to ask, which the caller shows as "cannot
+ * search right now" rather than as "nobody by that name".
+ */
+export interface SearchHit {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  avatarTint: number | null;
+  level: number;
+}
+
+export async function searchPeople(term: string): Promise<SearchHit[] | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('search_profiles', { term: term.toLowerCase() });
+  if (error) return null;
+  return (data as Record<string, any>[]).map((r) => ({
+    id: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url ?? null,
+    avatarTint: r.avatar_tint ?? null,
+    level: r.level ?? 1,
+  }));
 }
 
 /**
