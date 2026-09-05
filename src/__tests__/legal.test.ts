@@ -134,3 +134,116 @@ describe('the legal documents', () => {
     }
   });
 });
+
+describe('the translated documents', () => {
+  const { legalDoc } = require('@/content/legal') as typeof import('@/content/legal');
+  const LOCALES = ['en', 'fr', 'ro', 'es'] as const;
+
+  it('exists in every language, for every document', () => {
+    for (const doc of LEGAL_DOCS) {
+      for (const locale of LOCALES) {
+        const d = legalDoc(doc, locale);
+        expect({ doc, locale, sections: d.sections.length }).toEqual({
+          doc,
+          locale,
+          sections: expect.any(Number),
+        });
+        expect(d.sections.length).toBeGreaterThan(0);
+        for (const s of d.sections) {
+          expect(s.heading.trim()).not.toBe('');
+          expect(s.body.trim()).not.toBe('');
+        }
+      }
+    }
+  });
+
+  it('opens every translation by saying the English is the operative version', () => {
+    for (const doc of LEGAL_DOCS) {
+      for (const locale of ['fr', 'ro', 'es'] as const) {
+        const first = legalDoc(doc, locale).sections[0].body;
+        expect(first).toMatch(/anglais|engleză|inglés/i);
+      }
+      // ...and does not say it in the English one, where it would be nonsense.
+      expect(legalDoc(doc, 'en').sections[0].body).not.toMatch(/operative version/i);
+    }
+  });
+
+  it('carries the same [DRAFT] markers in every language', () => {
+    for (const doc of LEGAL_DOCS) {
+      const count = (l: 'en' | 'fr' | 'ro' | 'es') =>
+        legalDoc(doc, l)
+          .sections.map((s) => (s.body.match(/\[DRAFT/g) ?? []).length)
+          .reduce((a, b) => a + b, 0);
+      for (const locale of ['fr', 'ro', 'es'] as const) {
+        expect({ doc, locale, markers: count(locale) }).toEqual({
+          doc,
+          locale,
+          markers: count('en'),
+        });
+      }
+    }
+  });
+
+  /**
+   * The load-bearing test in this file.
+   *
+   * These are numbers a person in trouble may dial. A digit transposed by a
+   * translator is the one bug in this app that could do real harm, so the
+   * numbers are asserted literally, per region, in every language — not by
+   * comparing translations to each other, which would happily agree on the
+   * same wrong number.
+   */
+  describe('the helplines', () => {
+    const EXPECTED: Record<string, string[]> = {
+      Romania: ['0800 801 200', '112'],
+      'United Kingdom & Ireland': ['0300 123 1110', '0800 9177 650', '999', '112'],
+      France: ['0 980 980 930', '112'],
+      Spain: ['900 16 15 15', '985 566 345', '112'],
+      'European Union': ['112'],
+      'United States': ['1-800-662-4357', '911'],
+    };
+
+    const support = (l: 'en' | 'fr' | 'ro' | 'es') => legalDoc('support', l);
+
+    it('lists all six regions, in the same order, in every language', () => {
+      const english = support('en').sections.map((s) => s.heading);
+      for (const locale of ['fr', 'ro', 'es'] as const) {
+        // +1 for the prepended "English prevails" section.
+        expect(support(locale).sections.length).toBe(english.length + 1);
+      }
+    });
+
+    it('carries every number, digit for digit, in every language', () => {
+      const englishSections = support('en').sections;
+      for (const [region, numbers] of Object.entries(EXPECTED)) {
+        const index = englishSections.findIndex((s) => s.heading === region);
+        expect({ region, found: index >= 0 }).toEqual({ region, found: true });
+
+        for (const locale of ['en', 'fr', 'ro', 'es'] as const) {
+          const sections = support(locale).sections;
+          // The translations carry one extra section at the top.
+          const body = sections[locale === 'en' ? index : index + 1].body;
+          for (const number of numbers) {
+            expect({ region, locale, number, present: body.includes(number) }).toEqual({
+              region,
+              locale,
+              number,
+              present: true,
+            });
+          }
+        }
+      }
+    });
+
+    it('never reformats a number — no locale invents its own spacing', () => {
+      // A French translator writing "09 80 98 09 30" would be following French
+      // convention and would break the tel: link and the reader's expectation
+      // of what to dial.
+      for (const locale of ['en', 'fr', 'ro', 'es'] as const) {
+        const all = support(locale).sections.map((s) => s.body).join(' ');
+        expect(all).not.toMatch(/09 80 98 09 30/);
+        expect(all).not.toMatch(/900 161 515/);
+      }
+    });
+  });
+});

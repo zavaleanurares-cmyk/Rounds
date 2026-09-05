@@ -2,9 +2,9 @@ import React from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Screen, Text, Card } from '@/ui';
-import { useT } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { color, space } from '@/design/tokens';
-import { LEGAL } from '@/content/legal';
+import { legalDoc, LEGAL_UPDATED_AT, type LegalLocale } from '@/content/legal';
 
 /**
  * A-13 · Legal viewer. Loads from a remote URL in production with the bundled
@@ -12,9 +12,11 @@ import { LEGAL } from '@/content/legal';
  * terms, including at review time with the network stubbed.
  */
 export default function LegalDoc() {
-  const t = useT();
+  const { t, locale, fmt: f } = useI18n();
   const { doc } = useLocalSearchParams<{ doc: string }>();
-  const entry = LEGAL[doc as keyof typeof LEGAL] ?? LEGAL.terms;
+  // Falls back to English per document, so a partly-translated set still shows
+  // a real document rather than an empty screen.
+  const entry = legalDoc(doc, locale as LegalLocale);
   const hasDraftMarkers = entry.sections.some((s) => s.body.includes('[DRAFT'));
   return (
     <Screen title={entry.title} back mood="night">
@@ -27,7 +29,7 @@ export default function LegalDoc() {
       ) : null}
 
       <Card>
-        <Text variant="footnote" tone="tertiary">{t('stats.legalUpdated', { date: entry.updated })}</Text>
+        <Text variant="footnote" tone="tertiary">{t('stats.legalUpdated', { date: f.monthYear(LEGAL_UPDATED_AT) })}</Text>
         {entry.sections.map((s) => (
           <View key={s.heading} style={{ marginTop: space.md }}>
             <Text variant="headline">{s.heading}</Text>

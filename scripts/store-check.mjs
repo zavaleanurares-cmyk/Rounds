@@ -14,7 +14,7 @@
  *
  * Run: npm run store:check
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const read = (p) => readFileSync(p, 'utf8');
@@ -34,30 +34,133 @@ const check = (name, fn, detail = '') => {
 
 /* ------------------------------------------------------ store limits */
 // App Store Connect and Play Console both truncate silently. A subtitle cut off
-// mid-word is the first thing a person sees.
-const LIMITS = {
-  'store/metadata/en-US/name.txt': 30,
-  'store/metadata/en-US/subtitle.txt': 30,
-  'store/metadata/en-US/promotional_text.txt': 170,
-  'store/metadata/en-US/keywords.txt': 100,
-  'store/metadata/en-US/description.txt': 4000,
-  'store/metadata/en-US/short_description.txt': 80,
-  'store/metadata/en-US/release_notes.txt': 500,
-  'store/metadata/review/notes.txt': 4000,
+// mid-word is the first thing a person sees — and it is worse in a language the
+// person shipping the build cannot read, so every locale is checked, not just
+// en-US. Locales are DISCOVERED rather than listed: adding store/metadata/de-DE/
+// and forgetting to register it here would silently ship an unchecked listing.
+const METADATA = 'store/metadata';
+
+// Per-file limits, keyed by basename because they are the same in every locale.
+const FILE_LIMITS = {
+  'name.txt': 30,
+  'subtitle.txt': 30,
+  'promotional_text.txt': 170,
+  'keywords.txt': 100,
+  'description.txt': 4000,
+  'short_description.txt': 80,
+  'release_notes.txt': 500,
 };
 
-for (const [file, limit] of Object.entries(LIMITS)) {
-  check(`${file.split('/').pop()} exists and fits in ${limit} characters`, () => {
-    const body = read(file).trim();
-    if (body.length === 0) throw new Error('empty');
-    if (body.length > limit) throw new Error(`${body.length} characters, limit is ${limit}`);
+// Not a locale: the App Review notes, which have their own limit and no
+// translations — a reviewer reads them in English.
+const NOT_A_LOCALE = new Set(['review']);
+
+const locales = readdirSync(METADATA, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && !NOT_A_LOCALE.has(e.name))
+  .map((e) => e.name)
+  .sort();
+
+check('store/metadata contains at least the en-US listing', () => {
+  if (!locales.includes('en-US')) throw new Error('en-US is missing');
+  return true;
+});
+
+for (const locale of locales) {
+  for (const [file, limit] of Object.entries(FILE_LIMITS)) {
+    check(`${locale} · ${file} exists and fits in ${limit} characters`, () => {
+      const path = join(METADATA, locale, file);
+      if (!has(path)) throw new Error(`missing from ${locale}`);
+      // .length counts UTF-16 code units, which is what both stores count for
+      // everything in the Latin-1/Latin-Extended range these listings live in.
+      // An accented character is one character, not two bytes.
+      const body = read(path).trim();
+      if (body.length === 0) throw new Error(`empty in ${locale}`);
+      if (body.length > limit) {
+        throw new Error(`${locale}: ${body.length} characters, limit is ${limit}`);
+      }
+      return true;
+    });
+  }
+}
+
+// The review notes are checked on their own: one file, one limit, no locale.
+check('review notes exist and fit in 4000 characters', () => {
+  const body = read('store/metadata/review/notes.txt').trim();
+  if (body.length === 0) throw new Error('empty');
+  if (body.length > 4000) throw new Error(`${body.length} characters, limit is 4000`);
+  return true;
+});
+
+// A locale missing a file is caught above; a locale carrying a file the others
+// do not have is a typo'd filename that no store will ever read.
+check('no locale carries a file the listing does not use', () => {
+  const known = new Set(Object.keys(FILE_LIMITS));
+  const strays = [];
+  for (const locale of locales) {
+    for (const entry of readdirSync(join(METADATA, locale))) {
+      if (!known.has(entry)) strays.push(`${locale}/${entry}`);
+    }
+  }
+  if (strays.length) throw new Error(strays.join(', '));
+  return true;
+});
+
+check('the app name is the same brand in every locale', () => {
+  const wrong = locales
+    .map((l) => [l, read(join(METADATA, l, 'name.txt')).trim()])
+    .filter(([, name]) => name !== 'ROUNDS');
+  if (wrong.length) throw new Error(wrong.map(([l, n]) => `${l} says "${n}"`).join(', '));
+  return true;
+});
+
+for (const locale of locales) {
+  check(`${locale} · keywords are comma-separated with no spaces after commas`, () => {
+    const kw = read(join(METADATA, locale, 'keywords.txt')).trim();
+    if (/,\s/.test(kw)) {
+      throw new Error(`${locale}: a space after a comma wastes a character each time`);
+    }
+    if (/,,|^,|,$/.test(kw)) throw new Error(`${locale}: empty keyword`);
     return true;
   });
 }
 
-check('keywords are comma-separated with no spaces after commas (Apple counts them)', () => {
-  const kw = read('store/metadata/en-US/keywords.txt').trim();
-  if (/,\s/.test(kw)) throw new Error('a space after a comma wastes a character each time');
+/* --------------------------------------------- the line that must survive */
+// Rule 4 of docs/i18n-glossary.md. Every description ends by saying the pace
+// figure can be wrong and must never decide whether you drive, and that safety
+// is free. A translation that softens or drops either line is the one mistake
+// in this directory that could actually hurt someone, so it is asserted rather
+// than trusted — per locale, because a regex cannot read a language it has not
+// been taught. A new locale with no entry here FAILS: registering the two
+// phrases is part of adding the locale.
+const DISCLAIMER = {
+  'en-US': [/never use it to decide whether to drive/i, /safety features are free forever/i],
+  'fr-FR': [/ne t'en sers jamais pour décider si tu peux conduire/i, /gratuites pour toujours/i],
+  'ro-RO': [/nu o folosi niciodată ca să decizi dacă poți conduce/i, /gratuite pentru totdeauna/i],
+  'es-ES': [/no la uses nunca para decidir si conduces/i, /gratis para siempre/i],
+};
+
+for (const locale of locales) {
+  check(`${locale} · description keeps the driving line and the free-forever line`, () => {
+    const patterns = DISCLAIMER[locale];
+    if (!patterns) {
+      throw new Error(`${locale}: no disclaimer wording registered in store-check.mjs`);
+    }
+    const body = read(join(METADATA, locale, 'description.txt'));
+    const [drive, free] = patterns;
+    if (!drive.test(body)) throw new Error(`${locale}: the driving line is missing or reworded`);
+    if (!free.test(body)) throw new Error(`${locale}: the free-forever line is missing`);
+    return true;
+  });
+}
+
+// Romanian's comma-below diacritics render as different letters in several
+// fonts, and the Turkish cedillas are one keyboard layout away.
+check('Romanian uses comma-below diacritics, never the Turkish cedillas', () => {
+  if (!locales.includes('ro-RO')) return true;
+  const offenders = Object.keys(FILE_LIMITS).filter((f) =>
+    /[\u015F\u015E\u0163\u0162]/.test(read(join(METADATA, 'ro-RO', f)))
+  );
+  if (offenders.length) throw new Error(`cedilla in ${offenders.join(', ')}`);
   return true;
 });
 
@@ -155,7 +258,7 @@ let failed = 0;
 console.log('\nCHECKED — verifiable from this repo\n');
 for (const r of results) {
   if (!r.ok) failed++;
-  console.log(`  ${r.ok ? 'ok  ' : 'FAIL'}  ${pad(r.name, 68)}${r.detail ? '  ' + r.detail : ''}`);
+  console.log(`  ${r.ok ? 'ok  ' : 'FAIL'}  ${pad(r.name, 62)}${r.detail ? '  ' + r.detail : ''}`);
 }
 
 /**

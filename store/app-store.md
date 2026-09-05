@@ -152,15 +152,23 @@ them fits inside the store's limit, which both stores enforce by silently
 truncating.
 
 ```
-store/metadata/en-US/name.txt              30 chars
-store/metadata/en-US/subtitle.txt          30
-store/metadata/en-US/promotional_text.txt  170
-store/metadata/en-US/keywords.txt          100
-store/metadata/en-US/description.txt       4000
-store/metadata/en-US/short_description.txt 80   (Play)
-store/metadata/en-US/release_notes.txt     500
-store/metadata/review/notes.txt            4000
+store/metadata/<locale>/name.txt              30 chars
+store/metadata/<locale>/subtitle.txt          30
+store/metadata/<locale>/promotional_text.txt  170
+store/metadata/<locale>/keywords.txt          100
+store/metadata/<locale>/description.txt       4000
+store/metadata/<locale>/short_description.txt 80   (Play)
+store/metadata/<locale>/release_notes.txt     500
+store/metadata/review/notes.txt               4000
 ```
+
+Locales shipped: `en-US`, `fr-FR`, `ro-RO`, `es-ES`. The check discovers them by
+listing `store/metadata/`, so a new locale is checked the moment the directory
+exists — and a failure names the locale it is in. Two things a new locale must
+also do: keep the name `ROUNDS`, and register its wording for the two lines that
+must survive translation ("never use it to decide whether to drive" and "safety
+features are free forever") in the `DISCLAIMER` map in `scripts/store-check.mjs`.
+An unregistered locale fails rather than passing silently.
 
 ## Before you press submit
 

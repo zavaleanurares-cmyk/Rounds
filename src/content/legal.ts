@@ -39,9 +39,34 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
+/**
+ * Which language a legal document is being read in.
+ *
+ * The translations are provided so people can actually READ their own terms,
+ * which is the point of having them. They are not a second set of terms: the
+ * English is the operative version and every translated document says so at the
+ * top. That is the ordinary arrangement and it is the honest one — a translated
+ * clause that drifts from the English creates two contracts, and the user is
+ * the one who finds out.
+ *
+ * `[DRAFT]` markers survive translation. A clause counsel has not settled is
+ * unsettled in every language.
+ */
+export type LegalLocale = 'en' | 'fr' | 'ro' | 'es';
+
+import { FR } from './legal.fr';
+import { RO } from './legal.ro';
+import { ES } from './legal.es';
+
+/**
+ * When these documents were last touched, as a timestamp rather than a string.
+ * "September 2026" cannot be translated; a date can be formatted in any
+ * language, and the legal screen does exactly that.
+ */
+export const LEGAL_UPDATED_AT = Date.UTC(2026, 8, 1);
 const UPDATED = 'September 2026';
 
-export const LEGAL: Record<string, LegalDoc> = {
+const EN: Record<string, LegalDoc> = {
   terms: {
     title: 'Terms of Service',
     updated: UPDATED,
@@ -147,7 +172,7 @@ export const LEGAL: Record<string, LegalDoc> = {
       },
       {
         heading: 'Your rights',
-        body: 'Under the GDPR and the UK GDPR you can access, correct, delete, restrict, object to and port your data. Export everything as JSON from Settings › Data & account — free, immediately, no request needed. Delete your account from the same screen. You can complain to your supervisory authority; in Romania that is ANSPDCP.',
+        body: 'Under the GDPR and the UK GDPR you can access, correct, delete, restrict, object to and port your data. Export everything as JSON from Settings › Data & account — free, immediately, no request needed. Delete your account from the same screen. You can complain to your own supervisory authority: ANSPDCP in Romania, the CNIL in France, the AEPD in Spain, the ICO in the United Kingdom, or the equivalent where you live. [DRAFT — counsel to confirm the list matches the launch markets and to add the lead supervisory authority once the establishment is settled.]',
       },
       {
         heading: 'Children',
@@ -181,6 +206,14 @@ export const LEGAL: Record<string, LegalDoc> = {
         body: 'Drinkline · 0300 123 1110. Alcoholics Anonymous · 0800 9177 650. Emergency: 999 / 112.',
       },
       {
+        heading: 'France',
+        body: "Alcool Info Service · 0 980 980 930, anonymous, not premium-rate, 8am to 2am every day. Emergency: 112.",
+      },
+      {
+        heading: 'Spain',
+        body: 'Fad Juventud · 900 16 15 15, free and confidential. Alcohólicos Anónimos · 985 566 345. Emergency: 112.',
+      },
+      {
         heading: 'European Union',
         body: 'Emergency: 112. Your national health service will list local alcohol services.',
       },
@@ -192,4 +225,38 @@ export const LEGAL: Record<string, LegalDoc> = {
   },
 };
 
-export const LEGAL_DOCS = Object.keys(LEGAL);
+/**
+ * The translated documents live in their own files so that a lawyer reviewing
+ * one language is looking at one file, and so that a translation landing does
+ * not touch the English.
+ */
+const BY_LOCALE: Record<LegalLocale, Record<string, LegalDoc>> = {
+  en: EN,
+  fr: FR,
+  ro: RO,
+  es: ES,
+};
+
+/**
+ * The sentence every non-English document opens with. Kept here rather than in
+ * each translation so it cannot say something different in one of them.
+ */
+const PREVAILS: Record<Exclude<LegalLocale, 'en'>, string> = {
+  fr: "Cette traduction est fournie pour que tu puisses lire ces conditions dans ta langue. En cas de divergence, c'est la version anglaise qui fait foi.",
+  ro: 'Traducerea asta există ca să poți citi condițiile în limba ta. Dacă apare vreo neconcordanță, versiunea în engleză e cea care contează.',
+  es: 'Esta traducción existe para que puedas leer estas condiciones en tu idioma. Si hay alguna discrepancia, prevalece la versión en inglés.',
+};
+
+/** A document in one language, with the English fallback for anything missing. */
+export function legalDoc(doc: string, locale: LegalLocale = 'en'): LegalDoc {
+  const set = BY_LOCALE[locale] ?? EN;
+  const entry = set[doc] ?? EN[doc] ?? EN.terms;
+  if (locale === 'en') return entry;
+  return {
+    ...entry,
+    sections: [{ heading: entry.title, body: PREVAILS[locale] }, ...entry.sections],
+  };
+}
+
+export const LEGAL = EN;
+export const LEGAL_DOCS = Object.keys(EN);
