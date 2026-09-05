@@ -1,4 +1,7 @@
-import { nicotineThisWeek, nicotineFreeDays, NICOTINE, isNicotine } from '@/domain/nicotine';
+import {
+  nicotineThisWeek, nicotineFreeDays, NICOTINE, NICOTINE_PRODUCTS, POUCHES,
+  UNKNOWN_NICOTINE, isNicotine, asDrink, nicotineById, pouchMgThisWeek,
+} from '@/domain/nicotine';
 import { goalProgress } from '@/domain/stats';
 import { nightKey } from '@/domain/nightKey';
 import type { Log } from '@/domain/types';
@@ -55,6 +58,40 @@ describe('the nicotine entries', () => {
   });
 });
 
+describe('the pictograms', () => {
+  /**
+   * The bug this exists for: `asDrink` passed `fill: 0`.
+   *
+   * `fill` is how full a vessel is, and the glyph draws the tint from the
+   * cavity floor upwards by `depth * fill`. Zero is a legal number, so the
+   * `?? 0.6` default did not catch it, and the tint rectangle collapsed to
+   * nothing at the floor of the clip path. Every one of the twenty-two pouches
+   * rendered as the same white outline and the whole colour table was dead
+   * data — which no type check and no snapshot would have noticed.
+   */
+  it('fills the silhouette, or the brand colour never paints', () => {
+    for (const p of NICOTINE_PRODUCTS) {
+      expect({ id: p.id, fill: asDrink(p).art.fill }).toEqual({ id: p.id, fill: 1 });
+    }
+  });
+
+  it('gives the pouch brands colours that differ from each other', () => {
+    // Two pouches that render identically are two products the user cannot
+    // tell apart in a grid of twenty-two.
+    const tints = new Set(POUCHES.map((p) => p.tint.join()));
+    expect(tints.size).toBeGreaterThanOrEqual(8);
+  });
+
+  it('draws a legacy cigarette as a cigarette, not as a vape', () => {
+    // The old catalogue had two ids; `cigarette` became `cig-other`, so every
+    // row written before this catalogue existed resolved to nothing and fell
+    // back to whatever was last in the list — which was the vape.
+    expect(nicotineById('cigarette')?.id).toBe('cig-other');
+    expect(nicotineById('vape')?.id).toBe('vape');
+    expect(UNKNOWN_NICOTINE.format).toBe('cigarette');
+  });
+});
+
 describe('counting', () => {
   // A Wednesday, so "this week" has a Monday behind it and days ahead of it.
   const wed = new Date(2026, 8, 2, 20, 0, 0).getTime();
@@ -93,6 +130,25 @@ describe('counting', () => {
     // Zero rather than 365: a streak needs a before, and "you have been clean
     // for a year" is not something to tell a person on their first launch.
     expect(nicotineFreeDays([], wed)).toBe(0);
+  });
+});
+
+describe('milligrams', () => {
+  const wed = new Date(2026, 8, 2, 20, 0, 0).getTime();
+
+  it('totals what pouches are labelled with', () => {
+    const logs = [log(wed, { nicotineMg: 6 }), log(wed - 1000, { nicotineMg: 9.4 })];
+    expect(pouchMgThisWeek(logs, wed)).toBeCloseTo(15.4, 5);
+  });
+
+  it('counts a cigarette in the count and in no total', () => {
+    // The asymmetry is the design: EU Directive 2014/40 Art. 13(1)(a) took
+    // nicotine figures off packs because they made brands look comparably
+    // harmful. A "total nicotine" that silently invented one per cigarette
+    // would put it back.
+    const logs = [log(wed, { drinkId: 'cig-marlboro', nicotineMg: null })];
+    expect(nicotineThisWeek(logs, wed)).toBe(1);
+    expect(pouchMgThisWeek(logs, wed)).toBe(0);
   });
 });
 

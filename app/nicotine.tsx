@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, EmptyState, StatTile, DrinkGlyph, Chip, useToast } from '@/ui';
 import { useStore } from '@/data/store';
 import {
-  POUCHES, SMOKED, POUCH_MAX_MG, asDrink, isNicotine, nicotineById,
+  POUCHES, SMOKED, POUCH_MAX_MG, UNKNOWN_NICOTINE, asDrink, isNicotine, nicotineById,
   nicotineThisWeek, nicotineFreeDays, pouchMgThisWeek,
   type NicotineProduct,
 } from '@/domain/nicotine';
@@ -52,6 +52,16 @@ export default function Nicotine() {
       .filter((l) => !l.deleted && isNicotine(l) && l.nightKey === key)
       .sort((a, b) => a.at - b.at);
   }, [logs]);
+
+  /**
+   * A tin labelled "ZYN 6" says 6, not 6.0.
+   *
+   * `f.number(x, 1)` sets `minimumFractionDigits`, so every whole strength grew
+   * a false decimal — and the accessibility label read "6.0 milligrams" for a
+   * product whose own packaging says 6. Only five of the twenty-two have a
+   * decimal at all.
+   */
+  const mg = (value: number) => f.number(value, Number.isInteger(value) ? 0 : 1);
 
   const log = (product: NicotineProduct) => {
     logNicotine(product.id);
@@ -105,7 +115,7 @@ export default function Nicotine() {
         <Card>
           <Text variant="sectionHeader" tone="tertiary">{t('stats.pouchMgHeader')}</Text>
           <Text variant="numericLarge" style={{ marginTop: space.xs }}>
-            {t('stats.pouchMgValue', { mg: f.number(weekMg, 1) })}
+            {t('stats.pouchMgValue', { mg: mg(weekMg) })}
           </Text>
           <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>
             {t('stats.pouchMgNote')}
@@ -137,7 +147,7 @@ export default function Nicotine() {
               accessibilityLabel={
                 p.mg === null
                   ? p.name
-                  : t('stats.pouchLabel', { name: p.name, mg: f.number(p.mg, 1) })
+                  : t('stats.pouchLabel', { name: p.name, mg: mg(p.mg) })
               }
               style={{
                 width: 96,
@@ -151,7 +161,7 @@ export default function Nicotine() {
               <DrinkGlyph drink={asDrink(p)} size={30} />
               <Text variant="caption1" center numberOfLines={2}>{p.name}</Text>
               {p.mg !== null ? (
-                <Text variant="caption2" tone="tertiary">{t('stats.mg', { mg: f.number(p.mg, 1) })}</Text>
+                <Text variant="caption2" tone="tertiary">{t('stats.mg', { mg: mg(p.mg) })}</Text>
               ) : null}
             </Pressable>
           ))}
@@ -179,7 +189,11 @@ export default function Nicotine() {
               const product = nicotineById(l.drinkId);
               return (
                 <View key={l.id} style={{ alignItems: 'center', gap: 2 }}>
-                  <DrinkGlyph drink={product ? asDrink(product) : asDrink(SMOKED[SMOKED.length - 1])} size={26} />
+                  {/* `cig-other` is the neutral one. Indexing the end of the
+                      list reached the vape, so an unrecognised log — a legacy
+                      id, or a product dropped from the catalogue — was drawn as
+                      a device somebody may never have used. */}
+                  <DrinkGlyph drink={asDrink(product ?? UNKNOWN_NICOTINE)} size={26} />
                   <Text variant="caption2" tone="quaternary">{f.clock(l.at)}</Text>
                 </View>
               );

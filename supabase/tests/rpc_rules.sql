@@ -539,13 +539,18 @@ delete from public.outbound;
 delete from public.sessions where owner_id in (:me, :them, :other);
 delete from public.plans where created_by in (:me, :them, :other);
 
--- A night in the week that just ended, and one in the week before that.
-insert into public.sessions (id, owner_id, visibility, started_at, ended_at) values
-  ('00000000-0000-0000-0000-00000000e901', :me, 'private',
-   date_trunc('week', now() - interval '7 days') + interval '20 hours',
-   date_trunc('week', now() - interval '7 days') + interval '25 hours');
+-- A drink logged in the week that just ended, with NO session attached.
+--
+-- That is the case the first version missed: it derived recipients from
+-- `sessions`, but `session_id` is nullable and logging outside a night is
+-- normal — nicotine logging never creates a session at all. Somebody who logged
+-- every day and never pressed "start a night" got no recap.
+delete from public.consumption_logs where user_id in (:me, :them, :other);
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv, consumed_at)
+  values (gen_random_uuid(), :me, null, 'beer-pint', 'Pint', 'beer', 568, 4.5,
+          date_trunc('week', now() - interval '7 days') + interval '20 hours');
 
-select t.count_eq('somebody who was out last week gets a recap',
+select t.count_eq('somebody who logged last week gets a recap, session or no session',
   public.queue_weekly_recaps()::bigint, 1);
 select t.count_eq('running it again on the same Monday sends nothing more',
   public.queue_weekly_recaps()::bigint, 0);
@@ -555,8 +560,15 @@ select t.check('addressed in the account''s own language',
   (select payload->>'title' = public.say(:me, 'weekly.title')
      from public.outbound where category = 'weekly'), true);
 
-select t.count_eq('somebody who was not out gets nothing — a recap of nothing is not a notification',
+select t.count_eq('somebody who logged nothing gets nothing — a recap of nothing is not a notification',
   (select count(*) from public.outbound where category = 'weekly' and user_id = :other), 0);
+
+-- And a log from the week before last is not last week.
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv, consumed_at)
+  values (gen_random_uuid(), :other, null, 'beer-pint', 'Pint', 'beer', 568, 4.5,
+          date_trunc('week', now() - interval '14 days') + interval '20 hours');
+select t.count_eq('a log from the week before last does not earn last week''s recap',
+  public.queue_weekly_recaps()::bigint, 0);
 
 -- The switch, which is the whole reason this job exists.
 delete from public.outbound;
@@ -582,6 +594,8 @@ insert into public.plan_invitees (plan_id, user_id, rsvp) values
 
 select t.count_eq('only the people who said yes are reminded',
   public.queue_plan_reminders()::bigint, 1);
+select t.count_eq('and running the job every quarter hour reminds once',
+  public.queue_plan_reminders()::bigint, 0);
 select t.count_eq('and the one who declined is not nagged about it',
   (select count(*) from public.outbound where category = 'plans' and user_id = :them), 0);
 select t.count_eq('nor is a maybe',
@@ -589,8 +603,21 @@ select t.count_eq('nor is a maybe',
 select t.count_eq('a plan five days out is not tonight''s problem',
   (select count(*) from public.outbound
     where category = 'plans' and payload->>'planId' = '00000000-0000-0000-0000-00000000ea02'), 0);
-select t.count_eq('and running the job every quarter hour reminds once',
+
+-- Late rather than silent. The window reaches an hour back, so a scheduler
+-- outage that spans the two hours before a plan still delivers something.
+delete from public.outbound;
+update public.plans set starts_at = now() - interval '20 minutes'
+ where id = '00000000-0000-0000-0000-00000000ea01';
+select t.count_eq('a plan that started twenty minutes ago is still worth a nudge',
+  public.queue_plan_reminders()::bigint, 1);
+update public.plans set starts_at = now() - interval '5 hours'
+ where id = '00000000-0000-0000-0000-00000000ea01';
+delete from public.outbound;
+select t.count_eq('one that started this morning is not',
   public.queue_plan_reminders()::bigint, 0);
+update public.plans set starts_at = now() + interval '90 minutes'
+ where id = '00000000-0000-0000-0000-00000000ea01';
 
 delete from public.outbound;
 update public.profiles
@@ -603,6 +630,7 @@ update public.profiles
  where id = :me;
 
 delete from public.plans where created_by in (:me, :them, :other);
+delete from public.consumption_logs where user_id in (:me, :them, :other);
 
 -- ------------------------------------------------------------------ cleanup
 reset role;

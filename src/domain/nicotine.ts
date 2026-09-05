@@ -1,6 +1,5 @@
 import type { Drink, Log } from './types';
 import { makeDrink } from './makeDrink';
-import { LIQUID } from './art';
 import type { GlassShape } from './art';
 import { nightKey } from './nightKey';
 
@@ -141,11 +140,26 @@ export const SMOKED: NicotineProduct[] = [
 
 export const NICOTINE_PRODUCTS: NicotineProduct[] = [...POUCHES, ...SMOKED];
 
-const BY_ID = new Map(NICOTINE_PRODUCTS.map((p) => [p.id, p]));
-export const nicotineById = (id: string): NicotineProduct | undefined => BY_ID.get(id);
+/** What an unrecognised nicotine log is drawn as: a cigarette, not a device. */
+export const UNKNOWN_NICOTINE: NicotineProduct =
+  SMOKED.find((p) => p.id === 'cig-other') ?? SMOKED[0];
 
-/** Brands, in catalogue order, for the picker's sections. */
-export const POUCH_BRANDS = [...new Set(POUCHES.map((p) => p.brand))];
+const BY_ID = new Map(NICOTINE_PRODUCTS.map((p) => [p.id, p]));
+
+/**
+ * What the module was before it had brands.
+ *
+ * The first version had exactly two entries, `cigarette` and `vape`. `vape`
+ * survived; `cigarette` became `cig-other`, so every cigarette logged before
+ * this catalogue existed would have resolved to nothing and been drawn with
+ * whatever the caller's fallback happened to be — in one place, a vape. A row
+ * already written is not something to migrate; it is something to keep
+ * understanding.
+ */
+const LEGACY_IDS: Record<string, string> = { cigarette: 'cig-other' };
+
+export const nicotineById = (id: string): NicotineProduct | undefined =>
+  BY_ID.get(id) ?? BY_ID.get(LEGACY_IDS[id] ?? '');
 
 /**
  * A product as a `Drink`, which is what the log pipeline takes.
@@ -161,7 +175,20 @@ export function asDrink(product: NicotineProduct): Drink {
     category: 'nicotine',
     ml: 0,
     abv: 0,
-    art: { glass: product.glass, liquid: product.tint, fill: 0 },
+    /**
+     * `fill: 1`, and that is not cosmetic.
+     *
+     * `fill` is how full a VESSEL is, and the glyph draws the liquid from
+     * `cavity.bottom` up by `depth * fill`. These three are solid objects, not
+     * part-full glasses: a pouch is a pouch all the way through. The first
+     * version passed `fill: 0` — which is a legal number, so the `?? 0.6`
+     * default did not catch it — and the tint rectangle collapsed to zero
+     * height at the floor of the clip path. Every one of the twenty-two
+     * pouches rendered as the same white outline, and the whole `TINT` table
+     * was dead data. `1` fills the silhouette, which is what makes a Killa
+     * read black and a ZYN read white at 18pt in a chip.
+     */
+    art: { glass: product.glass, liquid: product.tint, fill: 1 },
   });
 }
 

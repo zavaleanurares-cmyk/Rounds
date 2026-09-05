@@ -770,6 +770,36 @@ describe('the app is not write-only', () => {
     }
   });
 
+  it('no device can run a scheduler job', () => {
+    /**
+     * These are `security definer` and they write rows into other people's
+     * queues. Supabase's default privileges grant execute to `authenticated` on
+     * every new function, so a job that does not revoke is callable by anybody
+     * signed in — which is how the two newest ones shipped, inheriting a
+     * pattern from three older ones that had the same hole.
+     *
+     * Asserted here rather than in the SQL matrix: that file grants execute on
+     * ALL functions to `authenticated` to set its scene, retroactively, so a
+     * privilege check there would pass whatever the migrations did.
+     */
+    const sql = readdirSync('supabase/migrations')
+      .map((f) => readFileSync(join('supabase/migrations', f), 'utf8'))
+      .join('\n');
+    const jobs = [
+      'queue_weekly_recaps()',
+      'queue_plan_reminders()',
+      'queue_morning_recaps()',
+      'run_safety_escalation()',
+      'purge_expired_locations()',
+      'purge_deleted_accounts()',
+      'purge_sent_outbound()',
+    ];
+    for (const job of jobs) {
+      const revoked = sql.includes(`revoke all on function public.${job} from public, authenticated, anon;`);
+      expect({ job, revoked }).toEqual({ job, revoked: true });
+    }
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

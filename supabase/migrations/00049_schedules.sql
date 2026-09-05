@@ -53,5 +53,9 @@ begin
     $j$select public.purge_expired_locations()$j$);
   perform cron.schedule('purge-accounts', '0 3 * * *',
     $j$select public.purge_deleted_accounts()$j$);
+  -- Delivered notifications, after ninety days. An index on a table nobody
+  -- prunes only delays the problem: every `may_notify` call scans this table.
+  perform cron.schedule('purge-outbound', '30 3 * * *',
+    $j$select public.purge_sent_outbound()$j$);
 end
 $$;

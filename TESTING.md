@@ -105,9 +105,21 @@ npx supabase db push
 npx supabase functions deploy send-outbound store-webhook sync-entitlement invite
 ```
 
-Then uncomment the `cron.schedule` lines at the bottom of
-`supabase/migrations/00025_push_and_jobs.sql`. The safety escalation runs every
-minute; without it, an armed check-in never reaches anyone's trusted contacts.
+Then enable `pg_cron` — `create extension if not exists pg_cron;` — and re-run
+`db push`, so `00049` can install the schedules. Without it the migration
+applies, prints a notice and schedules nothing, and the safety escalation never
+runs: an armed check-in reaches nobody's trusted contacts.
+
+And schedule the outbound drain, which is an edge function and therefore cannot
+be scheduled from SQL. Skipping it is silent — every message the product
+composes just sits in a table. **`docs/deploy.md` §2 is the step-by-step**, and
+this one query says whether it is working:
+
+```sql
+select count(*) filter (where sent_at is null) as waiting,
+       count(*) filter (where sent_at is not null) as sent
+  from public.outbound;
+```
 
 ---
 

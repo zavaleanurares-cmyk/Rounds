@@ -147,6 +147,12 @@ grant usage on schema public, t to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public, t to authenticated;
 grant all on t.results to authenticated;
+-- NOTE: this is retroactive, which Supabase's own default privileges are not —
+-- there, a grant applies to functions created afterwards. So it re-grants
+-- execute on the scheduler jobs that 00050 deliberately revokes, and a
+-- privilege check on those in this file would always pass. The revokes are
+-- asserted at source in `policy.test.ts` instead, where the assertion means
+-- something.
 grant execute on all functions in schema public to authenticated;
 grant execute on all functions in schema t to authenticated;
 
