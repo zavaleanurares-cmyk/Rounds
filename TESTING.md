@@ -102,7 +102,7 @@ To point it at a real Supabase:
 cp .env.example .env             # fill in URL and anon key
 npm run db:test                  # applies every migration, runs the RLS matrix
 npx supabase db push
-npx supabase functions deploy send-outbound store-webhook sync-entitlement
+npx supabase functions deploy send-outbound store-webhook sync-entitlement invite
 ```
 
 Then uncomment the `cron.schedule` lines at the bottom of
