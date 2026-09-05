@@ -159,6 +159,35 @@ grant execute on all functions in schema t to anon;
 
 set role authenticated;
 
+-- ============================================================= profiles reads
+--
+-- `profiles` used to be `for select using (true)` — every column of every row,
+-- to anybody signed in. 00036 narrowed `search_profiles` because a definer
+-- function publishes what it returns and `deletion_requested_at` is nobody's
+-- business; the table beside it was wide open, and 00037 and 00038 then added
+-- `locale` and `notification_prefs` to it. A stranger could read which
+-- notifications somebody had turned off.
+select public.set_current_user(:owner);
+select t.count_eq('you can read your own profile',
+  (select count(*) from public.profiles where id = :owner), 1);
+select t.count_eq('and a friend''s',
+  (select count(*) from public.profiles where id = :friend), 1);
+select t.count_eq('and a crew-mate''s',
+  (select count(*) from public.profiles where id = :crew), 1);
+select t.count_eq('and somebody in your night',
+  (select count(*) from public.profiles where id = :part), 1);
+select t.count_eq('a stranger''s row is not readable directly — search is the seam',
+  (select count(*) from public.profiles where id = :strang), 0);
+select t.count_eq('and the BLOCKED user appears nowhere, as everywhere else',
+  (select count(*) from public.profiles where id = :blockd), 0);
+select public.set_current_user(:blockd);
+select t.count_eq('nor can the blocked user read the blocker',
+  (select count(*) from public.profiles where id = :owner), 0);
+-- No `reset role` here: everything from this point in the file runs as
+-- `authenticated` on purpose, and dropping back to the table owner bypasses RLS
+-- for every assertion after it — which is the most dangerous way for a security
+-- test to pass.
+
 -- =========================================================== search_profiles
 select public.set_current_user(:owner);
 select t.count_eq('BLOCKED does not appear in search for the blocker',
@@ -580,15 +609,88 @@ select t.check('and carries no pace, no estimate, no per-person anything',
   (select not (payload ?| array['bac', 'bacAt', 'paceState', 'paceWord', 'estimate', 'promille'])
      from public.outbound where category = 'live'), true);
 
-select t.check('a HUD refresh is never spent against the weekly notification cap',
+/**
+ * The cap and the HUD, asserted against DELIVERED rows.
+ *
+ * The old version of this passed on a technicality: the trigger-written rows in
+ * this harness have `sent_at is null`, and the cap counts only what was sent —
+ * so it held even after a rewrite of `may_notify` dropped 'live' from the
+ * exclusion list entirely. That regression made one shared night with three
+ * logs silence an account for a week, morning recap included, and this
+ * assertion said nothing.
+ *
+ * Stamping them delivered first is what makes the assertion about the rule.
+ */
+update public.outbound set sent_at = now() where category = 'live';
+-- Four of them, because the cap is three: with fewer, an exclusion list that
+-- had lost 'live' would still pass this and the regression would go unseen.
+insert into public.outbound (user_id, channel, category, payload, sent_at)
+select :part, 'push', 'live', '{}'::jsonb, now() from generate_series(1, 4);
+-- Gated by the switch as well as by the cap: `live` must be exempt from both,
+-- so this account turns everything off first.
+-- `"live": false` explicitly, not merely absent: an absent key falls through to
+-- the `coalesce(..., true)` default, which would make this pass whether or not
+-- the exemption existed.
+update public.profiles
+   set notification_prefs = '{"morning":false,"live":false,"social":false,"safety":false,"gamification":false}'::jsonb
+ where id = :part;
+select t.check('a HUD refresh is never gated, by the cap or by a switch',
   public.may_notify(:part, 'live'), true);
+update public.profiles
+   set notification_prefs = '{"morning":true,"weekly":true,"plans":true,"social":true,"safety":true,"gamification":false}'::jsonb
+ where id = :part;
+select t.check('and five delivered HUD refreshes still leave the morning recap sendable',
+  public.may_notify(:part, 'morning'), true);
+insert into public.outbound (user_id, channel, category, payload, sent_at)
+select :part, 'push', 'social', '{}'::jsonb, now() from generate_series(1, 4);
+select t.check('while four delivered social pushes do close it',
+  public.may_notify(:part, 'morning'), false);
+delete from public.outbound where category = 'social';
+delete from public.outbound where category = 'live' and payload = '{}'::jsonb;
+update public.outbound set sent_at = null where category = 'live';
+
+/**
+ * What counts as a drink on the shared HUD.
+ *
+ * The trigger counted every row, so a glass of water bumped the number on
+ * everybody else's lock screen — disagreeing with every other count in the
+ * product, all of which are `ethanol_g > 0`. And once nicotine became loggable,
+ * a cigarette in a shared night pushed `lastDrink: "Cigarette"` to the phones
+ * of everyone in it, out of a module that is off by default and private.
+ */
+delete from public.outbound where category = 'live';
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
+  values (gen_random_uuid(), :part, '00000000-0000-0000-0000-0000000000e1',
+          'water', 'Water', 'water', 330, 0);
+select t.count_eq('a glass of water tells nobody anything',
+  (select count(*) from public.outbound where category = 'live'), 0);
+
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
+  values (gen_random_uuid(), :part, '00000000-0000-0000-0000-0000000000e1',
+          'cigarette', 'Cigarette', 'nicotine', 0, 0);
+select t.count_eq('and neither does a cigarette, which is nobody else''s business',
+  (select count(*) from public.outbound where category = 'live'), 0);
+
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
+  values (gen_random_uuid(), :part, '00000000-0000-0000-0000-0000000000e1',
+          'beer-pint', 'Pint', 'beer', 568, 4.5);
+select t.check('a drink does, and the count it carries excludes both',
+  (select (payload->>'drinks')::integer = (
+     select count(*) from public.consumption_logs
+      where session_id = '00000000-0000-0000-0000-0000000000e1'
+        and deleted_at is null and ethanol_g > 0)
+     from public.outbound where category = 'live' limit 1), true);
+delete from public.outbound where category = 'live';
 
 -- A solo night has nobody to tell.
 insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
   values (gen_random_uuid(), :owner, '00000000-0000-0000-0000-0000000000e2',
           'beer-pint', 'Pint', 'beer', 568, 4.5);
+-- Zero, not "unchanged". This read 1 because an earlier fan-out's row was
+-- still sitting in the table and the assertion was counting it; the block above
+-- now clears `live` rows before each case, so the number is about this log.
 select t.count_eq('a log on a solo night fans out to nobody',
-  (select count(*) from public.outbound where category = 'live'), 1);
+  (select count(*) from public.outbound where category = 'live'), 0);
 
 -- A participant with no Activity registered gets no row.
 delete from public.live_activity_tokens where user_id = :part;
@@ -596,7 +698,7 @@ insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_na
   values (gen_random_uuid(), :owner, '00000000-0000-0000-0000-0000000000e1',
           'beer-pint', 'Pint', 'beer', 568, 4.5);
 select t.count_eq('a participant with no Activity running is not pushed at',
-  (select count(*) from public.outbound where category = 'live'), 1);
+  (select count(*) from public.outbound where category = 'live'), 0);
 
 delete from public.outbound where category = 'live';
 delete from public.consumption_logs where session_id in

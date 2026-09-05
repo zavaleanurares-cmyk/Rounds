@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, EmptyState, Icon } from '@/ui';
 import { useStore } from '@/data/store';
@@ -44,9 +44,19 @@ export default function Notifications() {
             {day === new Date().toDateString() ? t('notifications.today') : f.dayShort(items[0].at).toUpperCase()}
           </Text>
           <Card>
+            {/*
+              Every row carries an href — `/live/<code>` for a night that
+              started, `/plan/<id>` for a plan — computed on the server,
+              synced, unpacked into `AppNotification.href`, and then rendered as
+              an inert View. Tapping "A night just started" did nothing at all,
+              on the one screen whose entire job is to be tapped.
+            */}
             {items.map((n, i) => (
-              <View
+              <Pressable
                 key={n.id}
+                onPress={n.href ? () => router.push(n.href as never) : undefined}
+                accessibilityRole={n.href ? 'button' : undefined}
+                accessibilityLabel={`${n.title}. ${n.body}`}
                 style={{
                   flexDirection: 'row',
                   gap: space.m,
@@ -64,7 +74,8 @@ export default function Notifications() {
                   <Text variant="body" tone={n.read ? 'secondary' : 'primary'}>{n.title}</Text>
                   <Text variant="footnote" tone="tertiary">{n.body}</Text>
                 </View>
-              </View>
+                {n.href ? <Icon name="chevron.right" size={14} color={color.label.quaternary} /> : null}
+              </Pressable>
             ))}
           </Card>
         </View>

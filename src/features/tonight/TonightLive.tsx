@@ -70,7 +70,9 @@ export function TonightLive({ session }: { session: Session }) {
   const hour = new Date(now).getHours();
   const lateNight = hour >= 1 && hour < 6; // after 01:00 dim and promote safety
   const showWater = !waterDismissed && shouldPromptWater(paceLogs, now);
-  const liveWith = people.filter((p) => p.liveNow && p.status === 'friend');
+  // In this night, beside this night's join code — not "out somewhere". The
+  // card is headed "LIVE WITH" and used to list any friend with a night open.
+  const liveWith = people.filter((p) => p.hereNow);
 
   const quickLog = (kind: 'water' | 'again') => {
     feedback('log');

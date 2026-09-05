@@ -391,6 +391,17 @@ export interface Store extends State {
    * the person who walks out of it, and a member is not an owner.
    */
   leaveCrew(crewId: string): void;
+  /**
+   * Resolves a join code on the server and joins the night behind it.
+   *
+   * Not a lookup in `sessions`: that list holds this account's own nights, and
+   * the whole point of a code is that the night belongs to somebody else. The
+   * resolved session is merged in locally so the room has something to render
+   * before the next pull.
+   *
+   * `null` means there was no backend to ask.
+   */
+  joinNight(code: string): Promise<remote.JoinOutcome | null>;
   /** Leaves a shared night without ending it for anybody else. */
   leaveSession(sessionId: string): void;
   addVenue(input: { name: string; area: string | null; category: string | null }): Venue;
@@ -549,6 +560,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
    * was, because the network is reconciliation and never a dependency.
    */
   const lastPullRef = useRef<number | null>(null);
+  /**
+   * The notification switches exactly as the last pull found them.
+   *
+   * The effect at the bottom of this file needs to tell "this device changed a
+   * switch" from "another device changed one and we just heard about it". This
+   * is the second case's evidence.
+   */
+  const pulledPrefsRef = useRef<Settings['notifications'] | null>(null);
   const pullingRef = useRef(false);
 
   const syncNow = useCallback(async () => {
@@ -565,6 +584,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const since = lastPullRef.current ? new Date(lastPullRef.current) : null;
       const result = await remote.pull(since);
       if (!result) return;
+      pulledPrefsRef.current = result.profile?.notificationPrefs ?? null;
 
       const current = stateRef.current;
       dispatch({
@@ -1539,6 +1559,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         payload: { crewId, userId: me },
       });
     },
+    async joinNight(code) {
+      const outcome = await remote.joinByCode(code).catch(() => null);
+      if (!outcome || !outcome.ok) return outcome;
+      // Merge rather than append: a code scanned twice, or a night this device
+      // already knows about, must not become two rows.
+      const known = stateRef.current.sessions.some((x) => x.id === outcome.session.id);
+      dispatch({
+        type: 'set',
+        payload: {
+          sessions: known
+            ? stateRef.current.sessions.map((x) => (x.id === outcome.session.id ? { ...x, ...outcome.session } : x))
+            : [...stateRef.current.sessions, outcome.session],
+        },
+      });
+      analytics.track('session_join', { visibility: outcome.session.visibility });
+      return outcome;
+    },
     leaveSession(sessionId) {
       const me = stateRef.current.auth.userId ?? 'me';
       // Leaving is not ending. The night carries on for whoever is still out;
@@ -1906,15 +1943,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const current = stateRef.current.profile;
     if (!state.hydrated || !current) return;
+
     const sameLocale = current.locale === locale;
+    const keys = Object.keys(prefs) as Array<keyof typeof prefs>;
     const samePrefs =
-      current.notificationPrefs &&
-      (Object.keys(prefs) as Array<keyof typeof prefs>).every(
-        (k) => current.notificationPrefs[k] === prefs[k]
-      );
+      current.notificationPrefs && keys.every((k) => current.notificationPrefs[k] === prefs[k]);
     if (sameLocale && samePrefs) return;
+
+    /**
+     * Whose answer wins when the two disagree.
+     *
+     * This was one-way: any difference sent the DEVICE's copy up. Turn "social"
+     * off on one phone, open the app on another, and the second phone — whose
+     * local settings are a launch behind — writes its own values over the
+     * first. The column was read from the server on every pull and thrown away.
+     *
+     * A pull only lands when the queue is empty, so anything that arrives from
+     * the server is a change this device has not made and has not got queued.
+     * Adopting it is the correct direction; sending up happens when this device
+     * is the one that changed something, which is the case where the pulled
+     * profile still matches what the server had.
+     */
+    const pulledDiffers = pulledPrefsRef.current !== null &&
+      keys.some((k) => pulledPrefsRef.current![k] !== prefs[k]) &&
+      current.notificationPrefs &&
+      keys.every((k) => pulledPrefsRef.current![k] === current.notificationPrefs[k]);
+
+    if (pulledDiffers) {
+      pulledPrefsRef.current = null;
+      store.updateSettings({ notifications: { ...prefs, ...current.notificationPrefs } });
+      return;
+    }
+
     store.updateProfile({ locale, notificationPrefs: { ...prefs } });
-  }, [state.hydrated, state.profile?.id, locale, prefs]);
+  }, [state.hydrated, state.profile?.id, locale, prefs, state.profile?.notificationPrefs]);
 
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;

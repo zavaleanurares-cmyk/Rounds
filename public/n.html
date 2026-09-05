@@ -30,8 +30,8 @@
   The placeholders below are the substitution targets. They read as neutral
   copy on purpose, so a page served without either mechanism is still true.
 -->
-<meta property="og:title" content="{{OG_TITLE}}">
-<meta property="og:description" content="{{OG_DESCRIPTION}}">
+<meta property="og:title" content="{{OG_TITLE}}" id="ogTitle">
+<meta property="og:description" content="{{OG_DESCRIPTION}}" id="ogDescription">
 <meta property="og:image" content="https://rounds.app/og/plan.png">
 <meta name="theme-color" content="#06070B">
 <style>
@@ -53,7 +53,16 @@
   .note { color:rgba(235,235,245,.3); font-size:12px; text-align:center; margin-top:22px; line-height:1.6; }
 </style>
 </head>
-<body>
+<!--
+  The static fallback's configuration.
+
+  These two attributes are rewritten by `scripts/build-invite.mjs`, which the
+  web build runs. Left as they are, `API` is empty, the fetch below never
+  happens, and the page falls back to neutral copy — which is correct, just
+  emptier. An earlier version read these attributes without anything ever
+  setting them, so the fallback it documented could not run at all.
+-->
+<body data-api="{{SUPABASE_URL}}" data-key="{{SUPABASE_ANON_KEY}}">
 <div class="bg"></div>
 <main>
   <p class="eyebrow">You're invited</p>
@@ -96,11 +105,27 @@
   placeholder(el('title'), 'A night out');
   placeholder(el('when'), 'Open the app for the details');
 
+  // The OG tags degrade too. A link pasted into a group chat is rendered by a
+  // crawler that does not run this script, so on that path the edge function is
+  // what fills them — but a human who opens the page must never be able to view
+  // source and find `{{OG_TITLE}}` sitting in the head, and neither should a
+  // crawler that does execute JavaScript.
+  ['ogTitle', 'ogDescription'].forEach(function (id) {
+    var tag = el(id);
+    if (!tag) return;
+    if (tag.content.indexOf('{{') === 0) {
+      tag.content = id === 'ogTitle' ? 'A night out on ROUNDS' : 'An invitation from someone using ROUNDS';
+    }
+  });
+
   // The RPC is granted to `anon` and returns a title, a time, a venue name and
   // a count — nothing that identifies anybody. Configured at build time; with
   // no configuration the neutral copy above is the whole page.
+  // Unsubstituted markers are not configuration.
   var API = document.body.dataset.api || '';
   var KEY = document.body.dataset.key || '';
+  if (API.indexOf('{{') === 0) API = '';
+  if (KEY.indexOf('{{') === 0) KEY = '';
   if (API && KEY && id) {
     fetch(API + '/rest/v1/rpc/invite_preview', {
       method: 'POST',
@@ -119,7 +144,11 @@
           }));
         }
         if (p.venue) when.push(p.venue);
-        if (when.length) el('when').textContent = when.join(' · ');
+        if (when.length) {
+          el('when').textContent = when.join(' · ');
+          if (el('ogDescription')) el('ogDescription').content = when.join(' · ');
+        }
+        if (p.title && el('ogTitle')) el('ogTitle').content = p.title;
         if (p.people > 0) {
           el('who').textContent = p.people === 1 ? '1 person in' : p.people + ' people in';
           el('whoCard').hidden = false;

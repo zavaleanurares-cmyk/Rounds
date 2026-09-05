@@ -453,6 +453,82 @@ select t.count_eq('and a night that is over stops being an invitation',
   (select count(*) from public.invite_preview('n', 'OPENNIGH')), 0);
 reset role;
 
+-- =========================================== 13 · joining somebody's night
+--
+-- The QR scan is the product's fastest path and could not work at all: the join
+-- screen looked the code up in a list that `sync_pull` fills with the caller's
+-- OWN nights, so every scan of a friend's code answered "unknown code" — and so
+-- did every /live/<code> link the product itself sends.
+reset role;
+delete from public.session_participants;
+delete from public.sessions where owner_id in (:me, :them, :other);
+delete from public.friendships where requester_id in (:me, :them, :other)
+                                  or addressee_id in (:me, :them, :other);
+insert into public.friendships (requester_id, addressee_id, status)
+  values (:them, :me, 'accepted');
+
+insert into public.sessions (id, owner_id, visibility, join_code, started_at) values
+  ('00000000-0000-0000-0000-00000000e801', :them,  'friends', 'FRIENDSN', now()),
+  ('00000000-0000-0000-0000-00000000e802', :other, 'friends', 'STRANGER', now()),
+  ('00000000-0000-0000-0000-00000000e803', :other, 'link',    'ANYONECA', now()),
+  ('00000000-0000-0000-0000-00000000e804', :them,  'friends', 'OVERNOWW', now() - interval '6 hours');
+
+set role authenticated;
+select public.set_current_user(:me);
+
+select t.check('a friend''s code lets you in',
+  (public.join_by_code('FRIENDSN') ->> 'ok')::boolean, true);
+reset role;
+select t.count_eq('and puts you in the night, which is the half a lookup would miss',
+  (select count(*) from public.session_participants
+    where session_id = '00000000-0000-0000-0000-00000000e801' and user_id = :me), 1);
+set role authenticated;
+select public.set_current_user(:me);
+select t.check('scanning it twice is not two rows',
+  (public.join_by_code('friendsn') ->> 'ok')::boolean, true);
+reset role;
+select t.count_eq('still one row, and a lower-case code still worked',
+  (select count(*) from public.session_participants
+    where session_id = '00000000-0000-0000-0000-00000000e801' and user_id = :me), 1);
+
+set role authenticated;
+select public.set_current_user(:me);
+select t.text_eq('a stranger''s friends-only night refuses you',
+  public.join_by_code('STRANGER') ->> 'reason', 'not_invited');
+select t.check('but a link night takes anybody holding the link',
+  (public.join_by_code('ANYONECA') ->> 'ok')::boolean, true);
+
+reset role;
+update public.sessions set ended_at = now() where id = '00000000-0000-0000-0000-00000000e804';
+set role authenticated;
+select public.set_current_user(:me);
+select t.text_eq('a night that is over says so, rather than "unknown"',
+  public.join_by_code('OVERNOWW') ->> 'reason', 'ended');
+select t.text_eq('a code that is not a night says unknown',
+  public.join_by_code('NOTACODE') ->> 'reason', 'unknown');
+
+-- A block is answered as "unknown". Whether somebody blocked you is a fact
+-- about their decision, and not this caller's to learn from an error message.
+reset role;
+insert into public.blocks (blocker_id, blocked_id) values (:other, :me)
+on conflict do nothing;
+set role authenticated;
+select public.set_current_user(:me);
+select t.text_eq('a block is indistinguishable from a code that does not exist',
+  public.join_by_code('ANYONECA') ->> 'reason', 'unknown');
+reset role;
+delete from public.blocks where blocker_id = :other and blocked_id = :me;
+
+-- And the night stays visible on the next launch, which is what makes the room
+-- work the morning after the scan rather than only in the same session.
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a joined night comes back in the pull',
+  (select count(*) from public.joined_sessions()
+    where id = '00000000-0000-0000-0000-00000000e801'), 1);
+select t.count_eq('a night you own is not double-counted there',
+  (select count(*) from public.joined_sessions() where owner_id = :me), 0);
+
 -- ------------------------------------------------------------------ cleanup
 reset role;
 delete from public.session_participants;

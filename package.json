@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "export:web": "expo export --platform web",
+    "export:web": "expo export --platform web && node scripts/build-invite.mjs dist",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "tokens": "node scripts/build-tokens.mjs",
@@ -19,7 +19,8 @@
     "build:go": "eas update --branch preview",
     "check": "npm run typecheck && npm test && npm run db:test && npm run store:check",
     "store:check": "node scripts/store-check.mjs",
-    "store:shots": "node scripts/store-shots.mjs"
+    "store:shots": "node scripts/store-shots.mjs",
+    "invite": "node scripts/build-invite.mjs"
   },
   "jest": {
     "preset": "jest-expo",

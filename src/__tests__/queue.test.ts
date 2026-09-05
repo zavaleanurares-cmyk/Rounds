@@ -202,3 +202,37 @@ describe('LogQueue', () => {
     });
   });
 });
+
+describe('demo data cannot reach the network through a payload either', () => {
+  const uuid = () =>
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+
+  it('drops a round that names a demo person', async () => {
+    // `ask_for_round` is the one op keyed on something other than the people it
+    // concerns: the id is the round's own log id, a real UUID, and the people
+    // are in `targets`. Sending `p1` to a `uuid[]` parameter is a 22P02, and a
+    // failing item stops the drain — so one tap on a seeded demo account would
+    // hold up the night's real drink logs behind eight retries.
+    const q = new LogQueue();
+    await q.load();
+    q.enqueue({ id: uuid(), op: 'ask_for_round', payload: { targets: ['p1', 'p2'] } });
+    expect(q.peek()).toHaveLength(0);
+  });
+
+  it('keeps a round that names real accounts', async () => {
+    const q = new LogQueue();
+    await q.load();
+    q.enqueue({ id: uuid(), op: 'ask_for_round', payload: { targets: [uuid(), uuid()] } });
+    expect(q.peek()).toHaveLength(1);
+  });
+
+  it('keeps an op whose payload has no targets at all', async () => {
+    const q = new LogQueue();
+    await q.load();
+    q.enqueue({ id: uuid(), op: 'notify_night_started', payload: { sessionId: uuid() } });
+    expect(q.peek()).toHaveLength(1);
+  });
+});

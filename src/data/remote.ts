@@ -602,6 +602,16 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
   const venueRows = rows('venues');
   const byId = new Map(peopleRows.map((x) => [x.id as string, x]));
   const sharedNights = (p.shared_nights ?? {}) as Record<string, number>;
+  /**
+   * Who is actually in the night this account is in.
+   *
+   * Distinct from `liveNow`, which means "has a night open that I may see". The
+   * room roster and the "LIVE WITH" card were rendering the latter under the
+   * word "Here", so a friend drinking at a different bar appeared in your room.
+   */
+  const hereIds = new Set(
+    (Array.isArray(p.here_now) ? (p.here_now as unknown[]) : []).map(String)
+  );
   const liveIds = new Set(
     (Array.isArray(p.live_friends) ? (p.live_friends as unknown[]) : []).map(String)
   );
@@ -618,7 +628,15 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
   return {
     profile: p.profile ? toProfilePatch(p.profile, p.private) : null,
     logs: rows('logs').map(toLog),
-    sessions: rows('sessions').map(toSession),
+    /**
+     * The nights this account owns, plus the ones it has joined.
+     *
+     * `sync_pull_base` returns only your own, correctly. Without the second
+     * half, a joiner's live room worked until they closed the app and then
+     * reported that the night was over — the session was simply not in the
+     * list any more.
+     */
+    sessions: [...rows('sessions'), ...rows('joined_sessions')].map(toSession),
     goals: rows('goals').map((g) => ({
       type: g.type,
       target: Number(g.target),
@@ -655,6 +673,8 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
        * widget, a backgrounded app and a phone that has been in a pocket.
        */
       liveNow: liveIds.has(x.id as string),
+      /** In THIS night, not merely out somewhere. See `hereIds` above. */
+      hereNow: hereIds.has(x.id as string),
     })),
     crews: crewRows.map((c) => ({
       id: c.id,
@@ -1002,6 +1022,33 @@ export async function searchPeople(term: string): Promise<SearchHit[] | null> {
     avatarTint: r.avatar_tint ?? null,
     level: r.level ?? 1,
   }));
+}
+
+/**
+ * Resolves a join code and puts this account in the night.
+ *
+ * The QR scan is the product's fastest path — twenty seconds from code to room
+ * — and it could not work: the join screen looked the code up in
+ * `sessions.find(...)`, a list that `sync_pull` fills with this account's OWN
+ * nights only. Every scan of a friend's code answered "we don't know that
+ * code", and so did every `/live/<code>` link the product sends.
+ *
+ * Resolving and joining are one call because they are one action from the
+ * user's side. `null` means there was no backend to ask.
+ */
+export type JoinOutcome =
+  | { ok: true; session: Session }
+  | { ok: false; reason: 'unknown' | 'ended' | 'not_invited' };
+
+export async function joinByCode(code: string): Promise<JoinOutcome | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('join_by_code', { p_code: code });
+  if (error) return null;
+  const result = data as Record<string, any> | null;
+  if (!result) return null;
+  if (!result.ok) return { ok: false, reason: result.reason ?? 'unknown' };
+  return { ok: true, session: toSession(result.session as Record<string, any>) };
 }
 
 /**

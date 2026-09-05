@@ -102,7 +102,13 @@ Deno.serve(async (req: Request) => {
     .replaceAll('{{TITLE}}', esc(title))
     .replaceAll('{{WHEN}}', esc(sub))
     .replaceAll('{{OG_TITLE}}', esc(title))
-    .replaceAll('{{OG_DESCRIPTION}}', esc(ogDescription));
+    .replaceAll('{{OG_DESCRIPTION}}', esc(ogDescription))
+    // The static fallback's configuration markers. This path has already filled
+    // the page from the database, so the browser has nothing left to ask for —
+    // and an unsubstituted marker left in an attribute is a template leak on a
+    // public page.
+    .replaceAll('{{SUPABASE_URL}}', '')
+    .replaceAll('{{SUPABASE_ANON_KEY}}', '');
 
   if (people > 0) {
     html = html.replace(

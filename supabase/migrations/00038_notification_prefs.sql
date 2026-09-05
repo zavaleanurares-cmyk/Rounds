@@ -26,10 +26,21 @@ returns boolean
 language sql stable security definer set search_path = public
 as $$
   select case
-    -- Never gated. A safe-arrival escalation is not a notification the user
-    -- opted into, it is the feature they armed.
-    when p_category = 'safety' then true
-    when p_category = 'system' then true
+    -- Never gated, and never spent against the cap. These three lists have to
+    -- agree with each other and with 00029, which is why they are written out
+    -- rather than shortened:
+    --
+    --   safety — an escalation is not a notification somebody opted into, it
+    --            is the feature they armed;
+    --   system — account-level, rare, and not marketing;
+    --   live   — the silent Live Activity refresh, which fires once per drink
+    --            per participant. Rewriting this function and leaving 'live'
+    --            out of the exclusion below charged every one of those against
+    --            a three-a-week cap: one shared night with three logs and the
+    --            account is notified about nothing at all for seven days, the
+    --            morning recap included. The more social the user, the more
+    --            completely the product goes quiet.
+    when p_category in ('safety', 'system', 'live') then true
     else
       coalesce((select (p.notification_prefs ->> p_category)::boolean
                   from public.profiles p where p.id = p_user), true)
@@ -37,7 +48,7 @@ as $$
         select count(*) < 3
           from public.outbound o
          where o.user_id = p_user
-           and o.category not in ('safety', 'system')
+           and o.category not in ('safety', 'system', 'live')
            and o.sent_at > now() - interval '7 days'
       )
   end;

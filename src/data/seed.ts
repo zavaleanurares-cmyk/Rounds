@@ -24,12 +24,12 @@ export const DEMO_VENUES: Venue[] = [
 ];
 
 export const DEMO_PEOPLE: Person[] = [
-  { id: 'p1', displayName: 'Ana Marin', username: 'anam', avatarUrl: null, level: 7, sharedNights: 14, mutualCrews: ['Vineri'], status: 'friend', liveNow: true },
-  { id: 'p2', displayName: 'Tudor', username: 'tudorr', avatarUrl: null, level: 5, sharedNights: 9, mutualCrews: ['Vineri'], status: 'friend', liveNow: true },
-  { id: 'p3', displayName: 'Ilinca', username: 'ilinca', avatarUrl: null, level: 4, sharedNights: 6, mutualCrews: [], status: 'friend', liveNow: false },
-  { id: 'p4', displayName: 'Mihai P.', username: 'mihaip', avatarUrl: null, level: 9, sharedNights: 3, mutualCrews: ['Vineri'], status: 'friend', liveNow: false },
-  { id: 'p5', displayName: 'Sara', username: 'saraq', avatarUrl: null, level: 2, sharedNights: 0, mutualCrews: [], status: 'pending_in', liveNow: false },
-  { id: 'p6', displayName: 'Radu', username: 'raduv', avatarUrl: null, level: 3, sharedNights: 0, mutualCrews: [], status: 'none', liveNow: false },
+  { id: 'p1', displayName: 'Ana Marin', username: 'anam', avatarUrl: null, level: 7, sharedNights: 14, mutualCrews: ['Vineri'], status: 'friend', liveNow: true, hereNow: true },
+  { id: 'p2', displayName: 'Tudor', username: 'tudorr', avatarUrl: null, level: 5, sharedNights: 9, mutualCrews: ['Vineri'], status: 'friend', liveNow: true, hereNow: true },
+  { id: 'p3', displayName: 'Ilinca', username: 'ilinca', avatarUrl: null, level: 4, sharedNights: 6, mutualCrews: [], status: 'friend', liveNow: false, hereNow: false },
+  { id: 'p4', displayName: 'Mihai P.', username: 'mihaip', avatarUrl: null, level: 9, sharedNights: 3, mutualCrews: ['Vineri'], status: 'friend', liveNow: false, hereNow: false },
+  { id: 'p5', displayName: 'Sara', username: 'saraq', avatarUrl: null, level: 2, sharedNights: 0, mutualCrews: [], status: 'pending_in', liveNow: false, hereNow: false },
+  { id: 'p6', displayName: 'Radu', username: 'raduv', avatarUrl: null, level: 3, sharedNights: 0, mutualCrews: [], status: 'none', liveNow: false, hereNow: false },
 ];
 
 export const DEMO_CREWS: Crew[] = [

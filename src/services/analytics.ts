@@ -26,7 +26,7 @@ export type Event =
   // acquisition
   | 'app_open' | 'onboarding_step' | 'onboarding_done' | 'age_gate_failed'
   // the core loop
-  | 'session_start' | 'session_end' | 'log_added' | 'log_undone' | 'log_edited'
+  | 'session_start' | 'session_join' | 'session_end' | 'log_added' | 'log_undone' | 'log_edited'
   | 'gaps_filled' | 'morning_opened' | 'mood_given'
   // the promise
   | 'surface_log' | 'hud_started' | 'widget_added'

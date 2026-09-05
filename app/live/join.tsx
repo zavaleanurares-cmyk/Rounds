@@ -23,9 +23,10 @@ export default function JoinNight() {
   const router = useRouter();
   const t = useT();
   const { locale } = useI18n();
-  const { sessions, auth, setPendingHref } = useStore();
+  const { sessions, auth, setPendingHref, joinNight } = useStore();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
   const [permission, setPermission] = useState<'idle' | 'asking' | 'granted' | 'denied'>('idle');
   const handled = useRef(false);
 
@@ -50,23 +51,51 @@ export default function JoinNight() {
     // then failed, which reads as the code being wrong rather than short.
     if (clean.length < 8) return;
 
-    const session = sessions.find((s) => s.joinCode === clean);
-    if (!session) {
-      setError(t('live.unknownCode'));
-      return;
-    }
-    if (session.endedAt !== null) {
-      setError(t('live.nightEnded'));
-      return;
-    }
-    handled.current = true;
     if (auth.status !== 'signed_in') {
       // Store the target and resume after auth — a QR join beats every other
-      // redirect, including the morning screen.
+      // redirect, including the morning screen. Nothing is asked of the server
+      // yet, because the answer depends on who is asking.
+      handled.current = true;
       setPendingHref(`/live/${clean}`);
       return router.replace('/(auth)/sign-in');
     }
-    router.replace(`/live/${clean}` as never);
+
+    /**
+     * The night belongs to somebody else, so the answer is not on this device.
+     *
+     * This used to be `sessions.find(s => s.joinCode === clean)` against a list
+     * that `sync_pull` fills with this account's OWN nights — so scanning a
+     * friend's code always answered "we don't know that code", and the whole
+     * QR path, the invite link and the inbox href all dead-ended. The RPC
+     * resolves the code and joins in one call, because from the user's side a
+     * scan is one action.
+     */
+    handled.current = true;
+    setError(null);
+    setJoining(true);
+    void joinNight(clean).then((outcome) => {
+      setJoining(false);
+      if (outcome === null) {
+        // No backend configured, or it could not be reached. A local night with
+        // that code is still worth opening — that is the offline-first path,
+        // and it is the host's own device scanning its own code.
+        const local = sessions.find((s) => s.joinCode === clean && s.endedAt === null);
+        if (local) return router.replace(`/live/${clean}` as never);
+        handled.current = false;
+        return setError(t('live.joinOffline'));
+      }
+      if (!outcome.ok) {
+        handled.current = false;
+        return setError(
+          outcome.reason === 'ended'
+            ? t('live.nightEnded')
+            : outcome.reason === 'not_invited'
+              ? t('live.notInvited')
+              : t('live.unknownCode')
+        );
+      }
+      router.replace(`/live/${clean}` as never);
+    });
   };
 
   return (

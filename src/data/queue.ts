@@ -199,8 +199,25 @@ export class LogQueue {
     return id.split(':').every((part) => UUID.test(part));
   }
 
+  /**
+   * The ids a payload carries that are not in the queue item's own id.
+   *
+   * Nearly every op names the people it concerns in its composite id, so the
+   * check above covers them. `ask_for_round` is the exception: it is keyed on
+   * the round's log id, which is a real UUID, and the people it asks live in
+   * `targets`. With demo data seeded, `p1`/`p2` would be sent to a `uuid[]`
+   * parameter — PostgREST answers 22P02, the drain stops on a failing item, and
+   * the night's actual drink logs sit behind eight retries of a fake one.
+   */
+  private payloadIds(item: { payload: unknown }): string[] {
+    const p = item.payload as Record<string, unknown> | null;
+    const targets = p && Array.isArray(p.targets) ? p.targets : [];
+    return targets.filter((x): x is string => typeof x === 'string');
+  }
+
   enqueue<T>(item: Omit<QueueItem<T>, 'createdAt' | 'attempts' | 'lastError'>): void {
     if (!this.isSyncable(item.id)) return;
+    if (!this.payloadIds(item).every((id) => this.isSyncable(id))) return;
     // Idempotent by client UUID: re-enqueueing the same id replaces, never duplicates.
     const existing = this.items.findIndex((q) => q.id === item.id && q.op === item.op);
     const record: QueueItem<T> = {

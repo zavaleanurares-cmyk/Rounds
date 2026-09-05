@@ -74,4 +74,6 @@ export const live = {
     one: 'Carte : {count} personne partage sa position',
     other: 'Carte : {count} personnes partagent leur position',
   },
+  'live.notInvited': "Cette soirée ne vous est pas ouverte.",
+  'live.joinOffline': "Impossible de vérifier ce code maintenant.",
 } satisfies Record<string, Message>;

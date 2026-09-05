@@ -72,4 +72,6 @@ export const live = {
     one: 'Mapa: {count} persona compartiendo su ubicación',
     other: 'Mapa: {count} personas compartiendo su ubicación',
   },
+  'live.notInvited': "Esa noche no está abierta para ti.",
+  'live.joinOffline': "No se puede comprobar ese código ahora.",
 } satisfies Record<string, Message>;

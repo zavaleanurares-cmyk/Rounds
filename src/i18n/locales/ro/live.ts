@@ -83,4 +83,6 @@ export const live = {
     few: 'Hartă: {count} persoane își partajează locația',
     other: 'Hartă: {count} de persoane își partajează locația',
   },
+  'live.notInvited': "Seara aceea nu îți este deschisă.",
+  'live.joinOffline': "Nu putem verifica codul acum.",
 } satisfies Record<string, Message>;

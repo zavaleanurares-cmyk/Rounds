@@ -198,6 +198,15 @@ export interface Person {
   mutualCrews: string[];
   status: 'friend' | 'pending_in' | 'pending_out' | 'none' | 'blocked';
   liveNow: boolean;
+  /**
+   * In the night this account is currently in — not merely out somewhere.
+   *
+   * The live room's roster and Tonight's "LIVE WITH" card both rendered
+   * `liveNow` under the word "Here", and `liveNow` means "has a night open that
+   * I am allowed to see". A friend at a different bar was listed as being in
+   * your room, and counted in "3 HERE".
+   */
+  hereNow: boolean;
 }
 
 export interface Crew {

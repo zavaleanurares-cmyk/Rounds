@@ -68,4 +68,6 @@ export const live = {
     one: 'Map with {count} person sharing their location',
     other: 'Map with {count} people sharing their location',
   },
+  'live.notInvited': "That night isn't open to you.",
+  'live.joinOffline': "Can't check that code right now.",
 } satisfies Record<string, Message>;

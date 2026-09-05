@@ -91,8 +91,16 @@ export default function LiveRoom() {
     };
   }, [sessionId]);
 
+  /**
+   * The people in THIS night.
+   *
+   * This used to be `p.liveNow`, which means "has a night open that I am
+   * allowed to see" — so a friend drinking at a different bar was rendered
+   * under the word "Here", and counted in the "3 HERE" above. `hereNow` comes
+   * from `session_participants` for the night this account is actually in.
+   */
   const roster = useMemo(
-    () => people.filter((p) => p.status === 'friend' && p.liveNow && !blocked.includes(p.id)),
+    () => people.filter((p) => p.hereNow && !blocked.includes(p.id)),
     [people, blocked]
   );
 

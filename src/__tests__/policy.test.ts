@@ -540,9 +540,12 @@ describe('the app is not write-only', () => {
     const prefs = readFileSync('supabase/migrations/00038_notification_prefs.sql', 'utf8');
     expect(prefs).toContain('notification_prefs');
     expect(prefs).toContain('may_notify');
-    // …and safety is never gated by one, because an escalation is not a
-    // notification somebody opted into.
-    expect(prefs).toMatch(/p_category = 'safety' then true/);
+    // …and three categories are never gated by one: a safe-arrival escalation
+    // is not a notification anybody opted into, and the silent Live Activity
+    // refresh fires once per drink per participant — charging those against a
+    // three-a-week cap silences the account for a week after one shared night.
+    expect(prefs).toMatch(/p_category in \('safety', 'system', 'live'\) then true/);
+    expect(prefs).toMatch(/not in \('safety', 'system', 'live'\)/);
   });
 
   it('the server knows which language to write in', () => {
@@ -608,6 +611,21 @@ describe('the app is not write-only', () => {
       expect({ fake, present: invite.includes(fake) }).toEqual({ fake, present: false });
     }
     expect(invite).toContain('invite_preview');
+    // Every marker must have something that substitutes it, and every one must
+    // degrade to real copy if nothing did. A link preview showing the literal
+    // string {{OG_TITLE}} is the failure this page's own comment says cannot
+    // happen — and could, because the fallback only rewrote the visible half.
+    const markers = [...invite.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
+    expect(markers.length).toBeGreaterThan(0);
+    const fn = readFileSync('supabase/functions/invite/index.ts', 'utf8');
+    const builder = readFileSync('scripts/build-invite.mjs', 'utf8');
+    for (const marker of new Set(markers)) {
+      const substituted = fn.includes(`{{${marker}}}`) || builder.includes(`{{${marker}}}`);
+      expect({ marker, substituted }).toEqual({ marker, substituted: true });
+    }
+    // …and the page repairs the OG tags itself when neither ran.
+    expect(invite).toContain('ogTitle');
+    expect(invite).toMatch(/indexOf\('\{\{'\)/);
     // And no names on a page anybody with the link can open.
     expect(invite).not.toMatch(/displayName|avatar/);
   });
@@ -626,6 +644,41 @@ describe('the app is not write-only', () => {
     // alcohol total right without a filter anybody has to remember.
     const nic = code('src/domain/nicotine.ts');
     expect(nic).toMatch(/ml: 0,\s*\n\s*abv: 0,/);
+  });
+
+  /**
+   * The social route list cannot quietly fall behind the app.
+   *
+   * `modules.social` promises that the app becomes entirely private. Hiding the
+   * Circle tab hides a button; the routes stay registered and reachable by deep
+   * link, notification href, QR code and back stack, so the guard is a LIST, and
+   * a list is only as good as the thing that notices when a route is missing
+   * from it. The first version of `SOCIAL_ROUTE_PREFIXES` claimed a test like
+   * this existed and none did — and it had already missed `/(tabs)/circle`,
+   * which is the href the server writes into people's inboxes.
+   *
+   * Every top-level route is either guarded or listed here as deliberately not
+   * social. Adding a route to `app/` and neither is a failure.
+   */
+  it('every route is either social-guarded or deliberately not', () => {
+    const NOT_SOCIAL = [
+      '(auth)', '(onboarding)', '(tabs)', 'achievements', 'dev', 'insights',
+      'legal', 'log', 'morning', 'nicotine', 'nights', 'passport', 'paywall',
+      'profile', 'report', 'safety', 'session', 'settings', 'venue',
+      'wellbeing', 'wrapped',
+    ];
+    const guard = read('src/hooks/useSocial.ts');
+    const routes = readdirSync('app')
+      .filter((e) => !e.startsWith('+') && !e.startsWith('_') && e !== 'index.tsx')
+      .map((e) => e.replace(/\.tsx$/, ''));
+
+    const unclassified = routes.filter(
+      (r) => !NOT_SOCIAL.includes(r) && !guard.includes(`'/${r}'`)
+    );
+    expect(unclassified).toEqual([]);
+
+    // And the tab that IS the social half is guarded, not merely un-buttoned.
+    expect(guard).toContain("'/(tabs)/circle'");
   });
 
   it('a device registers for push, or nothing can be delivered to it', () => {
