@@ -70,4 +70,6 @@ export const discover = {
   'discover.venueAdded': 'Am adăugat {name}',
   'discover.addPlaceNote':
     'Localurile pe care le adaugi se văd doar de tine, până când notează destui oameni acolo.',
+  'discover.whosBeenNobody': "Încă nimeni.",
+  'discover.whosBeenUnknown': "Nu putem verifica acum.",
 } satisfies Record<string, Message>;

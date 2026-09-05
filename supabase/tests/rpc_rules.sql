@@ -328,7 +328,134 @@ select t.text_eq('and an English one in English',
 select t.text_eq('an unknown key degrades to the key, never to an empty message',
   public.say(:them, 'no.such.string'), 'no.such.string');
 
+-- ================================== 10 · the two numbers the app displayed
+--
+-- `sharedNights` was hard-coded 0 and `who's been here` was the first five
+-- friends in the local list with no reference to the venue. Both are one join
+-- on the server, and neither could have been done on the device.
+reset role;
+delete from public.session_participants;
+delete from public.sessions where owner_id in (:me, :them, :other);
+
+insert into public.venues (id, name) values
+  ('00000000-0000-0000-0000-00000000e501', 'The Bar')
+on conflict (id) do nothing;
+
+-- One ended night the two of us were both in, one I was in alone, and one that
+-- has not ended yet.
+insert into public.sessions (id, owner_id, visibility, venue_id, started_at, ended_at) values
+  ('00000000-0000-0000-0000-00000000e601', :me, 'friends', '00000000-0000-0000-0000-00000000e501',
+   now() - interval '2 days', now() - interval '2 days' + interval '4 hours'),
+  ('00000000-0000-0000-0000-00000000e602', :me, 'friends', null,
+   now() - interval '3 days', now() - interval '3 days' + interval '3 hours'),
+  ('00000000-0000-0000-0000-00000000e603', :me, 'friends', null, now(), null);
+
+insert into public.session_participants (session_id, user_id) values
+  ('00000000-0000-0000-0000-00000000e601', :me),
+  ('00000000-0000-0000-0000-00000000e601', :them),
+  ('00000000-0000-0000-0000-00000000e602', :me),
+  ('00000000-0000-0000-0000-00000000e603', :me),
+  ('00000000-0000-0000-0000-00000000e603', :them);
+
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a night we were both scanned into counts once',
+  (select nights from public.shared_night_counts() where user_id = :them), 1);
+select t.count_eq('a night I was in alone counts for nobody',
+  (select count(*) from public.shared_night_counts() where user_id = :me), 0);
+
+-- The venue card. A friend's night at that bar counts; a private one does not.
+reset role;
+insert into public.sessions (id, owner_id, visibility, venue_id, started_at, ended_at) values
+  ('00000000-0000-0000-0000-00000000e604', :them, 'friends', '00000000-0000-0000-0000-00000000e501',
+   now() - interval '5 days', now() - interval '5 days' + interval '2 hours'),
+  ('00000000-0000-0000-0000-00000000e605', :other, 'friends', '00000000-0000-0000-0000-00000000e501',
+   now() - interval '5 days', now() - interval '5 days' + interval '2 hours');
+
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a friend who has been to the bar appears',
+  (select count(*) from public.venue_visitors('00000000-0000-0000-0000-00000000e501')
+    where user_id = :them), 1);
+select t.count_eq('a stranger who has been to the same bar does not',
+  (select count(*) from public.venue_visitors('00000000-0000-0000-0000-00000000e501')
+    where user_id = :other), 0);
+select t.count_eq('and neither do you — the card is about other people',
+  (select count(*) from public.venue_visitors('00000000-0000-0000-0000-00000000e501')
+    where user_id = :me), 0);
+
+reset role;
+update public.sessions set visibility = 'private'
+ where id = '00000000-0000-0000-0000-00000000e604';
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a private night at the bar is nobody else''s business',
+  (select count(*) from public.venue_visitors('00000000-0000-0000-0000-00000000e501')), 0);
+
+-- ==================================================== 11 · who is out right now
+reset role;
+update public.sessions set visibility = 'friends'
+ where id = '00000000-0000-0000-0000-00000000e604';
+insert into public.sessions (id, owner_id, visibility, started_at) values
+  ('00000000-0000-0000-0000-00000000e606', :them,  'friends', now()),
+  ('00000000-0000-0000-0000-00000000e607', :other, 'friends', now());
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a friend with a night open is out',
+  (select count(*) from public.live_friends() where user_id = :them), 1);
+select t.count_eq('a stranger with a night open is not',
+  (select count(*) from public.live_friends() where user_id = :other), 0);
+
+reset role;
+update public.sessions set started_at = now() - interval '20 hours'
+ where id = '00000000-0000-0000-0000-00000000e606';
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a night somebody forgot to end does not leave them out for a week',
+  (select count(*) from public.live_friends() where user_id = :them), 0);
+
+-- ============================================ 12 · what a stranger may see
+--
+-- The invite page is the app's only surface for people who have not installed
+-- it, and it shipped with the demo seed's evening hard-coded into it — title,
+-- time, venue and three avatars, on every real invite anybody sent. This is
+-- what fills it, and the audience is anonymous, so what it refuses matters more
+-- than what it returns.
+reset role;
+delete from public.sessions where owner_id in (:me, :them, :other);
+insert into public.sessions (id, owner_id, visibility, join_code, venue_id, started_at) values
+  ('00000000-0000-0000-0000-00000000e701', :me, 'link',    'OPENNIGH', '00000000-0000-0000-0000-00000000e501', now()),
+  ('00000000-0000-0000-0000-00000000e702', :me, 'private', null,       null, now());
+
+set role anon;
+select t.text_eq('a shared night shows its venue to somebody with the link',
+  (select venue from public.invite_preview('n', 'OPENNIGH')), 'The Bar');
+select t.count_eq('a lower-case code still resolves — people retype these',
+  (select count(*) from public.invite_preview('n', 'opennigh')), 1);
+select t.count_eq('a code that is not a night shows nothing',
+  (select count(*) from public.invite_preview('n', 'NOSUCHCO')), 0);
+reset role;
+
+-- The two things it must never do. A private night cannot even HOLD a code —
+-- `private_nights_have_no_code` sees to that — so the case worth asserting is a
+-- night whose code was shared and whose visibility was then pulled back.
+update public.sessions set visibility = 'private', join_code = null
+ where id = '00000000-0000-0000-0000-00000000e701';
+set role anon;
+select t.count_eq('a night made private stops answering to the code it had',
+  (select count(*) from public.invite_preview('n', 'OPENNIGH')), 0);
+reset role;
+update public.sessions set visibility = 'link', join_code = 'OPENNIGH'
+ where id = '00000000-0000-0000-0000-00000000e701';
+update public.sessions set ended_at = now() where id = '00000000-0000-0000-0000-00000000e701';
+set role anon;
+select t.count_eq('and a night that is over stops being an invitation',
+  (select count(*) from public.invite_preview('n', 'OPENNIGH')), 0);
+reset role;
+
 -- ------------------------------------------------------------------ cleanup
+reset role;
+delete from public.session_participants;
 delete from public.notifications;
 delete from public.sessions where owner_id in (:me, :other);
 delete from public.outbound;

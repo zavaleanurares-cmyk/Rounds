@@ -67,4 +67,6 @@ export const discover = {
   'discover.venueAdded': '{name} ajouté',
   'discover.addPlaceNote':
     "Les lieux que tu ajoutes ne sont visibles que par toi, jusqu'à ce qu'assez de gens y notent quelque chose.",
+  'discover.whosBeenNobody': "Personne pour l’instant.",
+  'discover.whosBeenUnknown': "Impossible de vérifier maintenant.",
 } satisfies Record<string, Message>;

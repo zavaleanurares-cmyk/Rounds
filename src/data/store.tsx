@@ -117,6 +117,15 @@ export interface SafetyState {
   homeAddress: string | null;
   activeCheck: SafeArrivalCheck | null;
   locationSharingUntil: number | null;
+  /**
+   * How many check-ins this account has answered.
+   *
+   * A count rather than a flag, and separate from `activeCheck`, because
+   * resolving one clears it: the achievement was computed from
+   * `activeCheck?.resolvedAt`, which is null the instant somebody presses "I'm
+   * safe". It could never be earned by anybody, and its 70 XP were unreachable.
+   */
+  safeArrivalsResolved: number;
 }
 
 export interface AuthState {
@@ -212,7 +221,7 @@ const INITIAL: State = {
   plans: [],
   venues: DEMO_VENUES,
   goals: DEFAULT_GOALS,
-  safety: { contacts: [], homeAddress: null, activeCheck: null, locationSharingUntil: null },
+  safety: { contacts: [], homeAddress: null, activeCheck: null, locationSharingUntil: null, safeArrivalsResolved: 0 },
   blocked: [],
   reports: [],
   notifications: [],
@@ -397,6 +406,18 @@ export interface Store extends State {
    * notifications on, on their phone.
    */
   askForRound(input: { roundId: string; targets: string[]; drink: string }): void;
+  /**
+   * Unfriends somebody, in both directions.
+   *
+   * The menu item on their profile has always said "Remove friend" when you
+   * are friends, and its handler was `if (person.status !== 'friend')
+   * addFriend(...)` — so in exactly the case the label described, pressing it
+   * closed the menu and did nothing. `friendships` has had a "withdraw or
+   * unfriend" delete policy waiting for this since the social schema landed.
+   *
+   * Not a block: they can ask again, and they are not told.
+   */
+  removeFriend(personId: string): void;
   /** Where "home" is, for the ride and walk actions. Private to this account. */
   setHomeAddress(address: string): void;
   addFriend(personId: string): void;
@@ -594,9 +615,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = logQueue.subscribe((q) => {
       if (q.online && q.pending === 0) void syncNow();
     });
+    /**
+     * And a slow refresh while somebody is actually looking at the app.
+     *
+     * "Who is out right now" goes stale in minutes, and foreground-only is not
+     * enough on the one evening it matters: the app is already open, on Circle
+     * or on the map, while friends are starting their nights. Five minutes,
+     * only while the app is in the foreground — the rule this file has always
+     * held is that nothing polls in somebody's pocket, and this does not.
+     */
+    const slow = setInterval(() => {
+      if (AppState.currentState === 'active') void syncNow();
+    }, 5 * 60_000);
     return () => {
       sub.remove();
       unsubscribe();
+      clearInterval(slow);
     };
   }, [state.hydrated, state.auth.status, syncNow]);
 
@@ -1003,6 +1037,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           intent: next.intent,
           homeAddress: stateRef.current.safety.homeAddress,
         },
+      });
+    },
+    removeFriend(personId) {
+      const me = stateRef.current.auth.userId ?? 'me';
+      dispatch({
+        type: 'set',
+        payload: {
+          people: stateRef.current.people.map((p) =>
+            p.id === personId ? { ...p, status: 'none', liveNow: false } : p
+          ),
+        },
+      });
+      // The delete matches the pair whichever way round the row was written —
+      // the same op that declines an incoming request.
+      logQueue.enqueue({
+        id: pairKey(me, personId),
+        op: 'delete_friendship',
+        payload: { a: me, b: personId },
       });
     },
     setHomeAddress(address) {
@@ -1711,7 +1763,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // Read before the dispatch clears it — the id is the only handle on the
       // row the server is counting down.
       const check = stateRef.current.safety.activeCheck;
-      dispatch({ type: 'patchSafety', payload: { activeCheck: null } });
+      dispatch({
+        type: 'patchSafety',
+        payload: {
+          activeCheck: null,
+          // Counted here because clearing the check is what destroys the
+          // evidence that one was ever answered.
+          safeArrivalsResolved: stateRef.current.safety.safeArrivalsResolved + (check ? 1 : 0),
+        },
+      });
       if (check) {
         logQueue.enqueue({
           id: check.id,

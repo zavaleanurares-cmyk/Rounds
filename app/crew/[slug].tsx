@@ -31,10 +31,28 @@ export default function CrewDetail() {
   const members = people.filter((p) => crew.memberIds.includes(p.id));
   const crewPlans = plans.filter((p) => p.crewId === crew.id);
 
-  const board = [
-    { name: t('social.you'), nights: sessions.length, venues: 6, quests: 3 },
-    ...members.map((m, i) => ({ name: m.displayName, nights: m.sharedNights, venues: 4 - i, quests: 2 })),
-  ].sort((a, b) => b.nights - a.nights);
+  /**
+   * Nights out together, and only that — with each of them, not against them.
+   *
+   * This board used to carry `venues: 6` and `quests: 3` for you and
+   * `venues: 4 - i, quests: 2` for everybody else — literals, with the venue
+   * count going negative on the fifth member, under a header reading "Nights
+   * out together, places explored, quests done". `quests` was computed and
+   * never even rendered.
+   *
+   * It also put YOU in the ranking, counting `sessions.length` — every night
+   * you have ever recorded, the solo ones included — against everybody else's
+   * `sharedNights`, which was hard-coded 0. You came first every time, by
+   * construction.
+   *
+   * The number that actually exists is "nights you and this person were both
+   * scanned into", so the card is now a list of exactly that. Your own row is
+   * gone: you cannot share a night with yourself, and a leaderboard where the
+   * metric is your own presence is not a ranking of anything.
+   */
+  const board = members
+    .map((m) => ({ id: m.id, name: m.displayName, nights: m.sharedNights }))
+    .sort((a, b) => b.nights - a.nights);
 
   return (
     <Screen
@@ -74,15 +92,12 @@ export default function CrewDetail() {
         </Text>
         <View style={{ marginTop: space.m, gap: space.m }}>
           {board.map((row, i) => (
-            <View key={row.name} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
+            <View key={row.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
               <Text variant="numericSmall" tone="tertiary" style={{ width: 22 }}>{i + 1}</Text>
               <Avatar name={row.name} size={30} />
               <Text variant="body" style={{ flex: 1 }}>{row.name}</Text>
               <Text variant="footnote" tone="secondary">
-                {t('social.boardRow', {
-                  count: row.nights,
-                  places: t('social.boardPlaces', { count: row.venues }),
-                })}
+                {t('social.boardNights', { count: row.nights })}
               </Text>
             </View>
           ))}

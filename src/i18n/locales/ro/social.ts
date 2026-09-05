@@ -102,18 +102,8 @@ export const social = {
   'social.crewPlanWhen': '{day} {time}',
   'social.together': 'ÎMPREUNĂ',
   'social.togetherNote':
-    'Serile ieșite împreună, localurile explorate, misiunile duse la capăt. Niciodată băuturile.',
+    "Serile în care ați fost amândoi afară. Niciodată băuturile, niciodată un clasament.",
   'social.you': 'Tu',
-  'social.boardPlaces': {
-    one: 'un local',
-    few: '{count} locale',
-    other: '{count} de locale',
-  },
-  'social.boardRow': {
-    one: 'o seară · {places}',
-    few: '{count} seri · {places}',
-    other: '{count} de seri · {places}',
-  },
   'social.members': 'MEMBRI',
 
   // C-10 · create crew
@@ -186,4 +176,12 @@ export const social = {
   'social.contactsDisabled': "Potrivirea contactelor este oprită. Nu se citește nimic din agenda ta până nu o pornești.",
   'social.enableContactMatching': "Pornește potrivirea contactelor",
   'social.stopBeingFindable': "Nu mai vreau să pot fi găsit",
+  'social.removeFriendTitle': "Îl scoți pe {name}?",
+  'social.removeFriendBody': "Nu vă veți mai vedea serile. Nu este anunțat și oricare dintre voi poate cere din nou.",
+  'social.boardNights': {
+    one: '{count} seară împreună',
+    few: '{count} seri împreună',
+    other: '{count} de seri împreună',
+  },
+  'social.dependsOnViewer': 'Variază',
 } satisfies Record<string, Message>;

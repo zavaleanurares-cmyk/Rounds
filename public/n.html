@@ -12,10 +12,26 @@
   plan — time, venue, who's in — because a link that shows a store badge and
   nothing else is a link nobody taps twice.
 
-  Served for /n/:code and /p/:id, with OG tags filled server-side.
+  Served for /n/:code and /p/:id.
+
+  This page used to have the demo seed baked into it — "Friday, properly",
+  "Friday 21:30 · Roots", and three avatars reading AM/TU/MP, which are Ana
+  Marin, Tudor and Mihai P. from src/data/seed.ts. Every real invite anybody
+  sent showed a stranger somebody else's fictional evening, in the OG tags as
+  well as on the page, and the only script on it rewrote the deep link.
+
+  Two things fill it now. The edge function `invite` renders this file with the
+  real values substituted, including the OG tags, which is what a link preview
+  in a group chat needs — a crawler does not run JavaScript. When the page is
+  served statically instead, the script at the bottom asks the same RPC and
+  fills the visible half. Either way nothing here is invented: with no answer
+  the page says it is an invitation and leaves the specifics out.
+
+  The placeholders below are the substitution targets. They read as neutral
+  copy on purpose, so a page served without either mechanism is still true.
 -->
-<meta property="og:title" content="Friday, properly">
-<meta property="og:description" content="21:30 at Roots · 3 in">
+<meta property="og:title" content="{{OG_TITLE}}">
+<meta property="og:description" content="{{OG_DESCRIPTION}}">
 <meta property="og:image" content="https://rounds.app/og/plan.png">
 <meta name="theme-color" content="#06070B">
 <style>
@@ -41,16 +57,17 @@
 <div class="bg"></div>
 <main>
   <p class="eyebrow">You're invited</p>
-  <h1 id="title">Friday, properly</h1>
-  <p class="sub" id="when">Friday 21:30 · Roots</p>
+  <h1 id="title">{{TITLE}}</h1>
+  <p class="sub" id="when">{{WHEN}}</p>
 
-  <div class="card">
+  <!--
+    A count, never the people. The preview is read by whoever has the link, so
+    it carries no names, no handles and no faces — three initials on a public
+    page are three people who did not agree to be on it.
+  -->
+  <div class="card" id="whoCard" hidden>
     <p class="eyebrow">Who's in</p>
-    <div class="who">
-      <div class="av" style="background:#3B82F6">AM</div>
-      <div class="av" style="background:#8B5CF6">TU</div>
-      <div class="av" style="background:#FB923C">MP</div>
-    </div>
+    <p class="sub" id="who" style="margin:8px 0 0"></p>
   </div>
 
   <a class="cta" id="open" href="rounds://plan/">Open in ROUNDS</a>
@@ -64,10 +81,52 @@
 <script>
   // Try the app first; fall through to the store if nothing takes the link.
   // Deliberately no auto-redirect on desktop — a store page nobody asked for.
-  const id = location.pathname.split('/').filter(Boolean).pop() || '';
-  document.getElementById('open').href = location.pathname.startsWith('/n/')
-    ? 'rounds://night/' + id
-    : 'rounds://plan/' + id;
+  var parts = location.pathname.split('/').filter(Boolean);
+  var id = parts.pop() || '';
+  var kind = location.pathname.indexOf('/n/') === 0 ? 'n' : 'p';
+  document.getElementById('open').href = (kind === 'n' ? 'rounds://night/' : 'rounds://plan/') + id;
+
+  // Anything still holding a placeholder was not substituted server-side, which
+  // means this page was served statically. Fall back to neutral copy first, so
+  // no visitor ever sees a template marker, then try to fill it for real.
+  function el(x) { return document.getElementById(x); }
+  function placeholder(node, fallback) {
+    if (node && node.textContent.indexOf('{{') === 0) node.textContent = fallback;
+  }
+  placeholder(el('title'), 'A night out');
+  placeholder(el('when'), 'Open the app for the details');
+
+  // The RPC is granted to `anon` and returns a title, a time, a venue name and
+  // a count — nothing that identifies anybody. Configured at build time; with
+  // no configuration the neutral copy above is the whole page.
+  var API = document.body.dataset.api || '';
+  var KEY = document.body.dataset.key || '';
+  if (API && KEY && id) {
+    fetch(API + '/rest/v1/rpc/invite_preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: 'Bearer ' + KEY },
+      body: JSON.stringify({ p_kind: kind, p_code: id })
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) {
+        var p = rows && rows[0];
+        if (!p) return;
+        if (p.title) el('title').textContent = p.title;
+        var when = [];
+        if (p.starts_at) {
+          when.push(new Date(p.starts_at).toLocaleString(undefined, {
+            weekday: 'long', hour: '2-digit', minute: '2-digit'
+          }));
+        }
+        if (p.venue) when.push(p.venue);
+        if (when.length) el('when').textContent = when.join(' · ');
+        if (p.people > 0) {
+          el('who').textContent = p.people === 1 ? '1 person in' : p.people + ' people in';
+          el('whoCard').hidden = false;
+        }
+      })
+      .catch(function () { /* the neutral copy is already correct */ });
+  }
 </script>
 </body>
 </html>

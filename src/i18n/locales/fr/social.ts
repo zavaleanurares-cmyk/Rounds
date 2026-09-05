@@ -92,13 +92,8 @@ export const social = {
     "Rien dans le calendrier. Une bande sans plan dedans, c'est juste une conversation de groupe.",
   'social.crewPlanWhen': '{day} {time}',
   'social.together': 'ENSEMBLE',
-  'social.togetherNote': 'Les soirées ensemble, les lieux explorés, les quêtes faites. Jamais les verres.',
+  'social.togetherNote': "Les soirées où vous étiez tous les deux sortis. Jamais les verres, jamais un classement.",
   'social.you': 'Toi',
-  'social.boardPlaces': { one: '{count} lieu', other: '{count} lieux' },
-  'social.boardRow': {
-    one: '{count} soirée · {places}',
-    other: '{count} soirées · {places}',
-  },
   'social.members': 'MEMBRES',
 
   // C-10 · create crew
@@ -169,4 +164,11 @@ export const social = {
   'social.contactsDisabled': "La recherche par contacts est désactivée. Rien n'est lu dans votre carnet d'adresses tant qu'elle est éteinte.",
   'social.enableContactMatching': "Activer la recherche par contacts",
   'social.stopBeingFindable': "Ne plus être trouvable",
+  'social.removeFriendTitle': "Retirer {name} ?",
+  'social.removeFriendBody': "Vous ne verrez plus vos soirées respectives. Cette personne n'est pas prévenue, et chacun peut redemander.",
+  'social.boardNights': {
+    one: '{count} soirée ensemble',
+    other: '{count} soirées ensemble',
+  },
+  'social.dependsOnViewer': 'Variable',
 } satisfies Record<string, Message>;

@@ -115,7 +115,7 @@ async function searchGoogle(q: VenueQuery): Promise<Venue[] | null> {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': key,
       'X-Goog-FieldMask':
-        'places.id,places.displayName,places.location,places.primaryType,places.priceLevel,places.shortFormattedAddress',
+        'places.id,places.displayName,places.location,places.primaryType,places.priceLevel,places.shortFormattedAddress,places.currentOpeningHours.openNow',
     },
     body: JSON.stringify(body),
   });
@@ -130,6 +130,11 @@ async function searchGoogle(q: VenueQuery): Promise<Venue[] | null> {
     lng: p.location?.longitude ?? null,
     priceBand: priceBandFrom(p.priceLevel),
     category: CATEGORY_MAP[p.primaryType] ?? 'Bar',
+    // Tri-state on purpose. `false` is "we asked and it is shut"; `null` is
+    // "nobody told us", which the Open-now filter treats as unknowable rather
+    // than as closed — see the chip on Discover, which only exists when this
+    // can be answered at all.
+    openNow: typeof p.currentOpeningHours?.openNow === 'boolean' ? p.currentOpeningHours.openNow : null,
   }));
 }
 
@@ -173,6 +178,10 @@ async function searchOsm(q: VenueQuery): Promise<Venue[]> {
       lng: e.lon ?? null,
       priceBand: null,
       category: CATEGORY_MAP[e.tags.amenity as string] ?? 'Bar',
+      // OSM carries `opening_hours` as free text ("Mo-Th 17:00-02:00; Fr,Sa
+      // 17:00-04:00; PH off"). Parsing that badly produces a confident wrong
+      // answer about whether somewhere is open at 1am, so this says nothing.
+      openNow: null,
     }));
 }
 

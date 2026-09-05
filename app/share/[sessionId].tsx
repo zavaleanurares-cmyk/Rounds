@@ -3,6 +3,7 @@ import { View, Share } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, Bloom, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
+import { capabilities, optional } from '@/services/optional';
 import { summariseNights } from '@/domain/stats';
 import { useT, useFormat } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
@@ -41,6 +42,47 @@ export default function ShareCard() {
   const duration = (session.endedAt ?? Date.now()) - session.startedAt;
   const places = summary?.venueIds.length ?? 1;
 
+  /**
+   * Actually exports the card.
+   *
+   * The view below has been rendered at 1:1 and marked `collapsable={false}`
+   * since the first version, with a ref attached — and nothing ever captured
+   * it. `react-native-view-shot` is a dependency, probed in `optional.ts` and
+   * surfaced as `capabilities().shareCard`, which nothing read. So the thing
+   * somebody previewed full-screen was never produced, and Share sent a
+   * sentence of text instead.
+   *
+   * Text is still the fallback, and stays the whole story on web and in any
+   * build without the native module: a share sheet that opens with something
+   * beats a button that fails.
+   */
+  const share = async () => {
+    const text = t('stats.shareMessage', {
+      venue: venue?.name ?? t('stats.aNightOut'),
+      duration: f.duration(duration),
+      count: places,
+    });
+
+    if (capabilities().shareCard && cardRef.current) {
+      try {
+        const ViewShot = optional<typeof import('react-native-view-shot')>(() =>
+          require('react-native-view-shot')
+        );
+        const uri = await ViewShot?.captureRef(cardRef, { format: 'png', quality: 0.95 });
+        if (uri) {
+          // `Share.share` takes a url on iOS and a message on Android, so the
+          // image goes in both and the text stays as the caption.
+          await Share.share({ message: text, url: uri });
+          return;
+        }
+      } catch {
+        // A capture that fails must not swallow the share.
+      }
+    }
+
+    await Share.share({ message: text });
+  };
+
   return (
     <Screen
       title={t('stats.shareTitle')}
@@ -51,15 +93,7 @@ export default function ShareCard() {
         <Button
           title={t('ui.share')}
           icon="square.and.arrow.up"
-          onPress={() =>
-            void Share.share({
-              message: t('stats.shareMessage', {
-                venue: venue?.name ?? t('stats.aNightOut'),
-                duration: f.duration(duration),
-                count: places,
-              }),
-            })
-          }
+          onPress={() => void share()}
         />
       }
     >

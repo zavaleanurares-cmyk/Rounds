@@ -150,6 +150,13 @@ grant all on t.results to authenticated;
 grant execute on all functions in schema public to authenticated;
 grant execute on all functions in schema t to authenticated;
 
+-- The anonymous role needs the harness too: one function in this schema — the
+-- invite preview — is granted to it, so its assertions run as `anon`.
+grant usage on schema public, t to anon;
+grant usage, select on all sequences in schema t to anon;
+grant all on t.results to anon;
+grant execute on all functions in schema t to anon;
+
 set role authenticated;
 
 -- =========================================================== search_profiles

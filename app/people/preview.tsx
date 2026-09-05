@@ -14,8 +14,7 @@ import { color, space } from '@/design/tokens';
  */
 export default function ProfilePreview() {
   const t = useT();
-  const { profile, sessions, people } = useStore();
-  const shared = people.filter((p) => p.status === 'friend').length;
+  const { profile, sessions } = useStore();
 
   return (
     <Screen title={t('social.previewTitle')} subtitle={t('social.previewSubtitle')} back mood="calm">
@@ -34,9 +33,27 @@ export default function ProfilePreview() {
         </View>
       </Card>
 
+      {/*
+        Both of these are different for every viewer — that is the whole point
+        of the screen — so neither has a number here. It used to show "—" beside
+        a mutual-crew count of `shared > 0 ? 1 : 0`: one if you had any friend
+        at all, ignoring your crews entirely, and the same answer whoever was
+        looking. Saying "depends who is looking" is both true and the more
+        reassuring answer.
+      */}
       <View style={{ flexDirection: 'row', gap: space.m }}>
-        <StatTile label={t('social.nightsTogetherLabel')} value="—" caption={t('social.perPerson')} icon="moon.stars" />
-        <StatTile label={t('social.mutualCrews')} value={String(shared > 0 ? 1 : 0)} icon="person.2" />
+        <StatTile
+          label={t('social.nightsTogetherLabel')}
+          value={t('social.dependsOnViewer')}
+          caption={t('social.perPerson')}
+          icon="moon.stars"
+        />
+        <StatTile
+          label={t('social.mutualCrews')}
+          value={t('social.dependsOnViewer')}
+          caption={t('social.perPerson')}
+          icon="person.2"
+        />
       </View>
 
       <Card>

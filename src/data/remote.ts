@@ -601,6 +601,10 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
   const crewRows = rows('crews');
   const venueRows = rows('venues');
   const byId = new Map(peopleRows.map((x) => [x.id as string, x]));
+  const sharedNights = (p.shared_nights ?? {}) as Record<string, number>;
+  const liveIds = new Set(
+    (Array.isArray(p.live_friends) ? (p.live_friends as unknown[]) : []).map(String)
+  );
 
   const statusFor = (otherId: string): Person['status'] => {
     const f = friendships.find((x) => x.requester_id === otherId || x.addressee_id === otherId);
@@ -626,14 +630,31 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
       username: x.username ?? '',
       avatarUrl: x.avatar_url ?? null,
       level: Number(x.level ?? 1),
-      // Derived locally from shared sessions; the server does not count it.
-      sharedNights: 0,
+      /**
+       * Nights this account and that one were both scanned into.
+       *
+       * Hard-coded 0 under a comment claiming it was derived locally. Nothing
+       * derived it, and nothing on the device could: `session_participants` for
+       * other people's nights is not something this client holds. So "Nights
+       * together" read 0 for everybody, Circle said "no nights together" for
+       * every friend, and the crew board ranked you first every time.
+       */
+      sharedNights: Number(sharedNights[x.id as string] ?? 0),
       mutualCrews: crewRows
         .filter((c) => crewMembers.some((m) => m.crew_id === c.id && m.user_id === x.id))
         .map((c) => c.name as string),
       status: statusFor(x.id),
-      // Realtime decides this, never a pull.
-      liveNow: false,
+      /**
+       * Whether they have a night open that this account may see.
+       *
+       * This was hard-coded `false` with a comment saying realtime decided it.
+       * Realtime never did — the participant handler it referred to has never
+       * had a caller — so six surfaces built around "who is out right now" were
+       * permanently empty against a real backend. `live_friends` in 00040
+       * answers it from the sessions table, which is also the answer for a
+       * widget, a backgrounded app and a phone that has been in a pocket.
+       */
+      liveNow: liveIds.has(x.id as string),
     })),
     crews: crewRows.map((c) => ({
       id: c.id,
@@ -981,6 +1002,22 @@ export async function searchPeople(term: string): Promise<SearchHit[] | null> {
     avatarTint: r.avatar_tint ?? null,
     level: r.level ?? 1,
   }));
+}
+
+/**
+ * Which friends have been to this venue.
+ *
+ * The card that shows this said "Friends only. Never strangers." and rendered
+ * the first five friends in the local list with no reference to the venue, so
+ * every bar in the app showed the same five faces — including bars nobody had
+ * been to. Ids only; the names are already on this side.
+ */
+export async function venueVisitors(venueId: string): Promise<string[] | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('venue_visitors', { p_venue: venueId });
+  if (error) return null;
+  return (data as Array<{ user_id: string }>).map((r) => r.user_id);
 }
 
 /**

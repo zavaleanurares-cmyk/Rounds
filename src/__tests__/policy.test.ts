@@ -154,11 +154,14 @@ describe('no feed, no drinking leaderboard, no drinking streak', () => {
   it('ranks crews on nights and places, never on volume', () => {
     const crew = code('app/crew/[slug].tsx');
     // The board's row shape IS the rule: what it can sort on is what it ranks on.
-    const board = crew.match(/const board = \[[\s\S]*?\]\.sort/)?.[0] ?? '';
+    const board = crew.match(/const board = members[\s\S]*?\n\n/)?.[0] ?? '';
     expect(board).toBeTruthy();
     expect(board).toMatch(/nights/);
-    expect(board).toMatch(/venues/);
     expect(board).not.toMatch(/drinks|units|ethanol|totalG/);
+    // And nothing invented alongside it. `venues: 6` and `quests: 3` sat here
+    // as literals for a long time, under a header that described them as real.
+    expect(board).not.toMatch(/venues|quests/);
+    expect(board).not.toMatch(/:\s*\d+\b/);
   });
 
   it('computes only dry streaks', () => {
@@ -592,6 +595,21 @@ describe('the app is not write-only', () => {
     // An opt-in with no opt-out is not an opt-in. `stopBeingFindable` existed
     // from the start and was imported by nothing.
     expect(code('app/people/contacts.tsx')).toContain('stopBeingFindable');
+  });
+
+  it('the invite page carries no invented evening', () => {
+    // It shipped with the demo seed in it: "Friday, properly", "21:30 · Roots",
+    // and three avatars reading AM/TU/MP — Ana Marin, Tudor and Mihai P. from
+    // the seed file — on every real invite anybody sent, OG tags included.
+    // Comments stripped: the page's own note explains what used to be there
+    // and quotes it, which is documentation rather than content.
+    const invite = readFileSync('public/n.html', 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    for (const fake of ['Friday, properly', 'Roots', '>AM<', '>TU<', '>MP<']) {
+      expect({ fake, present: invite.includes(fake) }).toEqual({ fake, present: false });
+    }
+    expect(invite).toContain('invite_preview');
+    // And no names on a page anybody with the link can open.
+    expect(invite).not.toMatch(/displayName|avatar/);
   });
 
   it('a device registers for push, or nothing can be delivered to it', () => {

@@ -81,8 +81,25 @@ export default function PersonProfile() {
               label={person.status === 'friend' ? t('social.removeFriend') : t('social.addFriend')}
               icon="person.2"
               onPress={() => {
-                if (person.status !== 'friend') store.addFriend(person.id);
                 setMenu(false);
+                if (person.status !== 'friend') {
+                  store.addFriend(person.id);
+                  return;
+                }
+                // Confirmed, because it is not undoable from this side: asking
+                // again means sending a new request and waiting for an answer.
+                Alert.alert(
+                  t('social.removeFriendTitle', { name: person.displayName }),
+                  t('social.removeFriendBody'),
+                  [
+                    { text: t('ui.cancel'), style: 'cancel' },
+                    {
+                      text: t('social.removeFriend'),
+                      style: 'destructive',
+                      onPress: () => store.removeFriend(person.id),
+                    },
+                  ]
+                );
               }}
             />
             <MenuItem label={isBlocked ? t('social.unblock') : t('social.block')} icon="hand.raised" destructive onPress={isBlocked ? () => { store.unblockUser(person.id); setMenu(false); } : confirmBlock} />

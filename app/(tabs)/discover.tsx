@@ -62,10 +62,27 @@ export default function Discover() {
     [logs]
   );
 
+  /**
+   * Whether "Open now" can be answered at all.
+   *
+   * The chip used to be there always and filter nothing: `layers.open` was
+   * written and never read, and there was no opening-hours field on a venue for
+   * it to read. Google Places answers it; the OpenStreetMap fallback carries
+   * opening hours as free text this app does not parse. So the chip appears
+   * only when the answer exists — a filter that cannot filter is worse than no
+   * filter, and hiding it is more honest than showing one that lies.
+   */
+  const canAnswerOpen = useMemo(
+    () => (found.length > 0 ? found : localVenues).some((v) => typeof v.openNow === 'boolean'),
+    [found, localVenues]
+  );
+
   const shown = useMemo(() => {
     const all = found.length > 0 ? found : localVenues;
     return all
       .filter((v) => (layers.been ? true : !visited.has(v.id)))
+      // Strict when the filter is on: an unknown is not an open door.
+      .filter((v) => (layers.open && canAnswerOpen ? v.openNow === true : true))
       .map((v) => ({
         venue: v,
         distance:
@@ -75,7 +92,7 @@ export default function Discover() {
       }))
       .sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9))
       .slice(0, 40);
-  }, [found, localVenues, layers.been, visited, coords]);
+  }, [found, localVenues, layers.been, layers.open, canAnswerOpen, visited, coords]);
 
   const liveFriends = people.filter((p) => p.liveNow && p.status === 'friend');
   const friendNames = liveFriends.map((f) => f.displayName.split(' ')[0]).join(', ');
@@ -116,7 +133,9 @@ export default function Discover() {
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <Chip label={t('discover.filterFriends')} compact selected={layers.friends} onPress={() => setLayers((l) => ({ ...l, friends: !l.friends }))} />
           <Chip label={t('discover.filterBeen')} compact selected={layers.been} onPress={() => setLayers((l) => ({ ...l, been: !l.been }))} />
-          <Chip label={t('discover.filterOpen')} compact selected={layers.open} onPress={() => setLayers((l) => ({ ...l, open: !l.open }))} />
+          {canAnswerOpen ? (
+            <Chip label={t('discover.filterOpen')} compact selected={layers.open} onPress={() => setLayers((l) => ({ ...l, open: !l.open }))} />
+          ) : null}
         </View>
         {stale ? (
           <Text variant="caption1" color={color.warning}>{t('discover.stale')}</Text>

@@ -64,6 +64,16 @@ export interface Venue {
   lat: number | null;
   lng: number | null;
   priceBand: 1 | 2 | 3 | null;
+  /**
+   * Whether the provider says it is open right now.
+   *
+   * `null` means nobody told us — the OpenStreetMap fallback carries opening
+   * hours as free text that would have to be parsed, and guessing at it is
+   * worse than not answering. Transient by nature: it is whatever the last
+   * search said, and the Open-now chip on Discover only appears when this can
+   * be answered at all, so the filter is never a control that does nothing.
+   */
+  openNow?: boolean | null;
   category: string | null;
 }
 

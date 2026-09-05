@@ -33,7 +33,7 @@ export default function Achievements() {
         plans,
         goals,
         trustedContacts: safety.contacts.length,
-        safeArrivalsResolved: safety.activeCheck?.resolvedAt ? 1 : 0,
+        safeArrivalsResolved: safety.safeArrivalsResolved,
       }),
     [logs, sessions, people, crews, plans, goals, safety]
   );

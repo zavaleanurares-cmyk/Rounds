@@ -81,13 +81,8 @@ export const social = {
   'social.crewNoPlans': 'Nothing in the calendar. A crew without a plan in it is just a group chat.',
   'social.crewPlanWhen': '{day} {time}',
   'social.together': 'TOGETHER',
-  'social.togetherNote': 'Nights out together, places explored, quests done. Never drinks.',
+  'social.togetherNote': "Nights the two of you were both out. Never drinks, never a ranking of them.",
   'social.you': 'You',
-  'social.boardPlaces': { one: '{count} place', other: '{count} places' },
-  'social.boardRow': {
-    one: '{count} night · {places}',
-    other: '{count} nights · {places}',
-  },
   'social.members': 'MEMBERS',
 
   // C-10 · create crew
@@ -151,4 +146,11 @@ export const social = {
   'social.contactsDisabled': "Contact matching is off. Nothing is read from your address book until you turn it on.",
   'social.enableContactMatching': "Turn on contact matching",
   'social.stopBeingFindable': "Stop being findable",
+  'social.removeFriendTitle': "Remove {name}?",
+  'social.removeFriendBody': "You'll stop seeing each other's nights. They aren't told, and either of you can ask again.",
+  'social.boardNights': {
+    one: '{count} night together',
+    other: '{count} nights together',
+  },
+  'social.dependsOnViewer': 'Varies',
 } satisfies Record<string, Message>;

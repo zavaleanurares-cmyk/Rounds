@@ -93,13 +93,8 @@ export const social = {
   'social.crewPlanWhen': '{day} {time}',
   'social.together': 'JUNTOS',
   'social.togetherNote':
-    'Las noches juntos, los sitios explorados, las misiones hechas. Nunca las copas.',
+    "Las noches en que los dos estuvisteis fuera. Nunca las copas, nunca un ranking.",
   'social.you': 'Tú',
-  'social.boardPlaces': { one: '{count} sitio', other: '{count} sitios' },
-  'social.boardRow': {
-    one: '{count} noche · {places}',
-    other: '{count} noches · {places}',
-  },
   'social.members': 'MIEMBROS',
 
   // C-10 · create crew
@@ -170,4 +165,11 @@ export const social = {
   'social.contactsDisabled': "La búsqueda por contactos está desactivada. No se lee nada de tu agenda hasta que la actives.",
   'social.enableContactMatching': "Activar búsqueda por contactos",
   'social.stopBeingFindable': "Dejar de ser localizable",
+  'social.removeFriendTitle': "¿Quitar a {name}?",
+  'social.removeFriendBody': "Dejaréis de ver las noches del otro. No se le avisa, y cualquiera puede volver a pedirlo.",
+  'social.boardNights': {
+    one: '{count} noche juntos',
+    other: '{count} noches juntos',
+  },
+  'social.dependsOnViewer': 'Varía',
 } satisfies Record<string, Message>;

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, StatTile, EmptyState, Avatar } from '@/ui';
 import { useStore } from '@/data/store';
+import { venueVisitors } from '@/data/remote';
 import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
@@ -24,6 +25,29 @@ export default function VenueDetail() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   }, [mine]);
   const lastVisit = mine.length ? Math.max(...mine.map((l) => l.at)) : null;
+
+  /**
+   * Who else has been here — asked, not guessed.
+   *
+   * `null` means "we could not ask" (no backend, or the call failed), which the
+   * card says out loud rather than rendering as "nobody": those are different
+   * answers and only one of them is about this venue.
+   */
+  const [visitorIds, setVisitorIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    void venueVisitors(id).then((found) => {
+      if (alive) setVisitorIds(found);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+  const visitors = useMemo(
+    () => (visitorIds === null ? null : people.filter((p) => visitorIds.includes(p.id))),
+    [visitorIds, people]
+  );
 
   if (!venue) return <Screen title={t('discover.venueFallbackTitle')} back><EmptyState title={t('discover.venueNotFound')} body={t('discover.venueNotFoundBody')} /></Screen>;
 
@@ -75,10 +99,28 @@ export default function VenueDetail() {
       <Card>
         <Text variant="sectionHeader" tone="tertiary">{t('discover.whosBeen')}</Text>
         <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>{t('discover.friendsOnly')}</Text>
+        {/*
+          This used to be `people.filter(friend).slice(0, 5)` — the first five
+          friends in the local list, with no reference to the venue, so every
+          bar in the app showed the same five faces including bars nobody had
+          been to. The server answers it now, scoped by each night's own
+          visibility.
+        */}
         <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.m }}>
-          {people.filter((p) => p.status === 'friend').slice(0, 5).map((p) => (
-            <Avatar key={p.id} name={p.displayName} size={34} />
-          ))}
+          {visitors === null ? (
+            <Text variant="footnote" tone="quaternary">{t('discover.whosBeenUnknown')}</Text>
+          ) : visitors.length === 0 ? (
+            <Text variant="footnote" tone="quaternary">{t('discover.whosBeenNobody')}</Text>
+          ) : (
+            visitors.map((v) => (
+              <Avatar
+                key={v.id}
+                name={v.displayName}
+                url={v.avatarUrl}
+                size={34}
+              />
+            ))
+          )}
         </View>
       </Card>
 

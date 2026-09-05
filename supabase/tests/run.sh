@@ -24,6 +24,9 @@ fi
 dropdb --if-exists "$DB"
 createdb "$DB"
 psql -q -d "$DB" -c "create role authenticated nologin;" || true
+# `anon` is Supabase's unauthenticated role. One function is granted to it —
+# the invite preview, which is by definition read by people with no account.
+psql -q -d "$DB" -c "create role anon nologin;" || true
 psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/local-harness.sql"
 
 for f in "$ROOT"/supabase/migrations/*.sql; do
