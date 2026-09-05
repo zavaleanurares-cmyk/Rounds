@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status-bar icon. Android silhouettes it: every pixel is either opaque
+     or transparent and the tint is applied by the system, so this is drawn as a
+     single flat white path and nothing else. A coloured or multi-tone icon
+     renders as a white blob.
+
+     The mark is the ROUNDS glass: a tapered bowl on a stem. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+  <path
+      android:fillColor="#FFFFFFFF"
+      android:pathData="M5,3 L19,3 L13.2,11.4 L13.2,18.6 L16.4,18.6 A0.9,0.9 0 0 1 16.4,20.4 L7.6,20.4 A0.9,0.9 0 0 1 7.6,18.6 L10.8,18.6 L10.8,11.4 Z" />
+</vector>

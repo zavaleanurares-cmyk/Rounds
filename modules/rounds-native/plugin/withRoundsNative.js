@@ -41,33 +41,48 @@ function withIosSurfaces(config) {
     return cfg;
   });
 
+  /**
+   * THE WIDGET EXTENSION TARGET IS NOT CREATED HERE, AND THAT IS THE GAP.
+   *
+   * This block used to set a `__roundsTargets` property on the project and
+   * return. Nothing ever read that property. It described a target instead of
+   * creating one, so every prebuild produced an Xcode project with exactly one
+   * native target — the app — and the six Swift files in `ios/` were not copied
+   * in, not compiled, and not embedded.
+   *
+   * The effect: `NSSupportsLiveActivities` is set, the app group is
+   * entitled, the JS calls into the native module, and none of the Live
+   * Activity, the three widget families or the Control Center control exist in
+   * the binary. Nothing in the repository could catch it — the JS suite, the
+   * typecheck, `store:check` and CI all pass without ever building iOS.
+   *
+   * Until the target is really created, prebuild fails loudly rather than
+   * quietly producing a build with no system surfaces in it. A missing feature
+   * you are told about at prebuild costs an hour; one you find in TestFlight
+   * costs a release.
+   */
   config = withXcodeProject(config, (cfg) => {
-    // The widget extension target carries the Live Activity, the three widget
-    // families and the Control Center control — they share one binary because
-    // they share the payload and the design system.
-    cfg.modResults.__roundsTargets = {
-      widgetExtension: {
-        name: 'RoundsWidgets',
-        bundleId: `${cfg.ios?.bundleIdentifier ?? 'app.rounds.client'}.widgets`,
-        deploymentTarget: '17.0',
-        entitlements: { 'com.apple.security.application-groups': [APP_GROUP] },
-        sources: [
-          'RoundsShared.swift',
-          'RoundsActivityAttributes.swift',
-          'RoundsIntents.swift',
-          'RoundsLiveActivityView.swift',
-          'RoundsWidgets.swift',
-          'RoundsControl.swift',
-        ],
-      },
-      watchApp: {
-        name: 'RoundsWatch',
-        bundleId: `${cfg.ios?.bundleIdentifier ?? 'app.rounds.client'}.watchkitapp`,
-        deploymentTarget: '10.0',
-        // P2. The complication is the point of it, not the app.
-      },
-    };
-    return cfg;
+    if (process.env.ROUNDS_ALLOW_NO_WIDGETS === '1') {
+      console.warn(
+        '[rounds-native] Building WITHOUT the iOS widget extension: no Live Activity, ' +
+          'no widgets, no Control Center control. ROUNDS_ALLOW_NO_WIDGETS=1 is set.'
+      );
+      return cfg;
+    }
+    throw new Error(
+      [
+        'rounds-native: the iOS widget extension target is not created yet.',
+        '',
+        'modules/rounds-native/ios/ holds the Live Activity, the three widget',
+        'families and the Control Center control, but nothing adds them to the',
+        'Xcode project, so an iOS build silently ships without them.',
+        '',
+        'Either finish withIosSurfaces() so it creates a real PBXNativeTarget',
+        '(sources, an Info.plist, the app-group entitlement, and an embed-appex',
+        'phase on the app target), or set ROUNDS_ALLOW_NO_WIDGETS=1 to build the',
+        'app deliberately without its system surfaces.',
+      ].join('\n')
+    );
   });
 
   /**

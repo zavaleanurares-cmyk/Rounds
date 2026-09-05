@@ -63,7 +63,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: 'app.rounds.client',
-    edgeToEdgeEnabled: true,
+    // No edgeToEdgeEnabled: Android 16 makes edge-to-edge mandatory and the
+    // key is now rejected by the plugin. The app already lays out for it.
     predictiveBackGestureEnabled: true,
     adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#06070B' },
     permissions: [

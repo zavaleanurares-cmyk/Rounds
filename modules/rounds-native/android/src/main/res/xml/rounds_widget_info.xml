@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AppWidgetProviderInfo. The manifest points at this by name; without the
+     file aapt2 fails the build, which is how it was found. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="110dp"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="220dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_rounds"
+    android:previewLayout="@layout/widget_rounds"
+    android:description="@string/rounds_widget_description"
+    android:updatePeriodMillis="1800000" />

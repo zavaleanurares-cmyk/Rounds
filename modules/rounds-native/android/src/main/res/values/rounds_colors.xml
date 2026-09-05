@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated-by-hand mirror of tokens/tokens.json. RemoteViews cannot read the
+     generated Kotlin object, so the widget's colours have to exist as Android
+     resources. Keep in step with src/design/tokens.ts. -->
+<resources>
+  <color name="rounds_surface_primary">#151A24</color>
+  <color name="rounds_surface_secondary">#1C2230</color>
+  <color name="rounds_label_primary">#FFFFFFFF</color>
+  <color name="rounds_label_secondary">#99EBEBF5</color>
+  <color name="rounds_brand_tint">#3B82F6</color>
+  <color name="rounds_separator">#17FFFFFF</color>
+</resources>

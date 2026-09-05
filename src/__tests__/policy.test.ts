@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -939,5 +939,59 @@ describe('the generated token files', () => {
     const keys = [...block.matchAll(/^ {2}(\w+):/gm)].map((m) => m[1]);
     expect(keys.length).toBeGreaterThan(0);
     expect(Object.keys(tokens.motion).sort()).toEqual(keys.sort());
+  });
+});
+
+describe('the native build', () => {
+  const config = readFileSync('app.config.ts', 'utf8');
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+
+  it('declares expo-audio\'s peer dependency directly', () => {
+    // expo-doctor: "Your app may crash outside of Expo Go without this
+    // dependency. Native module peer dependencies must be installed directly."
+    // It resolved transitively, so every JS check passed while a real build
+    // would have shipped without it.
+    expect(pkg.dependencies['expo-asset']).toBeTruthy();
+    expect(pkg.dependencies['expo-asset']).toMatch(/^[~^]?57\./);
+  });
+
+  it('does not set edgeToEdgeEnabled', () => {
+    // Android 16 makes edge-to-edge mandatory; the key is now rejected by the
+    // plugin and prebuild warns on every run.
+    expect(config).not.toMatch(/edgeToEdgeEnabled:\s*(true|false)/);
+  });
+
+  it('names every Android resource the manifest references', () => {
+    // The plugin writes @xml/rounds_widget_info and @drawable/ic_notification
+    // into the manifest. aapt2 fails the build on an unresolved reference, and
+    // nothing in the JS suite builds Android — so this is the only place the
+    // gap can show up before a build machine finds it.
+    const plugin = readFileSync('modules/rounds-native/plugin/withRoundsNative.js', 'utf8');
+    const refs = [...plugin.matchAll(/'@(xml|drawable)\/([a-z_]+)'/g)].map((m) => [m[1], m[2]]);
+    expect(refs.length).toBeGreaterThan(0);
+    for (const [kind, name] of refs) {
+      const found =
+        existsSync(`modules/rounds-native/android/src/main/res/${kind}/${name}.xml`) ||
+        existsSync(`assets/android/${kind}/${name}.xml`) ||
+        existsSync(`assets/android/${kind}/${name}.png`);
+      expect([kind, name, found]).toEqual([kind, name, true]);
+    }
+  });
+
+  it('does not silently produce an iOS build with no system surfaces', () => {
+    // withXcodeProject assigned `__roundsTargets` and nothing ever read it, so
+    // six Swift files — the Live Activity, three widget families and the
+    // Control Center control — were never compiled into anything, and every
+    // check in this repository passed anyway because none of them build iOS.
+    //
+    // Until the target is really created, prebuild must fail rather than hand
+    // back an app that looks complete and has no widgets in it.
+    const plugin = readFileSync('modules/rounds-native/plugin/withRoundsNative.js', 'utf8');
+    expect(plugin).not.toMatch(/__roundsTargets\s*=/);
+    const creates = /addTarget\(|PBXNativeTarget|apple-targets/.test(plugin);
+    if (!creates) {
+      expect(plugin).toMatch(/throw new Error\(/);
+      expect(plugin).toContain('ROUNDS_ALLOW_NO_WIDGETS');
+    }
   });
 });
