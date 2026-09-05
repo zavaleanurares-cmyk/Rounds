@@ -4,6 +4,7 @@ import { Text } from './Text';
 import { Button } from './Button';
 import { Icon, type IconName } from './Icon';
 import { Card } from './Card';
+import { useT } from '@/i18n';
 import { color, space, radius } from '@/design/tokens';
 
 /**
@@ -38,8 +39,9 @@ export function SkeletonRow() {
 }
 
 export function ScreenSkeleton({ rows = 4 }: { rows?: number }) {
+  const t = useT();
   return (
-    <View accessibilityLabel="Loading" style={{ gap: space.m }}>
+    <View accessibilityLabel={t('ui.loading')} style={{ gap: space.m }}>
       <SkeletonBlock height={132} />
       <SkeletonBlock height={86} />
       {Array.from({ length: rows }).map((_, i) => (
@@ -90,15 +92,16 @@ export function EmptyState({
 
 /** Plain language plus retry. Never a raw error string. */
 export function ErrorState({ onRetry, message }: { onRetry?: () => void; message?: string }) {
+  const t = useT();
   return (
     <Card padding={space.lg}>
       <View style={{ alignItems: 'center', gap: space.m }}>
         <Icon name="exclamationmark.triangle" size={26} color={color.warning} />
-        <Text variant="headline" center>That didn't load</Text>
+        <Text variant="headline" center>{t('ui.errorTitle')}</Text>
         <Text variant="subheadline" tone="secondary" center>
-          {message ?? "We couldn't reach ROUNDS just now. Your logs are safe on this phone."}
+          {message ?? t('ui.errorBody')}
         </Text>
-        {onRetry ? <Button title="Try again" kind="glass" onPress={onRetry} full={false} compact /> : null}
+        {onRetry ? <Button title={t('ui.retry')} kind="glass" onPress={onRetry} full={false} compact /> : null}
       </View>
     </Card>
   );
@@ -106,9 +109,12 @@ export function ErrorState({ onRetry, message }: { onRetry?: () => void; message
 
 /** Cached data stays on screen; this is the only thing that changes. */
 export function OfflinePill({ pending }: { pending: number }) {
+  const t = useT();
   return (
     <View
-      accessibilityLabel={pending > 0 ? `Offline, ${pending} logs waiting to sync` : 'Offline'}
+      accessibilityLabel={
+        pending > 0 ? t('ui.offlineLabelPending', { count: pending }) : t('ui.offlineLabel')
+      }
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -124,7 +130,7 @@ export function OfflinePill({ pending }: { pending: number }) {
     >
       <Icon name="bolt" size={13} color={color.warning} />
       <Text variant="caption1" color={color.warning}>
-        {pending > 0 ? `Offline · ${pending} waiting` : 'Offline'}
+        {pending > 0 ? t('ui.offlineWaiting', { count: pending }) : t('ui.offline')}
       </Text>
     </View>
   );

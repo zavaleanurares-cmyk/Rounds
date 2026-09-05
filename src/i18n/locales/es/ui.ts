@@ -1,0 +1,35 @@
+import type { Message } from '../../types';
+
+export const ui = {
+  'ui.loading': 'Cargando',
+  'ui.back': 'Atrás',
+  'ui.dismiss': 'Cerrar',
+  'ui.close': 'Cerrar',
+  'ui.done': 'Listo',
+  'ui.cancel': 'Cancelar',
+  'ui.save': 'Guardar',
+  'ui.saving': 'Guardando…',
+  'ui.undo': 'Deshacer',
+  'ui.retry': 'Reintentar',
+  'ui.errorTitle': 'No se ha cargado',
+  'ui.errorBody': 'No hemos podido conectar con ROUNDS. Lo que has apuntado está a salvo en este teléfono.',
+  'ui.offline': 'Sin conexión',
+  'ui.offlineWaiting': 'Sin conexión · {count} pendientes',
+  'ui.offlineLabel': 'Sin conexión',
+  'ui.offlineLabelPending': {
+    one: 'Sin conexión, {count} copa pendiente de sincronizar',
+    other: 'Sin conexión, {count} copas pendientes de sincronizar',
+  },
+  'ui.settings': 'Ajustes',
+  'ui.share': 'Compartir',
+  'ui.more': 'Más',
+  'ui.selected': 'seleccionado',
+  'ui.nice': 'Bien',
+  'ui.achievement': 'Logro',
+  'ui.level': 'Nivel {level}',
+  'ui.levelProgress': 'Nivel {level}, {into} de {span} para el siguiente',
+  'ui.people': {
+    one: '{count} persona',
+    other: '{count} personas',
+  },
+} satisfies Record<string, Message>;

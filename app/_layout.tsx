@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { StoreProvider, useStore } from '@/data/store';
+import { I18nProvider } from '@/i18n';
 import { ToastProvider } from '@/ui';
 import { useOnlineWatcher } from '@/hooks/useOnline';
 import { attachRemote } from '@/data/remote';
@@ -145,6 +146,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg.canvas }}>
       <SafeAreaProvider>
+        <I18nProvider>
         <StoreProvider>
           <ToastProvider>
             <AuthGate>
@@ -153,6 +155,7 @@ export default function RootLayout() {
             </AuthGate>
           </ToastProvider>
         </StoreProvider>
+        </I18nProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
