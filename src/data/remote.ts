@@ -13,7 +13,7 @@ import {
 } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logQueue, type QueueItem } from './queue';
-import type { Log, Session } from '@/domain/types';
+import type { Log, Profile, Session } from '@/domain/types';
 
 let client: SupabaseClient | null = null;
 let attached = false;
@@ -54,6 +54,7 @@ function logRow(log: Log) {
     currency: log.currency,
     venue_id: log.venueId,
     consumed_at: new Date(log.at).toISOString(),
+    round_size: log.roundSize ?? null,
     // ethanol_g and night_key are GENERATED columns — never sent, so a client
     // that computes them differently cannot corrupt the data.
   };
@@ -130,6 +131,33 @@ export function attachRemote(): boolean {
         if (error) throw error;
         return;
       }
+      case 'upsert_profile': {
+        // Profile edits go through the same offline queue as everything else,
+        // so a name changed on the train is not lost in the tunnel. The row is
+        // keyed on the user's own id, and the table's update policy already
+        // refuses anyone else's.
+        const p = item.payload as Profile;
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            display_name: p.displayName,
+            username: p.username,
+            avatar_url: p.avatarUrl,
+            bio: p.bio,
+            avatar_tint: p.avatarTint,
+            home_city: p.homeCity,
+            signature_drink_id: p.signatureDrinkId,
+            private_account: p.privateAccount,
+            default_visibility: p.defaultVisibility,
+            unit_system: p.unitSystem,
+            currency: p.currency,
+            region: p.region,
+            onboarded: p.onboarded,
+          })
+          .eq('id', p.id);
+        if (error) throw error;
+        return;
+      }
       case 'end_session': {
         const s = item.payload as { id: string; endedAt: number; mood: string | null; safeHomeAt: number | null };
         const { error } = await supabase
@@ -201,6 +229,7 @@ function toLog(r: Record<string, any>): Log {
     deleted: Boolean(r.deleted_at),
     createdAt: new Date(r.created_at).getTime(),
     source: r.source ?? 'app',
+    roundSize: r.round_size ?? null,
   };
 }
 
@@ -323,3 +352,47 @@ export async function requestAccountDeletion() {
  * record — exactly the interpretation the product must never invite.
  */
 export const NEVER_UPLOADED = ['bacAt', 'paceState'] as const;
+
+/* -------------------------------------------------------------- profile */
+
+/**
+ * Is this handle free?
+ *
+ * Goes through an RPC rather than a select, so the client learns one boolean
+ * and nothing else — no row, no id, no confirmation that a particular person
+ * exists. Returns `null` when there is no backend at all, which the caller
+ * treats as "cannot tell" rather than as "taken".
+ */
+export async function usernameAvailable(username: string): Promise<boolean | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('username_available', { p_username: username });
+  if (error) return null;
+  return Boolean(data);
+}
+
+/**
+ * Uploads an avatar and returns its public URL.
+ *
+ * The file is stored under the user's own id, which is what the bucket policy
+ * keys on, and it is always overwritten rather than versioned — an old avatar
+ * left behind is a copy of someone's face nobody asked to keep.
+ */
+export async function uploadAvatar(userId: string, uri: string): Promise<string | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  try {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    const path = `${userId}/avatar.jpg`;
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+    if (error) return null;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    // Cache-bust, or every device keeps showing the previous face.
+    return data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : null;
+  } catch {
+    return null;
+  }
+}

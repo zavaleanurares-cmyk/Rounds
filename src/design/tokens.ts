@@ -212,6 +212,21 @@ export const motion = {
   fast: 160,
   base: 240,
   slow: 420,
+  /** A celebration is allowed to take its time; nothing else is. */
+  celebrate: 900,
+  /** Delay between successive items in a staggered entrance. */
+  stagger: 45,
+  /**
+   * Springs, expressed the way `Animated.spring` wants them. `settle` is the
+   * default for anything that moves under a finger; `pop` overshoots slightly
+   * and is reserved for a thing appearing; `gentle` never overshoots and is
+   * what numbers and rings use, because a bouncing figure reads as broken.
+   */
+  spring: {
+    settle: { damping: 26, stiffness: 240, mass: 1 },
+    pop: { damping: 15, stiffness: 300, mass: 0.9 },
+    gentle: { damping: 40, stiffness: 180, mass: 1 },
+  },
   /** Every animation must have a Reduce Motion fallback; see `useReduceMotion`. */
 } as const;
 

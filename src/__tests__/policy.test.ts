@@ -93,6 +93,28 @@ describe('no feed, no drinking leaderboard, no drinking streak', () => {
     expect(stats).toContain('dryStreak');
     expect(stats).not.toMatch(/drinkingStreak|nightsInARow/);
   });
+
+  /**
+   * The XP model is the place where a gamified app quietly starts paying people
+   * to drink. These assertions are on the SOURCE, not on a computed number, so
+   * a term that multiplies by anything alcohol-shaped fails the build even if
+   * it happens to score zero for the fixtures in progress.test.ts.
+   */
+  it('the XP terms never touch a quantity of alcohol', () => {
+    const progress = code('src/domain/progress.ts');
+    const breakdown = progress.match(/const breakdown = \{[\s\S]*?\};/)?.[0] ?? '';
+    expect(breakdown).toBeTruthy();
+    expect(breakdown).not.toMatch(/ethanol|totalG|units|abv|volumeMl|drinks\b/i);
+  });
+
+  it('no achievement is worded as a reward for drinking', () => {
+    const progress = read('src/domain/progress.ts');
+    const defs = progress.match(/export const ACHIEVEMENTS[\s\S]*?\] as const;/)?.[0] ?? '';
+    expect(defs).toBeTruthy();
+    // "Drink every…", "most", "biggest", "fastest" — the shapes a volume badge
+    // would have to take.
+    expect(defs).not.toMatch(/\bmost\b|\bbiggest\b|\bfastest\b|\bmarathon\b|\bbinge\b/i);
+  });
 });
 
 describe('there are no emoji in the app', () => {

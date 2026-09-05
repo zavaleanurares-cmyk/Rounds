@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, StatTile, Avatar, EmptyState, Icon } from '@/ui';
 import { useStore } from '@/data/store';
-import { computeStreaks, summariseNights, goalProgress, formatMoney, formatDuration } from '@/domain/stats';
+import { computeStreaks, summariseNights, goalProgress, formatMoney, formatDuration, plural } from '@/domain/stats';
 import { gramsToUnits, UNIT_LABEL } from '@/domain/units';
 import type { Plan, Session } from '@/domain/types';
 import { color, space } from '@/design/tokens';
@@ -152,7 +152,7 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
               </Text>
               <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>
                 {formatDuration((lastSession.endedAt ?? 0) - lastSession.startedAt)} ·{' '}
-                {lastNight.drinks} drinks ·{' '}
+                {plural(lastNight.drinks, 'drink')} ·{' '}
                 {formatMoney(lastNight.spendMinor, profile?.currency ?? 'EUR')}
               </Text>
             </Card>

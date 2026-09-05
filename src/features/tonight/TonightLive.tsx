@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { View, Pressable, Platform } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { feedback } from '@/services/feedback';
 import {
   Screen, Card, Text, PaceRing, PaceEstimate, Icon, Avatar, Glass, useToast, Button, DrinkGlyph,
 } from '@/ui';
@@ -70,7 +70,7 @@ export function TonightLive({ session }: { session: Session }) {
   const liveWith = people.filter((p) => p.liveNow && p.status === 'friend');
 
   const quickLog = (kind: 'water' | 'again') => {
-    if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    feedback('log');
     const log = kind === 'water' ? store.logWater() : store.repeatLast();
     if (!log) {
       toast.show({ message: 'Nothing to repeat yet — log one first.' });

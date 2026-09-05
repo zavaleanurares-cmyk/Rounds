@@ -41,4 +41,6 @@ export const KEYS = {
   settings: 'rounds.settings.v1',
   auth: 'rounds.auth.v1',
   seeded: 'rounds.seeded.v2',
+  /** What the user has already been shown a celebration for. */
+  celebrated: 'rounds.celebrated.v1',
 } as const;

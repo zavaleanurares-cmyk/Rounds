@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, EmptyState, Icon } from '@/ui';
 import { useStore } from '@/data/store';
 import { color, radius, space } from '@/design/tokens';
+import { plural } from '@/domain/stats';
 
 /**
  * D-05 / Y-11 · Bar passport.
@@ -36,7 +37,7 @@ export default function Passport() {
   }
 
   return (
-    <Screen title="Passport" subtitle={`${stamps.length} places · ${stamps.reduce((s, x) => s + x.count, 0)} stamps`} back mood="calm">
+    <Screen title="Passport" subtitle={`${plural(stamps.length, 'place')} · ${plural(stamps.reduce((s, x) => s + x.count, 0), 'stamp')}`} back mood="calm">
       <Card>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.m }}>
           {stamps.map((s) => {

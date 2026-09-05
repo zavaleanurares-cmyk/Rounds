@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, Avatar, NavRow, Group, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
 import { color, space } from '@/design/tokens';
+import { plural } from '@/domain/stats';
 
 /**
  * C-09 · Crew detail.
@@ -35,7 +36,7 @@ export default function CrewDetail() {
   return (
     <Screen
       title={crew.name}
-      subtitle={`${crew.memberIds.length} people`}
+      subtitle={plural(crew.memberIds.length, 'person', 'people')}
       back
       mood="calm"
       accent={color.night[crew.accentIndex % 4]}
@@ -71,7 +72,7 @@ export default function CrewDetail() {
               <Text variant="numericSmall" tone="tertiary" style={{ width: 22 }}>{i + 1}</Text>
               <Avatar name={row.name} size={30} />
               <Text variant="body" style={{ flex: 1 }}>{row.name}</Text>
-              <Text variant="footnote" tone="secondary">{row.nights} nights · {row.venues} places</Text>
+              <Text variant="footnote" tone="secondary">{plural(row.nights, 'night')} · {plural(row.venues, 'place')}</Text>
             </View>
           ))}
         </View>

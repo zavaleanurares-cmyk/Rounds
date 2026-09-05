@@ -47,6 +47,7 @@ import * as remote from './remote';
 import * as analytics from '@/services/analytics';
 import * as push from '@/services/push';
 import * as purchases from '@/services/purchases';
+import { configureFeedback, releaseFeedback } from '@/services/feedback';
 import {
   DEMO_CREWS,
   DEMO_PEOPLE,
@@ -64,6 +65,9 @@ export interface Settings {
   contactMatching: boolean;
   nightDimming: boolean;
   reduceMotion: boolean;
+  /** Sound effects. Off by default — this app gets opened in quiet places. */
+  sound: boolean;
+  haptics: boolean;
   accentIndex: number;
   subscribed: boolean;
 }
@@ -117,6 +121,8 @@ const DEFAULT_SETTINGS: Settings = {
   contactMatching: false,
   nightDimming: true,
   reduceMotion: false,
+  sound: false,
+  haptics: true,
   accentIndex: 0,
   subscribed: false,
 };
@@ -214,6 +220,12 @@ export interface LogDraft {
   id?: string;
   /** Which surface produced it. Instrumented from day one. */
   source?: 'app' | 'live_activity' | 'notification' | 'widget' | 'tile' | 'voice' | 'watch';
+  /**
+   * Set only by the round sheet: how many people the round was for. It records
+   * a social fact and never touches any consumption figure — this log is still
+   * one drink.
+   */
+  roundSize?: number | null;
 }
 
 export interface Store extends State {
@@ -257,6 +269,9 @@ export interface Store extends State {
   setRsvp(planId: string, rsvp: Rsvp): void;
   voteVenue(planId: string, venueId: string): void;
   createPlan(input: { title: string; startsAt: number; note: string | null; venueIds: string[]; inviteeIds: string[] }): Plan;
+  createCrew(input: { name: string; icon: Crew['icon']; accentIndex: number; memberIds?: string[] }): Crew;
+  joinCrew(code: string): Crew | null;
+  addVenue(input: { name: string; area: string | null; category: string | null }): Venue;
   addFriend(personId: string): void;
   respondToRequest(personId: string, accept: boolean): void;
   blockUser(personId: string): void;
@@ -348,6 +363,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (state.hydrated) persist(KEYS.reports, state.reports); }, [state.reports, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.notifications, state.notifications); }, [state.notifications, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.settings, state.settings); }, [state.settings, state.hydrated, persist]);
+
+  /**
+   * Feedback reads its switches from a module-level variable rather than a
+   * hook, so that a cue can be fired from a service or a reducer and not only
+   * from a component. This is the one place that keeps it in step with state.
+   */
+  const { sound, haptics } = state.settings;
+  useEffect(() => {
+    configureFeedback({ sound, haptics });
+    if (!sound) releaseFeedback();
+  }, [sound, haptics]);
 
   /**
    * Demo hook: a host page (the web preview) can ask for the has-history state
@@ -473,6 +499,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         deleted: false,
         createdAt: Date.now(),
         source: draft.source ?? 'app',
+        roundSize: draft.roundSize ?? null,
       };
     },
     // Reads everything through the ref, so it never needs to be rebuilt.
@@ -608,6 +635,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         dob,
         region: 'RO',
         onboarded: false,
+        bio: null,
+        avatarTint: null,
+        homeCity: null,
+        signatureDrinkId: null,
         privateAccount: false,
         defaultVisibility: 'friends',
         modules: { nicotine: false, social: true },
@@ -625,6 +656,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
     updateProfile(patch) {
       dispatch({ type: 'patchProfile', payload: patch });
+      const current = stateRef.current.profile;
+      if (!current) return;
+      // Queued rather than sent, so an edit made offline still lands. The
+      // queue dedupes on id+op, so ten keystrokes are one write.
+      logQueue.enqueue({ id: current.id, op: 'upsert_profile', payload: { ...current, ...patch } });
     },
 
     /* ------------------------------------------------------- logging */
@@ -783,6 +819,58 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       };
       dispatch({ type: 'set', payload: { plans: [...stateRef.current.plans, plan] } });
       return plan;
+    },
+    createCrew(input) {
+      const me = stateRef.current.auth.userId ?? 'me';
+      // The slug is what a join link carries, so it has to be unique locally
+      // before it is unique on the server. A collision gets a numeric suffix
+      // rather than silently replacing the crew already using that slug.
+      const bare = input.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'crew';
+      const taken = new Set(stateRef.current.crews.map((c) => c.slug));
+      let slug = bare;
+      for (let i = 2; taken.has(slug); i++) slug = `${bare}-${i}`;
+
+      const crew: Crew = {
+        id: uuid(),
+        slug,
+        name: input.name.trim(),
+        accentIndex: input.accentIndex,
+        icon: input.icon,
+        memberIds: [me, ...(input.memberIds ?? [])],
+      };
+      dispatch({ type: 'set', payload: { crews: [...stateRef.current.crews, crew] } });
+      return crew;
+    },
+    joinCrew(code) {
+      // Locally a join code IS the slug. The server resolves a real invite code
+      // to a crew; until it answers, matching what we already know is the only
+      // honest thing the client can do — and it must not invent a crew that
+      // does not exist, so an unknown code returns null and the screen says so.
+      const slug = code.trim().toLowerCase();
+      const crew = stateRef.current.crews.find((c) => c.slug === slug || c.id === slug);
+      if (!crew) return null;
+      const me = stateRef.current.auth.userId ?? 'me';
+      if (crew.memberIds.includes(me)) return crew;
+      const joined = { ...crew, memberIds: [...crew.memberIds, me] };
+      dispatch({
+        type: 'set',
+        payload: { crews: stateRef.current.crews.map((c) => (c.id === crew.id ? joined : c)) },
+      });
+      return joined;
+    },
+    addVenue(input) {
+      const venue: Venue = {
+        id: uuid(),
+        providerId: null, // hand-added: it belongs to no provider and never will
+        name: input.name.trim(),
+        area: input.area?.trim() || null,
+        lat: null,
+        lng: null,
+        priceBand: null,
+        category: input.category,
+      };
+      dispatch({ type: 'set', payload: { venues: [...stateRef.current.venues, venue] } });
+      return venue;
     },
     addFriend(personId) {
       dispatch({

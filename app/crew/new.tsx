@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Pressable } from 'react-native';
-import { Sheet, Button, Text, Icon } from '@/ui';
+import { Sheet, Button, Text, Icon, useToast } from '@/ui';
 import { Field } from '@/features/forms/Field';
+import { useStore } from '@/data/store';
 import { color, radius, space } from '@/design/tokens';
 
 const MARKS = ['moon.stars', 'flame', 'sparkles', 'bolt', 'star', 'person.2'] as const;
@@ -10,6 +11,8 @@ const MARKS = ['moon.stars', 'flame', 'sparkles', 'bolt', 'star', 'person.2'] as
 /** C-10 · Create crew. */
 export default function NewCrew() {
   const router = useRouter();
+  const toast = useToast();
+  const { createCrew } = useStore();
   const [name, setName] = useState('');
   const [icon, setIcon] = useState<(typeof MARKS)[number]>('moon.stars');
   const [accentIndex, setAccentIndex] = useState(0);
@@ -17,7 +20,17 @@ export default function NewCrew() {
     <Sheet
       title="New crew"
       onClose={() => router.back()}
-      footer={<Button title="Create" disabled={name.trim().length < 2} onPress={() => router.back()} />}
+      footer={
+        <Button
+          title="Create"
+          disabled={name.trim().length < 2}
+          onPress={() => {
+            const crew = createCrew({ name, icon, accentIndex });
+            router.replace(`/crew/${crew.slug}` as never);
+            setTimeout(() => toast.show({ message: `${crew.name} created` }), 160);
+          }}
+        />
+      }
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
         <Field label="Name" value={name} onChangeText={setName} placeholder="Vineri" autoCapitalize="words" />

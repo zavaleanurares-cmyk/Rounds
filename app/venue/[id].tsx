@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, StatTile, EmptyState, Avatar } from '@/ui';
 import { useStore } from '@/data/store';
-import { formatMoney, formatClock } from '@/domain/stats';
+import { formatMoney, formatClock, plural } from '@/domain/stats';
 import { color, space } from '@/design/tokens';
 
 /** D-02 · Venue detail — dominated by YOUR history here, not by their photos. */
@@ -81,7 +81,7 @@ export default function VenueDetail() {
       </Card>
 
       <Text variant="footnote" tone="quaternary" center>
-        {sessions.filter((s) => s.venueId === id).length} nights recorded here.
+        {plural(sessions.filter((s) => s.venueId === id).length, 'night')} recorded here.
       </Text>
     </Screen>
   );

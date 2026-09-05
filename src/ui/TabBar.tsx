@@ -1,14 +1,17 @@
 import React from 'react';
-import { View, Pressable, Platform } from 'react-native';
+import { Animated, View, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { feedback } from '@/services/feedback';
+import { usePressScale } from './Motion';
 import { Glass } from './Glass';
 import { Glow } from './Glow';
 import { Bloom } from './Bloom';
 import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
 import { color, gradient, radius, space, geometry } from '@/design/tokens';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface TabItem {
   key: string;
@@ -43,6 +46,7 @@ export function TabBar({
   const bottom = Math.max(insets.bottom, 12) + (threeButtonNav ? 12 : 0);
   const left = items.slice(0, 2);
   const rightItems = items.slice(2, 4);
+  const fab = usePressScale(0.92);
 
   const tab = (item: TabItem) => {
     const active = item.key === activeKey;
@@ -50,7 +54,7 @@ export function TabBar({
       <Pressable
         key={item.key}
         onPress={() => {
-          if (Platform.OS !== 'web') void Haptics.selectionAsync();
+          feedback('tap');
           onSelect(item);
         }}
         accessibilityRole="tab"
@@ -105,23 +109,23 @@ export function TabBar({
           }}
         >
           <Glow color={color.brand.tint} radius={geometry.fab.size / 2}>
-            <Pressable
+            <AnimatedPressable
               onPress={() => {
-                if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                feedback('tap');
                 onLog();
               }}
+              {...fab.handlers}
               accessibilityRole="button"
               accessibilityLabel="Log a drink"
               accessibilityHint="Opens the log sheet. One tap logs the same again."
-              style={({ pressed }) => ({
+              style={[fab.style, {
                 width: geometry.fab.size,
                 height: geometry.fab.size,
                 borderRadius: geometry.fab.size / 2,
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                transform: [{ scale: pressed ? 0.94 : 1 }],
-              })}
+              }]}
             >
               <LinearGradient
                 colors={gradient.tintPrimary}
@@ -130,7 +134,7 @@ export function TabBar({
                 style={{ position: 'absolute', inset: 0 }}
               />
               <Icon name="plus" size={26} color="#fff" strokeWidth={2.2} />
-            </Pressable>
+            </AnimatedPressable>
           </Glow>
         </View>
       </View>

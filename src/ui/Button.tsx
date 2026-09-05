@@ -1,13 +1,15 @@
 import React from 'react';
-import { Pressable, View, ActivityIndicator, type ViewStyle } from 'react-native';
+import { Animated, Pressable, View, ActivityIndicator, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { feedback, type Cue } from '@/services/feedback';
+import { usePressScale } from './Motion';
 import { Text } from './Text';
 import { Glass } from './Glass';
 import { Glow } from './Glow';
 import { Icon, type IconName } from './Icon';
 import { color, gradient, radius, space, geometry } from '@/design/tokens';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export type ButtonKind = 'primary' | 'glass' | 'plain' | 'destructive';
 
@@ -22,6 +24,11 @@ export interface ButtonProps {
   compact?: boolean;
   style?: ViewStyle;
   accessibilityHint?: string;
+  /**
+   * Which cue this button fires. Defaults to a light tap; a button that means
+   * something bigger (starting a night, closing one) names its own.
+   */
+  cue?: Cue;
 }
 
 /**
@@ -41,11 +48,13 @@ export function Button({
   compact,
   style,
   accessibilityHint,
+  cue = 'tap',
 }: ButtonProps) {
   const height = compact ? 44 : 56;
+  const scale = usePressScale(0.97);
   const press = () => {
     if (disabled || loading) return;
-    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    feedback(cue);
     onPress?.();
   };
 
@@ -82,14 +91,15 @@ export function Button({
   if (kind === 'primary') {
     return (
       <Glow color={color.brand.tint} radius={radius.button} style={[{ width: full ? '100%' : undefined }, style]}>
-        <Pressable
+        <AnimatedPressable
           onPress={press}
+          {...scale.handlers}
           disabled={disabled || loading}
           accessibilityRole="button"
           accessibilityLabel={title}
           accessibilityHint={accessibilityHint}
           accessibilityState={{ disabled: Boolean(disabled) }}
-          style={({ pressed }) => [container, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+          style={[container, scale.style]}
         >
           <LinearGradient
             colors={gradient.tintPrimary}
@@ -98,47 +108,50 @@ export function Button({
             style={{ position: 'absolute', inset: 0, borderRadius: radius.button }}
           />
           {label}
-        </Pressable>
+        </AnimatedPressable>
       </Glow>
     );
   }
 
   if (kind === 'glass') {
     return (
-      <Pressable
+      <AnimatedPressable
         onPress={press}
+        {...scale.handlers}
         disabled={disabled || loading}
         accessibilityRole="button"
         accessibilityLabel={title}
         accessibilityHint={accessibilityHint}
-        style={({ pressed }) => [{ width: full ? '100%' : undefined, opacity: pressed ? 0.85 : 1 }, style]}
+        style={[{ width: full ? '100%' : undefined }, scale.style, style]}
       >
         <Glass radius={radius.button}>
           <View style={container}>{label}</View>
         </Glass>
-      </Pressable>
+      </AnimatedPressable>
     );
   }
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={press}
+      {...scale.handlers}
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
-      style={({ pressed }) => [
+      style={[
         container,
         {
           backgroundColor: kind === 'destructive' ? 'rgba(255,69,58,0.12)' : color.surface.secondary,
           borderWidth: 1,
           borderColor: kind === 'destructive' ? 'rgba(255,69,58,0.28)' : color.separator,
-          opacity: pressed ? 0.85 : disabled ? 0.4 : 1,
+          opacity: disabled ? 0.4 : 1,
         },
+        scale.style,
         style,
       ]}
     >
       {label}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

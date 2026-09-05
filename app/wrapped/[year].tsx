@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Aurora, Text, Button, Card } from '@/ui';
 import { useStore } from '@/data/store';
-import { summariseNights, formatMoney } from '@/domain/stats';
+import { summariseNights, formatMoney, plural } from '@/domain/stats';
 import { color, geometry, space } from '@/design/tokens';
 
 /**
@@ -34,11 +34,11 @@ export default function Wrapped() {
   }, [scoped, venues]);
 
   const slides = [
-    { title: `${nights.length} nights`, body: `You went out ${nights.length} times in ${y}.`, tint: color.night[0] },
-    { title: `${venueCount} places`, body: topVenue ? `${topVenue} saw more of you than anywhere else.` : 'You kept it varied.', tint: color.night[1] },
+    { title: plural(nights.length, 'night'), body: `You went out ${plural(nights.length, 'time')} in ${y}.`, tint: color.night[0] },
+    { title: plural(venueCount, 'place'), body: topVenue ? `${topVenue} saw more of you than anywhere else.` : 'You kept it varied.', tint: color.night[1] },
     { title: formatMoney(spend, profile?.currency ?? 'EUR'), body: 'What the year cost, across every round you logged.', tint: color.night[3] },
     { title: `${dry} quiet nights`, body: 'The ones you did not go out are part of the picture too.', tint: color.pace.steady, paid: true },
-    { title: `${nights.reduce((s, n) => s + n.drinks, 0)} drinks`, body: 'Plainly, without a chart and without a comparison to anyone else.', tint: color.brand.tint, paid: true },
+    { title: plural(nights.reduce((s, n) => s + n.drinks, 0), 'drink'), body: 'Plainly, without a chart and without a comparison to anyone else.', tint: color.brand.tint, paid: true },
   ];
 
   const slide = slides[index];

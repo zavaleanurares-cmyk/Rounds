@@ -31,7 +31,9 @@ export default function RoundBuilder() {
         <Button
           title={`Log mine · ask ${selected.length}`}
           onPress={() => {
-            store.addLog({ drink });
+            // The round size is a social fact about this log, not a quantity:
+            // one drink is still logged for you and none for anybody else.
+            store.addLog({ drink, roundSize: selected.length + 1 });
             router.back();
             setTimeout(
               () =>

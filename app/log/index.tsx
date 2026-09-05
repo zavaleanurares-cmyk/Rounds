@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { View, Pressable, TextInput, ScrollView, Platform } from 'react-native';
+import { View, Pressable, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { feedback } from '@/services/feedback';
 import { Sheet, Text, Button, Chip, Segmented, Icon, useToast, DrinkGlyph } from '@/ui';
 import { useStore } from '@/data/store';
 import { CATALOG, WATER, byId, searchDrinks, CATEGORY_LABEL, CATEGORY_ORDER } from '@/domain/catalog';
@@ -57,7 +57,7 @@ export default function LogSheet() {
       scale && drink.category !== 'water' && factor !== 1
         ? { ...drink, volumeMl: Math.round(drink.volumeMl * factor), ethanolG: drink.ethanolG * factor }
         : drink;
-    if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    feedback('log');
     store.addLog({ drink: scaled, priceMinor: drink.category === 'water' ? 0 : priceMinor, at });
     router.back();
     // The undo toast is what makes closing optimistically safe.

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Avatar, Icon, Button, EmptyState, NavRow, Group } from '@/ui';
 import { useStore } from '@/data/store';
 import { color, space } from '@/design/tokens';
+import { plural } from '@/domain/stats';
 
 /**
  * C-01 · Circle home. Replaces the Feed.
@@ -95,7 +96,7 @@ export default function Circle() {
                   key={c.id}
                   title={c.name}
                   icon={c.icon}
-                  subtitle={`${c.memberIds.length} people`}
+                  subtitle={plural(c.memberIds.length, 'person', 'people')}
                   onPress={() => router.push(`/crew/${c.slug}` as never)}
                   last={i === crews.length - 1}
                 />
@@ -110,7 +111,7 @@ export default function Circle() {
               <NavRow
                 key={p.id}
                 title={p.displayName}
-                subtitle={p.sharedNights > 0 ? `${p.sharedNights} nights together` : 'no nights together yet'}
+                subtitle={p.sharedNights > 0 ? `${plural(p.sharedNights, 'night')} together` : 'no nights together yet'}
                 onPress={() => router.push(`/people/${p.id}` as never)}
                 last={i === friends.length - 1}
               />

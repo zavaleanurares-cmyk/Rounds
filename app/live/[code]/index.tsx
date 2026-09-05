@@ -7,6 +7,7 @@ import { useStore } from '@/data/store';
 import { useSessionRealtime } from '@/hooks/useSessionRealtime';
 import { paceState } from '@/domain/pace';
 import { paceColor, paceWord, color, radius, space } from '@/design/tokens';
+import { plural } from '@/domain/stats';
 
 /**
  * C-06 · Live room.
@@ -195,7 +196,7 @@ function RosterRow({
   return (
     <View
       style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}
-      accessibilityLabel={`${name}, pace ${state}, ${drinks} drinks`}
+      accessibilityLabel={`${name}, pace ${state}, ${plural(drinks, 'drink')}`}
     >
       <Avatar name={name} size={34} live />
       <View style={{ flex: 1 }}>

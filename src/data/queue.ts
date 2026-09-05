@@ -15,7 +15,13 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type QueueOp = 'insert_log' | 'update_log' | 'delete_log' | 'upsert_session' | 'end_session';
+export type QueueOp =
+  | 'insert_log'
+  | 'update_log'
+  | 'delete_log'
+  | 'upsert_session'
+  | 'end_session'
+  | 'upsert_profile';
 
 export interface QueueItem<T = unknown> {
   /** Client-generated UUID. The row's primary key, not a queue-local id. */

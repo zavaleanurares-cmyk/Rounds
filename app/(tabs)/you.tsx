@@ -3,9 +3,12 @@ import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Screen, Card, Text, Avatar, QuickAction, Sparkline, Icon, EmptyState, NavRow, Group,
+  LevelBar, Enter, DrinkGlyph,
 } from '@/ui';
 import { useStore } from '@/data/store';
-import { spendTotals, weekTotals, heatmap, summariseNights, formatMoney, formatDuration } from '@/domain/stats';
+import { useProgress } from '@/hooks/useProgress';
+import { CATALOG } from '@/domain/catalog';
+import { spendTotals, weekTotals, heatmap, summariseNights, formatMoney, formatDuration, plural } from '@/domain/stats';
 import { color, space, radius } from '@/design/tokens';
 
 /**
@@ -31,6 +34,11 @@ export default function You() {
   );
   const nights = useMemo(() => summariseNights(logs), [logs]);
   const nightOne = logs.length === 0;
+  const { progress } = useProgress();
+  const signature = useMemo(
+    () => CATALOG.find((d) => d.id === profile?.signatureDrinkId) ?? null,
+    [profile?.signatureDrinkId]
+  );
 
   return (
     <Screen
@@ -39,15 +47,49 @@ export default function You() {
       tabBarSpace
       right={{ icon: 'gearshape', label: 'Settings', onPress: () => router.push('/settings') }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <Avatar name={profile?.displayName || 'You'} size={56} />
-        <View style={{ flex: 1 }}>
-          <Text variant="title3">{profile?.displayName || 'You'}</Text>
-          <Text variant="footnote" tone="tertiary">
-            @{profile?.username || 'you'} · level {profile?.level ?? 1}
-          </Text>
-        </View>
-      </View>
+      <Enter from="fade">
+        <Pressable
+          onPress={() => router.push('/profile/edit')}
+          accessibilityRole="button"
+          accessibilityLabel="Edit your profile"
+          accessibilityHint="Name, handle, photo, colour and the line about you"
+          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, gap: space.md })}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <Avatar
+              name={profile?.displayName || 'You'}
+              url={profile?.avatarUrl}
+              tint={profile?.avatarTint}
+              size={56}
+            />
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                <Text variant="title3" numberOfLines={1} style={{ flexShrink: 1 }}>
+                  {profile?.displayName || 'You'}
+                </Text>
+                {signature ? <DrinkGlyph drink={signature} size={22} simple /> : null}
+              </View>
+              <Text variant="footnote" tone="tertiary" numberOfLines={1}>
+                @{profile?.username || 'you'}
+                {profile?.homeCity ? ` · ${profile.homeCity}` : ''}
+              </Text>
+              {profile?.bio ? (
+                <Text variant="footnote" tone="secondary" numberOfLines={2} style={{ marginTop: 2 }}>
+                  {profile.bio}
+                </Text>
+              ) : null}
+            </View>
+            <Icon name="chevron.right" size={15} color={color.label.quaternary} />
+          </View>
+
+          <LevelBar
+            level={progress.level}
+            fraction={progress.fraction}
+            intoLevel={progress.intoLevel}
+            levelSpan={progress.levelSpan}
+          />
+        </Pressable>
+      </Enter>
 
       {nightOne ? (
         <EmptyState
@@ -134,7 +176,7 @@ export default function You() {
               <NavRow
                 key={s.id}
                 title={venues.find((v) => v.id === s.venueId)?.name ?? 'A night out'}
-                subtitle={`${new Date(s.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${formatDuration((s.endedAt ?? 0) - s.startedAt)} · ${n?.drinks ?? 0} drinks`}
+                subtitle={`${new Date(s.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${formatDuration((s.endedAt ?? 0) - s.startedAt)} · ${plural(n?.drinks ?? 0, 'drink')}`}
                 onPress={() => router.push(`/session/${s.id}` as never)}
                 last={i === recent.length - 1}
               />

@@ -4,6 +4,7 @@ import { Screen, Card, Text, Button, useToast } from '@/ui';
 import { View } from 'react-native';
 import { useStore } from '@/data/store';
 import { space } from '@/design/tokens';
+import { plural } from '@/domain/stats';
 
 /**
  * Developer utility. The app ships in the ZERO-DATA state on purpose — night one
@@ -20,7 +21,7 @@ export default function DemoData() {
     <Screen title="Demo data" back mood="night">
       <Card>
         <Text variant="subheadline" tone="secondary">
-          Currently {logs.length} logs across {sessions.length} nights.
+          Currently {plural(logs.length, 'log')} across {plural(sessions.length, 'night')}.
         </Text>
         <View style={{ marginTop: space.md, gap: space.m }}>
           <Button

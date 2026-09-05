@@ -451,6 +451,69 @@ select public.set_current_user(:owner);
 select t.count_eq('the blocked user could not remove the block',
   (select count(*) from public.blocks), 1);
 
+-- ============================================ profile personalisation (27)
+select public.set_current_user(:owner);
+update public.profiles set bio = 'A line about me', avatar_tint = 3, home_city = 'Bucharest'
+  where id = :owner;
+select t.check('you can write your own bio, tint and city',
+  (select bio = 'A line about me' and avatar_tint = 3 from public.profiles where id = :owner), true);
+
+update public.profiles set bio = 'not yours' where id = :friend;
+select t.check('you cannot rewrite somebody else''s bio',
+  (select bio is distinct from 'not yours' from public.profiles where id = :friend), true);
+
+select t.rejects('a bio over 140 characters is refused by the database, not just the client',
+  $$update public.profiles set bio = repeat('x', 141) where id = auth.uid()$$);
+select t.rejects('an avatar tint outside the palette is refused',
+  $$update public.profiles set avatar_tint = 99 where id = auth.uid()$$);
+
+select t.check('a free handle reads as available',
+  public.username_available('a_free_handle'), true);
+select t.check('a handle somebody else holds reads as taken',
+  public.username_available((select username from public.profiles where id = :friend)), false);
+select t.check('your own current handle does not read as taken to you',
+  public.username_available((select username from public.profiles where id = :owner)), true);
+select t.check('a malformed handle is never available',
+  public.username_available('No'), false);
+
+-- =============================================== avatar storage (28)
+select t.check('the avatars bucket is public-read',
+  (select public from storage.buckets where id = 'avatars'), true);
+select t.count_eq('and it is the ONLY public bucket',
+  (select count(*) from storage.buckets where public), 1);
+
+-- `:owner` is already a quoted literal, so it is concatenated directly.
+insert into storage.objects (bucket_id, name) values ('avatars', :owner || '/avatar.jpg');
+select t.count_eq('you can write an avatar inside your own folder',
+  (select count(*) from storage.objects where bucket_id = 'avatars'), 1);
+
+select t.rejects('you cannot write an avatar into somebody else''s folder',
+  $$insert into storage.objects (bucket_id, name)
+    values ('avatars', '00000000-0000-0000-0000-0000000000a2/avatar.jpg')$$);
+
+select public.set_current_user(:friend);
+-- RLS filters an UPDATE rather than raising on it, so the assertion is that it
+-- touched nothing — a policy that "rejects" here would be a policy that never
+-- ran at all.
+with attempt as (
+  update storage.objects set name = name
+   where bucket_id = 'avatars' and (storage.foldername(name))[1] = :owner
+  returning 1
+)
+select t.count_eq('and you cannot overwrite theirs either — the update matches no rows',
+  (select count(*) from attempt), 0);
+select t.count_eq('but an avatar IS readable by anyone — that is the point of the bucket',
+  (select count(*) from storage.objects where bucket_id = 'avatars'), 1);
+
+-- ============================================================ round size
+select public.set_current_user(:owner);
+select t.rejects('a round of one is not a round',
+  $$insert into public.consumption_logs (id, user_id, drink_id, drink_name, category, volume_ml, abv, round_size)
+    values (gen_random_uuid(), auth.uid(), 'beer-pint', 'Pint', 'beer', 568, 4.5, 1)$$);
+select t.rejects('and a round of a hundred is a typo',
+  $$insert into public.consumption_logs (id, user_id, drink_id, drink_name, category, volume_ml, abv, round_size)
+    values (gen_random_uuid(), auth.uid(), 'beer-pint', 'Pint', 'beer', 568, 4.5, 100)$$);
+
 reset role;
 
 -- ------------------------------------------------------------------ summary

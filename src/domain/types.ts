@@ -19,6 +19,17 @@ export interface Profile {
   dob: string | null;
   region: string;
   onboarded: boolean;
+  /** A line about yourself. 140 characters, deliberately. */
+  bio: string | null;
+  /**
+   * Index into the avatar palette. Null means "pick one from my name", which is
+   * what every profile starts as — there is never a grey blob.
+   */
+  avatarTint: number | null;
+  /** Coarse and user-typed. A city, never a coordinate. */
+  homeCity: string | null;
+  /** A drink from the catalogue, shown as its drawn glyph. */
+  signatureDrinkId: string | null;
   privateAccount: boolean;
   defaultVisibility: Visibility;
   modules: { nicotine: boolean; social: boolean };
@@ -81,6 +92,12 @@ export interface Log {
    * says whether the promise is being kept.
    */
   source: 'app' | 'live_activity' | 'notification' | 'widget' | 'tile' | 'voice' | 'watch';
+  /**
+   * How many people this drink was bought for, when it was logged from the
+   * round sheet. Null for an ordinary log — it is not a count of drinks and it
+   * never affects any consumption figure.
+   */
+  roundSize?: number | null;
 }
 
 export interface Session {

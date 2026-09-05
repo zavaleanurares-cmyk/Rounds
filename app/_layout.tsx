@@ -12,6 +12,8 @@ import { attachRemote } from '@/data/remote';
 import { useSystemSurfaces } from '@/hooks/useSystemSurfaces';
 import { installPwa } from '@/services/pwa';
 import { useNightState } from '@/hooks/useNightState';
+import { useProgress } from '@/hooks/useProgress';
+import { Celebration } from '@/ui/Celebrate';
 import { color } from '@/design/tokens';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -129,6 +131,16 @@ function Routes() {
   );
 }
 
+/**
+ * Celebrations are mounted once, at the root, rather than on the screens that
+ * earn them — an achievement that lands while you are on the map should still
+ * be seen, and a modal owned by a screen dies when that screen unmounts.
+ */
+function Celebrations() {
+  const { celebration, dismiss } = useProgress();
+  return <Celebration content={celebration} onDismiss={dismiss} />;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg.canvas }}>
@@ -137,6 +149,7 @@ export default function RootLayout() {
           <ToastProvider>
             <AuthGate>
               <Routes />
+              <Celebrations />
             </AuthGate>
           </ToastProvider>
         </StoreProvider>

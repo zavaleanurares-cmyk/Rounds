@@ -3,7 +3,7 @@ import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Segmented, NavRow, Group, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
-import { summariseNights, formatDuration, formatMoney } from '@/domain/stats';
+import { summariseNights, formatDuration, formatMoney, plural } from '@/domain/stats';
 import { nightKey } from '@/domain/nightKey';
 import { color, space } from '@/design/tokens';
 
@@ -46,7 +46,7 @@ export default function Nights() {
               <NavRow
                 key={s.id}
                 title={venues.find((v) => v.id === s.venueId)?.name ?? s.title ?? 'A night out'}
-                subtitle={`${new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${formatDuration((s.endedAt ?? 0) - s.startedAt)} · ${n?.drinks ?? 0} drinks · ${formatMoney(n?.spendMinor ?? 0, profile?.currency ?? 'EUR')}`}
+                subtitle={`${new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${formatDuration((s.endedAt ?? 0) - s.startedAt)} · ${plural(n?.drinks ?? 0, 'drink')} · ${formatMoney(n?.spendMinor ?? 0, profile?.currency ?? 'EUR')}`}
                 onPress={() => router.push(`/session/${s.id}` as never)}
                 last={i === ended.length - 1}
               />

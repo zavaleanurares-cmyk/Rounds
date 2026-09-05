@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Screen, Card, Text, Avatar, StatTile } from '@/ui';
 import { useStore } from '@/data/store';
 import { color, space } from '@/design/tokens';
+import { plural } from '@/domain/stats';
 
 /**
  * Y-02 · Public profile preview — "this is what friends see".
@@ -41,7 +42,7 @@ export default function ProfilePreview() {
             'How much you drink, ever',
             'Your pace, your estimate, your pace curve',
             'Your spend, your goals, your streaks',
-            `Any of your ${sessions.length} nights unless they were there or you shared it`,
+            `Any of your ${plural(sessions.length, 'night')} unless they were there or you shared it`,
             'Your body basics, your date of birth, your location',
           ].map((line) => (
             <Text key={line} variant="subheadline" tone="secondary">· {line}</Text>
