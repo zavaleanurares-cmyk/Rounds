@@ -193,11 +193,10 @@ begin
 end;
 $$;
 
--- Schedules. pg_cron in a Supabase project; any scheduler elsewhere.
--- select cron.schedule('safety-escalation', '* * * * *',  $$select public.run_safety_escalation()$$);
--- select cron.schedule('morning-recaps',    '*/15 * * * *', $$select public.queue_morning_recaps()$$);
--- select cron.schedule('purge-locations',   '*/5 * * * *',  $$select public.purge_expired_locations()$$);
--- select cron.schedule('purge-accounts',    '0 3 * * *',    $$select public.purge_deleted_accounts()$$);
+-- Schedules live in 00049, which installs them where pg_cron exists and says so
+-- where it does not. They were comments here for a long time, and the
+-- consequence was that `run_safety_escalation` never ran in production at all —
+-- the job the whole safety feature depends on, scheduled nowhere.
 
 /**
  * Events.

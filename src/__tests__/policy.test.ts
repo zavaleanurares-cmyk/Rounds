@@ -714,6 +714,62 @@ describe('the app is not write-only', () => {
     expect(guard).toContain("'/(tabs)/circle'");
   });
 
+  /**
+   * Every job this schema defines is scheduled somewhere.
+   *
+   * All of them were written, tested and left unscheduled: the `cron.schedule`
+   * calls sat as comments so the file would apply to a bare Postgres, and the
+   * consequence in production was that `run_safety_escalation` never ran at
+   * all. The safe-arrival check that the whole safety feature exists for
+   * silently never fired, and nothing anywhere said so.
+   */
+  it('every queue job is scheduled, and the drain is written down', () => {
+    const schedules = readFileSync('supabase/migrations/00049_schedules.sql', 'utf8');
+    const jobs = [
+      'run_safety_escalation',
+      'queue_morning_recaps',
+      'queue_weekly_recaps',
+      'queue_plan_reminders',
+      'purge_expired_locations',
+      'purge_deleted_accounts',
+    ];
+    for (const job of jobs) {
+      expect({ job, scheduled: schedules.includes(job) }).toEqual({ job, scheduled: true });
+    }
+    // And it must degrade rather than fail where pg_cron is absent, or the
+    // whole SQL suite stops running on a laptop.
+    expect(schedules).toContain("pg_extension where extname = 'pg_cron'");
+
+    // The drain is an edge function and cannot be scheduled from SQL, so the
+    // one thing everything else depends on has to be documented instead.
+    const deploy = readFileSync('docs/deploy.md', 'utf8');
+    expect(deploy).toContain('send-outbound');
+    expect(deploy).toContain('drain-outbound');
+  });
+
+  /**
+   * `alter type ... add value` cannot be used in the transaction that adds it.
+   *
+   * It applied cleanly in 00043 because that file contains nothing else. The
+   * next person to add an enum value and use it in the same migration gets a
+   * failure at deploy time against a real database, which the test suite —
+   * where each file is its own autocommitting psql run — would not have caught.
+   */
+  it('no migration both adds an enum value and uses it', () => {
+    const dir = 'supabase/migrations';
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql'))) {
+      const sql = readFileSync(join(dir, file), 'utf8');
+      const added = [...sql.matchAll(/alter type [\w.]+ add value (?:if not exists )?'(\w+)'/gi)]
+        .map((m) => m[1]);
+      if (added.length === 0) continue;
+      for (const value of added) {
+        // Any other mention of the literal in the same file is a use of it.
+        const uses = sql.split(`'${value}'`).length - 1;
+        expect({ file, value, mentions: uses }).toEqual({ file, value, mentions: 1 });
+      }
+    }
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

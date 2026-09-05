@@ -16,3 +16,9 @@
  * alongside drinks.
  */
 alter type public.drink_category add value if not exists 'nicotine';
+
+-- Nothing else belongs in this file. `alter type ... add value` cannot be used
+-- in the transaction that adds it, so a migration that adds a value and then
+-- inserts, casts or compares against it fails on a real database — and would
+-- not fail in the SQL suite, where each file is its own autocommitting run.
+-- `policy.test.ts` asserts this for every migration, not just this one.

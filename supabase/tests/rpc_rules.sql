@@ -529,6 +529,81 @@ select t.count_eq('a joined night comes back in the pull',
 select t.count_eq('a night you own is not double-counted there',
   (select count(*) from public.joined_sessions() where owner_id = :me), 0);
 
+-- ========================================= 14 · the two jobs that never existed
+--
+-- `weekly` and `plans` were offered as switches, honoured by `may_notify`, and
+-- sent by nothing at all — a switch wired to a gate in front of a door nobody
+-- walks through.
+reset role;
+delete from public.outbound;
+delete from public.sessions where owner_id in (:me, :them, :other);
+delete from public.plans where created_by in (:me, :them, :other);
+
+-- A night in the week that just ended, and one in the week before that.
+insert into public.sessions (id, owner_id, visibility, started_at, ended_at) values
+  ('00000000-0000-0000-0000-00000000e901', :me, 'private',
+   date_trunc('week', now() - interval '7 days') + interval '20 hours',
+   date_trunc('week', now() - interval '7 days') + interval '25 hours');
+
+select t.count_eq('somebody who was out last week gets a recap',
+  public.queue_weekly_recaps()::bigint, 1);
+select t.count_eq('running it again on the same Monday sends nothing more',
+  public.queue_weekly_recaps()::bigint, 0);
+select t.count_eq('and it is one row, for the week it covers',
+  (select count(*) from public.outbound where category = 'weekly' and user_id = :me), 1);
+select t.check('addressed in the account''s own language',
+  (select payload->>'title' = public.say(:me, 'weekly.title')
+     from public.outbound where category = 'weekly'), true);
+
+select t.count_eq('somebody who was not out gets nothing — a recap of nothing is not a notification',
+  (select count(*) from public.outbound where category = 'weekly' and user_id = :other), 0);
+
+-- The switch, which is the whole reason this job exists.
+delete from public.outbound;
+update public.profiles
+   set notification_prefs = jsonb_set(notification_prefs, '{weekly}', 'false')
+ where id = :me;
+select t.count_eq('with the weekly switch off, nothing is queued at all',
+  public.queue_weekly_recaps()::bigint, 0);
+update public.profiles
+   set notification_prefs = jsonb_set(notification_prefs, '{weekly}', 'true')
+ where id = :me;
+
+-- Plan reminders.
+delete from public.outbound;
+insert into public.plans (id, created_by, title, starts_at) values
+  ('00000000-0000-0000-0000-00000000ea01', :me, 'Friday', now() + interval '90 minutes'),
+  ('00000000-0000-0000-0000-00000000ea02', :me, 'Next week', now() + interval '5 days');
+insert into public.plan_invitees (plan_id, user_id, rsvp) values
+  ('00000000-0000-0000-0000-00000000ea01', :me,    'yes'),
+  ('00000000-0000-0000-0000-00000000ea01', :them,  'no'),
+  ('00000000-0000-0000-0000-00000000ea01', :other, 'maybe'),
+  ('00000000-0000-0000-0000-00000000ea02', :me,    'yes');
+
+select t.count_eq('only the people who said yes are reminded',
+  public.queue_plan_reminders()::bigint, 1);
+select t.count_eq('and the one who declined is not nagged about it',
+  (select count(*) from public.outbound where category = 'plans' and user_id = :them), 0);
+select t.count_eq('nor is a maybe',
+  (select count(*) from public.outbound where category = 'plans' and user_id = :other), 0);
+select t.count_eq('a plan five days out is not tonight''s problem',
+  (select count(*) from public.outbound
+    where category = 'plans' and payload->>'planId' = '00000000-0000-0000-0000-00000000ea02'), 0);
+select t.count_eq('and running the job every quarter hour reminds once',
+  public.queue_plan_reminders()::bigint, 0);
+
+delete from public.outbound;
+update public.profiles
+   set notification_prefs = jsonb_set(notification_prefs, '{plans}', 'false')
+ where id = :me;
+select t.count_eq('with the plans switch off, nothing is queued',
+  public.queue_plan_reminders()::bigint, 0);
+update public.profiles
+   set notification_prefs = jsonb_set(notification_prefs, '{plans}', 'true')
+ where id = :me;
+
+delete from public.plans where created_by in (:me, :them, :other);
+
 -- ------------------------------------------------------------------ cleanup
 reset role;
 delete from public.session_participants;
