@@ -15,13 +15,57 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * Every write the client can make.
+ *
+ * The list is explicit rather than a generic `upsert:<table>` for one reason:
+ * the policy test asserts that `src/data/store.tsx` is the ONLY place anything
+ * is enqueued, and a named op makes it obvious at the call site what a store
+ * action actually sends. A generic op would let a new table start syncing
+ * without anybody reviewing what it sends.
+ *
+ * Anything absent from this list does not leave the device. That is a design
+ * statement, not an omission: session_locations, session_messages and
+ * session_reactions are live-only and go over realtime, and `events` is
+ * fire-and-forget analytics.
+ */
 export type QueueOp =
+  /* the night */
   | 'insert_log'
   | 'update_log'
   | 'delete_log'
   | 'upsert_session'
   | 'end_session'
-  | 'upsert_profile';
+  | 'join_session'
+  | 'leave_session'
+  /* the account */
+  | 'upsert_profile'
+  | 'upsert_goal'
+  /* safety — the reason this list grew */
+  | 'upsert_contact'
+  | 'delete_contact'
+  | 'arm_check'
+  | 'resolve_check'
+  /* people */
+  | 'upsert_friendship'
+  | 'delete_friendship'
+  | 'insert_block'
+  | 'delete_block'
+  | 'insert_report'
+  /* crews */
+  | 'upsert_crew'
+  | 'upsert_crew_member'
+  | 'delete_crew_member'
+  /* plans */
+  | 'upsert_plan'
+  | 'upsert_plan_invitee'
+  | 'set_plan_vote'
+  | 'clear_plan_vote'
+  | 'add_plan_venue'
+  /* places */
+  | 'upsert_venue'
+  /* inbox */
+  | 'read_notification';
 
 export interface QueueItem<T = unknown> {
   /** Client-generated UUID. The row's primary key, not a queue-local id. */
@@ -98,7 +142,27 @@ export class LogQueue {
    * Synchronous from the caller's point of view. Persisting and syncing are
    * both fire-and-forget — a log must never block on I/O.
    */
+  /**
+   * Demo data must never leave the device.
+   *
+   * `Settings › Demo data` fills the app with fourteen weeks of plausible
+   * history and a cast of people with ids like `p1` and `c1`. That is fine
+   * until somebody RSVPs to the demo plan or blocks the demo friend — those go
+   * through the real store actions, which enqueue, and the row would land on
+   * that person's actual account. Fake friends and fake crews appearing on a
+   * real profile is a far worse outcome than a write being dropped.
+   *
+   * Every real row in this schema is keyed by a UUID, so the check is simply
+   * whether the id looks like one. A synthetic composite key (`a:b`) is checked
+   * part by part.
+   */
+  private isSyncable(id: string): boolean {
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return id.split(':').every((part) => UUID.test(part));
+  }
+
   enqueue<T>(item: Omit<QueueItem<T>, 'createdAt' | 'attempts' | 'lastError'>): void {
+    if (!this.isSyncable(item.id)) return;
     // Idempotent by client UUID: re-enqueueing the same id replaces, never duplicates.
     const existing = this.items.findIndex((q) => q.id === item.id && q.op === item.op);
     const record: QueueItem<T> = {

@@ -13,7 +13,10 @@ import {
 } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logQueue, type QueueItem } from './queue';
-import type { Log, Profile, Session } from '@/domain/types';
+import type {
+  Log, Profile, Session, Person, Crew, Plan, Venue, Goal, TrustedContact,
+  SafeArrivalCheck, AppNotification, Rsvp,
+} from '@/domain/types';
 
 let client: SupabaseClient | null = null;
 let attached = false;
@@ -171,17 +174,253 @@ export function attachRemote(): boolean {
         if (error) throw error;
         return;
       }
+      default:
+        return writeExtended(supabase, item);
     }
   });
 
   return true;
 }
 
+
+/**
+ * Everything the queue can write beyond logs, sessions and profiles.
+ *
+ * Split out of the switch above rather than added to it: the original three
+ * carry hand-written row builders and comments explaining why — generated
+ * columns, tombstones, client-minted UUIDs — and burying them in a thirty-case
+ * switch would lose that. These are ordinary rows.
+ *
+ * Every one is an UPSERT on a key the client already knows, so a replay after
+ * a flaky night is a no-op rather than a duplicate. That is the same property
+ * that makes the log queue safe, applied to the rest of the schema.
+ */
+async function writeExtended(supabase: SupabaseClient, item: QueueItem): Promise<void> {
+  const p = item.payload as Record<string, any>;
+  const fail = (error: { message: string } | null) => {
+    if (error) throw new Error(error.message);
+  };
+
+  switch (item.op) {
+    /* ------------------------------------------------------------- night */
+    case 'join_session':
+      return fail(
+        (await supabase
+          .from('session_participants')
+          .upsert({ session_id: p.sessionId, user_id: p.userId }, { onConflict: 'session_id,user_id' })).error
+      );
+    case 'leave_session':
+      return fail(
+        (await supabase
+          .from('session_participants')
+          .delete()
+          .eq('session_id', p.sessionId)
+          .eq('user_id', p.userId)).error
+      );
+
+    /* ----------------------------------------------------------- account */
+    case 'upsert_goal':
+      return fail(
+        (await supabase
+          .from('goals')
+          .upsert(
+            { user_id: p.userId, type: p.type, target: p.target, enabled: p.enabled },
+            { onConflict: 'user_id,type' }
+          )).error
+      );
+
+    /* ------------------------------------------------------------ safety */
+    // The ops this whole change exists for. Until these ran, the server-side
+    // escalation had an empty table to act on.
+    case 'upsert_contact':
+      return fail(
+        (await supabase
+          .from('trusted_contacts')
+          .upsert({ id: p.id, user_id: p.userId, name: p.name, phone: p.phone }, { onConflict: 'id' })).error
+      );
+    case 'delete_contact':
+      return fail((await supabase.from('trusted_contacts').delete().eq('id', p.id)).error);
+    case 'arm_check':
+      return fail(
+        (await supabase
+          .from('safe_arrival_checks')
+          .upsert(
+            {
+              id: p.id,
+              user_id: p.userId,
+              session_id: p.sessionId ?? null,
+              deadline_at: new Date(p.deadlineAt).toISOString(),
+              message: p.message,
+              // Which contacts THIS check named. Null means all of them, so an
+              // empty choice must never silently become everyone.
+              contact_ids: p.contactIds?.length ? p.contactIds : null,
+            },
+            { onConflict: 'id' }
+          )).error
+      );
+    case 'resolve_check':
+      return fail(
+        (await supabase
+          .from('safe_arrival_checks')
+          .update({ resolved_at: new Date(p.resolvedAt ?? Date.now()).toISOString() })
+          .eq('id', p.id)).error
+      );
+
+    /* ------------------------------------------------------------ people */
+    case 'upsert_friendship':
+      return fail(
+        (await supabase
+          .from('friendships')
+          .upsert(
+            { requester_id: p.requesterId, addressee_id: p.addresseeId, status: p.status },
+            { onConflict: 'requester_id,addressee_id' }
+          )).error
+      );
+    case 'delete_friendship':
+      return fail(
+        (await supabase
+          .from('friendships')
+          .delete()
+          .or(
+            `and(requester_id.eq.${p.a},addressee_id.eq.${p.b}),and(requester_id.eq.${p.b},addressee_id.eq.${p.a})`
+          )).error
+      );
+    case 'insert_block':
+      return fail(
+        (await supabase
+          .from('blocks')
+          .upsert({ blocker_id: p.blockerId, blocked_id: p.blockedId }, { onConflict: 'blocker_id,blocked_id' })).error
+      );
+    case 'delete_block':
+      return fail(
+        (await supabase.from('blocks').delete().eq('blocker_id', p.blockerId).eq('blocked_id', p.blockedId)).error
+      );
+    case 'insert_report':
+      return fail(
+        (await supabase.from('reports').upsert(
+          {
+            id: p.id,
+            reporter_id: p.reporterId,
+            target_type: p.targetType,
+            target_id: p.targetId,
+            reason: p.reason,
+            detail: p.detail,
+          },
+          { onConflict: 'id' }
+        )).error
+      );
+
+    /* ------------------------------------------------------------- crews */
+    case 'upsert_crew':
+      return fail(
+        (await supabase.from('crews').upsert(
+          {
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            accent_index: p.accentIndex,
+            icon: p.icon,
+            created_by: p.createdBy,
+          },
+          { onConflict: 'id' }
+        )).error
+      );
+    case 'upsert_crew_member':
+      return fail(
+        (await supabase
+          .from('crew_members')
+          .upsert({ crew_id: p.crewId, user_id: p.userId }, { onConflict: 'crew_id,user_id' })).error
+      );
+    case 'delete_crew_member':
+      return fail(
+        (await supabase.from('crew_members').delete().eq('crew_id', p.crewId).eq('user_id', p.userId)).error
+      );
+
+    /* ------------------------------------------------------------- plans */
+    case 'upsert_plan':
+      return fail(
+        (await supabase.from('plans').upsert(
+          {
+            id: p.id,
+            created_by: p.createdBy,
+            crew_id: p.crewId ?? null,
+            title: p.title,
+            note: p.note ?? null,
+            starts_at: new Date(p.startsAt).toISOString(),
+          },
+          { onConflict: 'id' }
+        )).error
+      );
+    case 'upsert_plan_invitee':
+      return fail(
+        (await supabase
+          .from('plan_invitees')
+          .upsert({ plan_id: p.planId, user_id: p.userId, rsvp: p.rsvp }, { onConflict: 'plan_id,user_id' })).error
+      );
+    case 'add_plan_venue':
+      // The shortlist, which is not the votes. A place proposed that nobody has
+      // voted for yet still has to exist, or a plan syncs without the choice it
+      // was created to offer.
+      return fail(
+        (await supabase
+          .from('plan_venues')
+          .upsert({ plan_id: p.planId, venue_id: p.venueId, added_by: p.addedBy }, { onConflict: 'plan_id,venue_id' })).error
+      );
+    case 'set_plan_vote':
+      return fail(
+        (await supabase
+          .from('plan_venue_votes')
+          .upsert(
+            { plan_id: p.planId, venue_id: p.venueId, user_id: p.userId },
+            { onConflict: 'plan_id,venue_id,user_id' }
+          )).error
+      );
+    case 'clear_plan_vote':
+      return fail(
+        (await supabase.from('plan_venue_votes').delete().eq('plan_id', p.planId).eq('user_id', p.userId)).error
+      );
+
+    /* ------------------------------------------------------------ places */
+    case 'upsert_venue':
+      return fail(
+        (await supabase.from('venues').upsert(
+          {
+            id: p.id,
+            provider_id: p.providerId ?? null,
+            name: p.name,
+            area: p.area ?? null,
+            lat: p.lat ?? null,
+            lng: p.lng ?? null,
+            price_band: p.priceBand ?? null,
+            category: p.category ?? null,
+          },
+          { onConflict: 'id' }
+        )).error
+      );
+
+    /* ------------------------------------------------------------- inbox */
+    case 'read_notification':
+      return fail(
+        (await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', p.id)).error
+      );
+  }
+}
+
 /* ------------------------------------------------------------------- pull */
 
 export interface PullResult {
+  profile: Partial<Profile> | null;
   logs: Log[];
   sessions: Session[];
+  goals: Goal[];
+  people: Person[];
+  crews: Crew[];
+  plans: Plan[];
+  venues: Venue[];
+  trustedContacts: TrustedContact[];
+  activeCheck: SafeArrivalCheck | null;
+  blocked: string[];
+  notifications: AppNotification[];
   serverTime: number;
 }
 
@@ -198,15 +437,169 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
     since: (since ?? new Date(0)).toISOString(),
   });
   if (error) throw error;
-  const payload = data as {
-    logs: Array<Record<string, unknown>>;
-    sessions: Array<Record<string, unknown>>;
-    server_time: string;
+  const p = data as Record<string, any>;
+  const rows = (k: string): Array<Record<string, any>> => (Array.isArray(p[k]) ? p[k] : []);
+  const me = p.profile?.id as string | undefined;
+
+  /* Friendships and crew/plan membership are separate tables on the server and
+     one object on the client, so the joining happens here. The store should
+     never have to know the schema's shape. */
+  const friendships = rows('friendships');
+  const crewMembers = rows('crew_members');
+  const invitees = rows('plan_invitees');
+  const votes = rows('plan_votes');
+  const shortlist = rows('plan_venues');
+  const peopleRows = rows('people');
+  const crewRows = rows('crews');
+  const venueRows = rows('venues');
+  const byId = new Map(peopleRows.map((x) => [x.id as string, x]));
+
+  const statusFor = (otherId: string): Person['status'] => {
+    const f = friendships.find((x) => x.requester_id === otherId || x.addressee_id === otherId);
+    if (!f) return 'none';
+    if (f.status === 'accepted') return 'friend';
+    // Which side of a pending request this account is on decides what the UI
+    // offers: accept and decline, or "requested".
+    return f.requester_id === me ? 'pending_out' : 'pending_in';
   };
+
   return {
-    logs: (payload.logs ?? []).map(toLog),
-    sessions: (payload.sessions ?? []).map(toSession),
-    serverTime: new Date(payload.server_time).getTime(),
+    profile: p.profile ? toProfilePatch(p.profile, p.private) : null,
+    logs: rows('logs').map(toLog),
+    sessions: rows('sessions').map(toSession),
+    goals: rows('goals').map((g) => ({
+      type: g.type,
+      target: Number(g.target),
+      enabled: Boolean(g.enabled),
+    })),
+    people: peopleRows.map((x) => ({
+      id: x.id,
+      displayName: x.display_name ?? '',
+      username: x.username ?? '',
+      avatarUrl: x.avatar_url ?? null,
+      level: Number(x.level ?? 1),
+      // Derived locally from shared sessions; the server does not count it.
+      sharedNights: 0,
+      mutualCrews: crewRows
+        .filter((c) => crewMembers.some((m) => m.crew_id === c.id && m.user_id === x.id))
+        .map((c) => c.name as string),
+      status: statusFor(x.id),
+      // Realtime decides this, never a pull.
+      liveNow: false,
+    })),
+    crews: crewRows.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.name,
+      accentIndex: Number(c.accent_index ?? 0),
+      icon: c.icon ?? 'moon.stars',
+      memberIds: crewMembers.filter((m) => m.crew_id === c.id).map((m) => m.user_id as string),
+    })),
+    plans: rows('plans').map((pl) => ({
+      id: pl.id,
+      title: pl.title,
+      startsAt: new Date(pl.starts_at).getTime(),
+      crewId: pl.crew_id ?? null,
+      note: pl.note ?? null,
+      createdBy: pl.created_by,
+      invitees: invitees
+        .filter((i) => i.plan_id === pl.id)
+        .map((i) => ({
+          userId: i.user_id,
+          displayName: (byId.get(i.user_id)?.display_name as string) ?? '',
+          avatarUrl: (byId.get(i.user_id)?.avatar_url as string) ?? null,
+          rsvp: (i.rsvp ?? null) as Rsvp,
+        })),
+      // The shortlist is its own table; votes only decide the counts on it.
+      // Deriving candidates from votes lost every option nobody had picked yet.
+      venueCandidates: [
+        ...new Set([
+          ...shortlist.filter((c) => c.plan_id === pl.id).map((c) => c.venue_id as string),
+          ...votes.filter((v) => v.plan_id === pl.id).map((v) => v.venue_id as string),
+        ]),
+      ].map((venueId) => ({
+        venueId,
+        name: (venueRows.find((v) => v.id === venueId)?.name as string) ?? '',
+        votes: votes
+          .filter((v) => v.plan_id === pl.id && v.venue_id === venueId)
+          .map((v) => v.user_id as string),
+      })),
+    })),
+    venues: venueRows.map((v) => ({
+      id: v.id,
+      providerId: v.provider_id ?? null,
+      name: v.name,
+      area: v.area ?? null,
+      lat: v.lat ?? null,
+      lng: v.lng ?? null,
+      priceBand: v.price_band ?? null,
+      category: v.category ?? null,
+    })),
+    trustedContacts: rows('trusted_contacts').map((c) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+    })),
+    activeCheck: (() => {
+      const c = rows('safe_arrival_checks')[0];
+      if (!c) return null;
+      return {
+        id: c.id,
+        deadlineAt: new Date(c.deadline_at).getTime(),
+        armedAt: new Date(c.armed_at).getTime(),
+        resolvedAt: c.resolved_at ? new Date(c.resolved_at).getTime() : null,
+        message: c.message,
+        contactIds: (c.contact_ids as string[] | null) ?? [],
+      };
+    })(),
+    blocked: rows('blocks').map((b) => b.blocked_id as string),
+    notifications: rows('notifications').map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      title: n.title,
+      body: n.body,
+      at: new Date(n.created_at).getTime(),
+      read: Boolean(n.read_at),
+      href: n.href ?? null,
+    })),
+    serverTime: new Date(p.server_time).getTime(),
+  };
+}
+
+/**
+ * The server's profile, as a PATCH rather than a whole object.
+ *
+ * The client's `Profile` carries fields the server splits across two tables and
+ * a couple it does not store at all, so a pull contributes what it knows and
+ * leaves the rest of the local row alone. Returning a whole object here would
+ * blank a field the moment the server stopped sending it.
+ */
+function toProfilePatch(r: Record<string, any>, priv: Record<string, any> | null): Partial<Profile> {
+  return {
+    id: r.id,
+    displayName: r.display_name ?? '',
+    username: r.username ?? '',
+    avatarUrl: r.avatar_url ?? null,
+    avatarTint: r.avatar_tint ?? null,
+    bio: r.bio ?? null,
+    homeCity: r.home_city ?? null,
+    signatureDrinkId: r.signature_drink_id ?? null,
+    level: Number(r.level ?? 1),
+    unitSystem: r.unit_system ?? 'EU',
+    currency: r.currency ?? 'EUR',
+    region: r.region ?? 'RO',
+    privateAccount: Boolean(r.private_account),
+    defaultVisibility: r.default_visibility ?? 'friends',
+    onboarded: Boolean(r.onboarded),
+    ...(priv
+      ? {
+          weightKg: priv.weight_kg ?? null,
+          sex: priv.sex ?? null,
+          dob: priv.dob ?? null,
+          modules: priv.modules ?? { nicotine: false, social: true },
+          intent: priv.intent ?? [],
+        }
+      : {}),
   };
 }
 

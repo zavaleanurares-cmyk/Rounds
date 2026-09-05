@@ -336,3 +336,88 @@ describe('billing is hidden', () => {
     expect(purchases).toMatch(/export type ProductId/);
   });
 });
+
+describe('the app is not write-only', () => {
+  /**
+   * The bug this guards against, in full:
+   *
+   * The schema had 24 tables with RLS policies the matrix proved correct, and
+   * the client wrote to three of them. Friends, crews, plans, trusted contacts
+   * and the armed safe-arrival check lived in AsyncStorage on one device.
+   * `run_safety_escalation` ran every minute against an empty table, so the
+   * escalation the whole feature exists for could never fire for a real user.
+   * Nothing failed. Nothing logged. It just silently did not happen.
+   *
+   * These assertions are structural because that is the only way to catch it:
+   * a behavioural test of the escalation passes fine when the table is empty.
+   */
+
+  const store = code('src/data/store.tsx');
+  const queue = code('src/data/queue.ts');
+  const remote = code('src/data/remote.ts');
+
+  /** Every op the queue declares. */
+  const OPS = [...queue.matchAll(/^\s*\|\s*'(\w+)'/gm)].map((m) => m[1]);
+
+  it('declares a meaningful number of ops', () => {
+    expect(OPS.length).toBeGreaterThan(20);
+  });
+
+  it('every declared op has a writer', () => {
+    const missing = OPS.filter((op) => !remote.includes(`case '${op}'`));
+    expect(missing).toEqual([]);
+  });
+
+  it('every declared op is actually enqueued somewhere', () => {
+    // An op nobody sends is a table nobody syncs — which is exactly the state
+    // this whole change was fixing.
+    const unused = OPS.filter((op) => !store.includes(`op: '${op}'`));
+    // These two are the known exceptions and are named rather than tolerated
+    // by a loose rule: nothing in the product leaves a crew or a night yet.
+    expect(unused.sort()).toEqual(['delete_crew_member', 'leave_session']);
+  });
+
+  /**
+   * The specific ops without which the safety feature is decorative. Named one
+   * by one, because a count would pass while the important one was missing.
+   */
+  it('safety reaches the server', () => {
+    for (const op of ['arm_check', 'resolve_check', 'upsert_contact', 'delete_contact']) {
+      expect({ op, enqueued: store.includes(`op: '${op}'`) }).toEqual({ op, enqueued: true });
+    }
+  });
+
+  it('an armed check carries the contacts it named', () => {
+    // Not just that it syncs — that it syncs WHO. The server escalates to
+    // every contact on the account when this is absent, which would message
+    // somebody the user deliberately left off the list.
+    const armBlock = store.match(/op: 'arm_check'[\s\S]{0,600}?\}\);/)?.[0] ?? '';
+    expect(armBlock).toBeTruthy();
+    expect(armBlock).toContain('contactIds');
+  });
+
+  it('a device registers for push, or nothing can be delivered to it', () => {
+    // push_tokens was empty for every real account: registerForPush existed and
+    // was never called, so even stage one of the escalation had nowhere to go.
+    expect(store).toContain('push.registerForPush()');
+  });
+
+  it('pulls, and only after the queue has drained', () => {
+    expect(store).toContain('remote.pull(');
+    // The ordering is the whole design: pulling with writes still pending
+    // overwrites local changes that have not reached the server yet.
+    const sync = store.match(/const syncNow = useCallback\([\s\S]*?\n  \}, \[\]\);/)?.[0] ?? '';
+    expect(sync).toBeTruthy();
+    const flushAt = sync.indexOf('logQueue.flush()');
+    const guardAt = sync.indexOf('pending > 0');
+    const pullAt = sync.indexOf('remote.pull(');
+    expect(flushAt).toBeGreaterThan(-1);
+    expect(guardAt).toBeGreaterThan(flushAt);
+    expect(pullAt).toBeGreaterThan(guardAt);
+  });
+
+  it('refuses to sync demo data', () => {
+    // Fake friends on a real account is worse than a dropped write.
+    expect(queue).toContain('isSyncable');
+  });
+});

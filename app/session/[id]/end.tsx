@@ -94,7 +94,17 @@ export default function EndNight() {
               })}
             </Text>
             <View style={{ marginTop: space.m }}>
-              <Button title={t('session.doItInMorning')} kind="plain" compact onPress={() => {}} />
+              {/*
+                Closing the sheet IS doing it in the morning: the morning-after
+                screen is what opens next time, and it carries the same gaps.
+                The button did nothing at all before.
+              */}
+              <Button
+                title={t('session.doItInMorning')}
+                kind="plain"
+                compact
+                onPress={() => router.replace('/(tabs)/tonight')}
+              />
             </View>
           </Card>
         ) : null}

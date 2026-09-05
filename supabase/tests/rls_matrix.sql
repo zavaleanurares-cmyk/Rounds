@@ -412,6 +412,87 @@ select public.set_current_user(:owner);
 select t.count_eq('the blocked user could not remove the block',
   (select count(*) from public.blocks), 1);
 
+-- ============================================ sync_pull, asserted (30)
+/**
+ * `sync_pull` is `security definer`, so RLS does NOT protect it. Every scope in
+ * it is hand-written, which makes it the one function in the schema where a
+ * missing `where` clause leaks another account's data.
+ *
+ * So it is asserted against its RESULT rather than against the tables it reads.
+ * The six roles are checked for what actually comes back in the payload.
+ */
+set role authenticated;
+
+-- Fixtures the payload should reflect: owner has a friend, a crew-mate, a
+-- stranger they know nothing about, and a blocked ex-friend.
+select public.set_current_user(:owner);
+-- Earlier sections leave contacts behind, and three is the hard maximum.
+delete from public.trusted_contacts where user_id = :owner;
+insert into public.trusted_contacts (user_id, name, phone) values (:owner, 'Ana', '+40700000031');
+insert into public.goals (user_id, type, target, enabled) values (:owner, 'weekly_cap', 140, true)
+  on conflict do nothing;
+
+select t.check('the payload carries my own profile',
+  (public.sync_pull()->'profile'->>'id')::uuid = :owner, true);
+select t.check('and my private row, which nobody else ever sees',
+  public.sync_pull() ? 'private', true);
+select t.count_eq('my trusted contacts come down — this is what the safety escalation needs',
+  jsonb_array_length(public.sync_pull()->'trusted_contacts'), 1);
+
+/* Who appears in `people`. */
+select t.check('a friend appears',
+  public.sync_pull()->'people' @> jsonb_build_array(jsonb_build_object('id', :friend)), true);
+select t.check('a crew-mate appears',
+  public.sync_pull()->'people' @> jsonb_build_array(jsonb_build_object('id', :crew)), true);
+select t.check('a STRANGER never appears',
+  public.sync_pull()->'people' @> jsonb_build_array(jsonb_build_object('id', :strang)), false);
+select t.check('and the BLOCKED user never appears, despite an accepted friendship row',
+  public.sync_pull()->'people' @> jsonb_build_array(jsonb_build_object('id', :blockd)), false);
+
+/**
+ * What `people` may carry. The column list in sync_pull is explicit rather than
+ * `to_jsonb(p)` so that a column added to `profiles` later cannot start
+ * travelling between accounts. This asserts that list, by name.
+ */
+select t.check('a person row carries a name and nothing more',
+  (select bool_and(
+     (select array_agg(k order by k) from jsonb_object_keys(person) k)
+       = array['avatar_tint','avatar_url','display_name','id','level','username'])
+   from jsonb_array_elements(public.sync_pull()->'people') person), true);
+
+/* What must never be in the payload at all. */
+select t.check('no other account''s logs',
+  (select bool_and((l->>'user_id')::uuid = :owner)
+     from jsonb_array_elements(public.sync_pull()->'logs') l), true);
+select t.check('no other account''s goals',
+  (select bool_and((g->>'user_id')::uuid = :owner)
+     from jsonb_array_elements(public.sync_pull()->'goals') g), true);
+select t.check('no other account''s trusted contacts',
+  (select bool_and((c->>'user_id')::uuid = :owner)
+     from jsonb_array_elements(public.sync_pull()->'trusted_contacts') c), true);
+select t.check('the payload has no key for anybody else''s body data',
+  public.sync_pull()->'people' @> '[{"weight_kg": null}]'::jsonb, false);
+
+/* A stranger's payload is their own and nothing else. */
+select public.set_current_user(:strang);
+select t.count_eq('a stranger sees no people at all',
+  jsonb_array_length(public.sync_pull()->'people'), 0);
+select t.count_eq('a stranger sees no crews',
+  jsonb_array_length(public.sync_pull()->'crews'), 0);
+select t.count_eq('a stranger sees no logs',
+  jsonb_array_length(public.sync_pull()->'logs'), 0);
+select t.count_eq('a stranger sees no trusted contacts',
+  jsonb_array_length(public.sync_pull()->'trusted_contacts'), 0);
+
+/* The blocked user is the sixth role, and it holds here too. */
+select public.set_current_user(:blockd);
+select t.check('the blocked user does not see the person who blocked them',
+  public.sync_pull()->'people' @> jsonb_build_array(jsonb_build_object('id', :owner)), false);
+
+delete from public.trusted_contacts where user_id = :owner;
+reset role;
+set role authenticated;
+
 -- ===================================== live activity tokens & fan-out (29)
 -- The owner is in session e1; so is :part. :strang is in nothing.
 set role authenticated;

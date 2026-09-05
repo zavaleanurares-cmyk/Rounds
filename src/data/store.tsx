@@ -10,6 +10,7 @@
  * it is absent the app is fully functional offline, which is also how it runs in
  * development and in the web preview.
  */
+import { AppState } from 'react-native';
 import React, {
   createContext,
   useCallback,
@@ -58,6 +59,26 @@ import {
   demoNotifications,
   demoPlans,
 } from './seed';
+
+/**
+ * Union two collections on `id`, remote winning. Used for venues, which both
+ * sides can create — a place added on the phone and the same place absorbed
+ * from the provider must not become two rows.
+ */
+function mergeById<T extends { id: string }>(local: T[], remote: T[]): T[] {
+  const byId = new Map(local.map((x) => [x.id, x]));
+  for (const r of remote) byId.set(r.id, r);
+  return [...byId.values()];
+}
+
+/**
+ * Queue id for a row whose primary key is a pair of user ids and carries no
+ * uuid of its own — friendships. SORTED, so the same relationship gets the same
+ * id whichever side of it this device is on: a request sent and later accepted
+ * is one pending write rather than two, and the delete a block issues targets
+ * the row the request created.
+ */
+const pairKey = (a: string, b: string) => [a, b].sort().join(':');
 
 /* ------------------------------------------------------------------ state */
 
@@ -391,6 +412,110 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (state.hydrated) persist(KEYS.reports, state.reports); }, [state.reports, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.notifications, state.notifications); }, [state.notifications, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.settings, state.settings); }, [state.settings, state.hydrated, persist]);
+
+  /**
+   * Pull, and merge.
+   *
+   * The ordering is the whole design and it is worth stating plainly:
+   *
+   *     flush the queue  →  only if it emptied, pull  →  merge
+   *
+   * Pulling before the queue has drained would overwrite local changes that
+   * have not reached the server yet — the classic "my drink vanished" bug. So
+   * a pull is SKIPPED entirely while anything is still pending. The device
+   * stays on its own data for another minute, which is the correct outcome:
+   * the local copy is the one with the newer information in it.
+   *
+   * Everything here is best-effort. A failed pull leaves the app exactly as it
+   * was, because the network is reconciliation and never a dependency.
+   */
+  const lastPullRef = useRef<number | null>(null);
+  const pullingRef = useRef(false);
+
+  const syncNow = useCallback(async () => {
+    if (pullingRef.current) return;
+    if (!remote.isRemoteEnabled()) return;
+    if (stateRef.current.auth.status !== 'signed_in') return;
+    pullingRef.current = true;
+    try {
+      await logQueue.flush();
+      // The invariant. Anything still queued means the server does not yet know
+      // what this device knows, and a pull would undo it.
+      if (logQueue.state().pending > 0) return;
+
+      const since = lastPullRef.current ? new Date(lastPullRef.current) : null;
+      const result = await remote.pull(since);
+      if (!result) return;
+
+      const current = stateRef.current;
+      dispatch({
+        type: 'set',
+        payload: {
+          // The profile is a patch: the server owns some fields, the device
+          // owns others, and a pull must not blank the ones it does not carry.
+          profile: result.profile
+            ? ({ ...current.profile, ...result.profile } as typeof current.profile)
+            : current.profile,
+          // Logs are unioned by id and a local tombstone always wins — a delete
+          // that has synced must not be resurrected by a stale row.
+          logs: remote.mergeLogs(current.logs, result.logs),
+          // The rest is server-authoritative once the queue is empty, which is
+          // exactly the condition we are in.
+          sessions: result.sessions.length ? result.sessions : current.sessions,
+          goals: result.goals.length ? result.goals : current.goals,
+          people: result.people.length ? result.people : current.people,
+          crews: result.crews,
+          plans: result.plans,
+          venues: mergeById(current.venues, result.venues),
+          blocked: result.blocked,
+          notifications: result.notifications.length ? result.notifications : current.notifications,
+          safety: {
+            ...current.safety,
+            contacts: result.trustedContacts,
+            // An armed check the server still holds outranks local state: the
+            // server is what will actually escalate.
+            activeCheck: result.activeCheck ?? current.safety.activeCheck,
+          },
+        },
+      });
+      lastPullRef.current = result.serverTime;
+    } catch {
+      /* offline, or the server said no. Try again on the next trigger. */
+    } finally {
+      pullingRef.current = false;
+    }
+  }, []);
+
+  /**
+   * When to sync: on a cold start once hydrated and signed in, whenever the app
+   * comes back to the foreground, and whenever the queue reports it is online
+   * again. Not on a timer — a nightlife app that polls in someone's pocket is
+   * a battery complaint.
+   */
+  useEffect(() => {
+    if (!state.hydrated || state.auth.status !== 'signed_in') return;
+    void syncNow();
+    const sub = AppState.addEventListener('change', (next: string) => {
+      if (next === 'active') void syncNow();
+    });
+    const unsubscribe = logQueue.subscribe((q) => {
+      if (q.online && q.pending === 0) void syncNow();
+    });
+    return () => {
+      sub.remove();
+      unsubscribe();
+    };
+  }, [state.hydrated, state.auth.status, syncNow]);
+
+  /**
+   * A device that has never registered a push token cannot be told anything —
+   * including the first stage of its own safe-arrival check. This ran nowhere
+   * before, so `push_tokens` was empty for every real account.
+   */
+  useEffect(() => {
+    if (!state.hydrated || state.auth.status !== 'signed_in') return;
+    void push.registerForPush();
+  }, [state.hydrated, state.auth.status]);
 
   /**
    * Feedback reads its switches from a module-level variable rather than a
@@ -750,6 +875,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       };
       dispatch({ type: 'addSession', payload: session });
       logQueue.enqueue({ id: session.id, op: 'upsert_session', payload: session });
+      // The owner is a participant too. Nothing local depends on that row, but
+      // several server policies key on `session_participants`, so a host who is
+      // not in it cannot read the night they are hosting.
+      logQueue.enqueue({
+        id: `${session.id}:${session.ownerId}`, // composite key (session, user)
+        op: 'join_session',
+        payload: { sessionId: session.id, userId: session.ownerId },
+      });
       analytics.track('session_start', { visibility: session.visibility, fromPlan: Boolean(session.planId) });
       return session;
     },
@@ -799,9 +932,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ),
         },
       });
+      // plan_invitees has no uuid — its key is (plan_id, user_id), so the queue
+      // id is that pair. Tapping yes then no is one pending write, not two.
+      logQueue.enqueue({
+        id: `${planId}:${me}`,
+        op: 'upsert_plan_invitee',
+        payload: { planId, userId: me, rsvp },
+      });
     },
     voteVenue(planId, venueId) {
       const me = stateRef.current.auth.userId ?? 'me';
+      // Which venue this person was on before the tap. One vote per plan is the
+      // local rule (the map below strips `me` from every other candidate), so a
+      // switch has to clear the old row server-side before writing the new one.
+      const previous =
+        stateRef.current.plans
+          .find((p) => p.id === planId)
+          ?.venueCandidates.find((c) => c.votes.includes(me))?.venueId ?? null;
       dispatch({
         type: 'set',
         payload: {
@@ -823,6 +970,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ),
         },
       });
+      // Keyed on (plan, user) rather than (plan, venue, user) even though the
+      // server row carries the venue: one person holds at most one vote per
+      // plan, so a switch REPLACES the pending write instead of queueing a
+      // second one that would recreate the vote it just moved away from.
+      const voteId = `${planId}:${me}`;
+      if (previous && previous !== venueId) {
+        logQueue.enqueue({ id: voteId, op: 'clear_plan_vote', payload: { planId, userId: me } });
+      }
+      logQueue.enqueue({ id: voteId, op: 'set_plan_vote', payload: { planId, venueId, userId: me } });
     },
     createPlan(input) {
       const me = stateRef.current.auth.userId ?? 'me';
@@ -852,6 +1008,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         })),
       };
       dispatch({ type: 'set', payload: { plans: [...stateRef.current.plans, plan] } });
+      logQueue.enqueue({
+        id: plan.id,
+        op: 'upsert_plan',
+        payload: {
+          id: plan.id,
+          createdBy: plan.createdBy,
+          crewId: plan.crewId,
+          title: plan.title,
+          note: plan.note,
+          startsAt: plan.startsAt,
+        },
+      });
+      // One row per invitee, including the creator — their own "yes" is a row
+      // like anyone else's. Composite key (plan, user).
+      for (const invitee of plan.invitees) {
+        logQueue.enqueue({
+          id: `${plan.id}:${invitee.userId}`,
+          op: 'upsert_plan_invitee',
+          payload: { planId: plan.id, userId: invitee.userId, rsvp: invitee.rsvp },
+        });
+      }
+      // The shortlist is its own table, separate from the votes. Without this,
+      // a plan created with three places to choose between synced with none of
+      // them, and the vote screen came back empty — the options only appeared
+      // once somebody had already voted, which is not how choosing works.
+      for (const candidate of plan.venueCandidates) {
+        logQueue.enqueue({
+          id: `${plan.id}:${candidate.venueId}`,
+          op: 'add_plan_venue',
+          payload: { planId: plan.id, venueId: candidate.venueId, addedBy: me },
+        });
+      }
       return plan;
     },
     createCrew(input) {
@@ -873,6 +1061,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         memberIds: [me, ...(input.memberIds ?? [])],
       };
       dispatch({ type: 'set', payload: { crews: [...stateRef.current.crews, crew] } });
+      logQueue.enqueue({
+        id: crew.id,
+        op: 'upsert_crew',
+        payload: {
+          id: crew.id,
+          slug: crew.slug,
+          name: crew.name,
+          accentIndex: crew.accentIndex,
+          icon: crew.icon,
+          createdBy: me,
+        },
+      });
+      // crew_members is keyed (crew_id, user_id) and has no uuid of its own.
+      for (const userId of crew.memberIds) {
+        logQueue.enqueue({
+          id: `${crew.id}:${userId}`,
+          op: 'upsert_crew_member',
+          payload: { crewId: crew.id, userId },
+        });
+      }
       return crew;
     },
     joinCrew(code) {
@@ -890,6 +1098,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         type: 'set',
         payload: { crews: stateRef.current.crews.map((c) => (c.id === crew.id ? joined : c)) },
       });
+      logQueue.enqueue({
+        id: `${crew.id}:${me}`, // composite key (crew, user)
+        op: 'upsert_crew_member',
+        payload: { crewId: crew.id, userId: me },
+      });
       return joined;
     },
     addVenue(input) {
@@ -904,17 +1117,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         category: input.category,
       };
       dispatch({ type: 'set', payload: { venues: [...stateRef.current.venues, venue] } });
+      logQueue.enqueue({ id: venue.id, op: 'upsert_venue', payload: venue });
       return venue;
     },
     addFriend(personId) {
+      const me = stateRef.current.auth.userId ?? 'me';
       dispatch({
         type: 'set',
         payload: {
           people: stateRef.current.people.map((p) => (p.id === personId ? { ...p, status: 'pending_out' } : p)),
         },
       });
+      // This device sent it, so this device is the requester.
+      logQueue.enqueue({
+        id: pairKey(me, personId),
+        op: 'upsert_friendship',
+        payload: { requesterId: me, addresseeId: personId, status: 'pending' },
+      });
     },
     respondToRequest(personId, accept) {
+      const me = stateRef.current.auth.userId ?? 'me';
       dispatch({
         type: 'set',
         payload: {
@@ -923,8 +1145,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ),
         },
       });
+      // The request being answered came from THEM, so the row keeps their id as
+      // the requester — writing it the other way round would create a second,
+      // mirrored friendship instead of accepting the one that exists.
+      if (accept) {
+        logQueue.enqueue({
+          id: pairKey(me, personId),
+          op: 'upsert_friendship',
+          payload: { requesterId: personId, addresseeId: me, status: 'accepted' },
+        });
+      } else {
+        logQueue.enqueue({
+          id: pairKey(me, personId),
+          op: 'delete_friendship',
+          payload: { a: me, b: personId },
+        });
+      }
     },
     blockUser(personId) {
+      const me = stateRef.current.auth.userId ?? 'me';
       // Bidirectional and immediate: they vanish from search, friends, crews,
       // live rooms and plans in the same tick.
       dispatch({
@@ -939,8 +1178,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           crews: stateRef.current.crews.map((c) => ({ ...c, memberIds: c.memberIds.filter((m) => m !== personId) })),
         },
       });
+      // Two writes, because a block is not a friendship state. The block row is
+      // what every server policy checks; the friendship row is separate and
+      // would otherwise stay `accepted` behind it, still granting this person
+      // whatever an accepted friendship grants.
+      logQueue.enqueue({
+        id: `${me}:${personId}`, // composite key (blocker, blocked) — directed
+        op: 'insert_block',
+        payload: { blockerId: me, blockedId: personId },
+      });
+      logQueue.enqueue({
+        id: pairKey(me, personId),
+        op: 'delete_friendship',
+        payload: { a: me, b: personId },
+      });
     },
     unblockUser(personId) {
+      const me = stateRef.current.auth.userId ?? 'me';
       dispatch({
         type: 'set',
         payload: {
@@ -948,10 +1202,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           people: stateRef.current.people.map((p) => (p.id === personId ? { ...p, status: 'none' } : p)),
         },
       });
+      // Only the block is lifted. The friendship stays deleted — unblocking
+      // returns someone to a stranger, not to a friend.
+      logQueue.enqueue({
+        id: `${me}:${personId}`,
+        op: 'delete_block',
+        payload: { blockerId: me, blockedId: personId },
+      });
     },
     reportTarget(input) {
       const report: Report = { ...input, id: uuid(), at: Date.now() };
       dispatch({ type: 'set', payload: { reports: [...stateRef.current.reports, report] } });
+      logQueue.enqueue({
+        id: report.id,
+        op: 'insert_report',
+        payload: {
+          id: report.id,
+          reporterId: stateRef.current.auth.userId ?? 'me',
+          targetType: report.targetType,
+          targetId: report.targetId,
+          reason: report.reason,
+          detail: report.detail,
+        },
+      });
     },
     markNotificationsRead() {
       // Guarded, because an unconditional dispatch here always produces a NEW
@@ -964,10 +1237,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         type: 'set',
         payload: { notifications: notifications.map((n) => ({ ...n, read: true })) },
       });
+      // One write per unread row; the read ones are already read on the server.
+      // The guard above means this loop cannot run twice for the same rows.
+      for (const n of notifications) {
+        if (!n.read) logQueue.enqueue({ id: n.id, op: 'read_notification', payload: { id: n.id } });
+      }
     },
 
     /* ----------------------------------------------------- wellbeing */
     setGoal(goal) {
+      const me = stateRef.current.auth.userId ?? 'me';
       dispatch({
         type: 'set',
         payload: {
@@ -976,36 +1255,82 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             : [...stateRef.current.goals, goal],
         },
       });
+      // goals is keyed (user_id, type) — a person has one goal of each kind, so
+      // dragging a slider is one pending write however many times it moves.
+      logQueue.enqueue({
+        id: `${me}:${goal.type}`,
+        op: 'upsert_goal',
+        payload: { userId: me, type: goal.type, target: goal.target, enabled: goal.enabled },
+      });
     },
 
     /* -------------------------------------------------------- safety */
     armSafeArrival(input) {
       analytics.track('check_armed', { hours: Math.round((input.deadlineAt - Date.now()) / 3600000), contacts: input.contactIds.length });
       void push.scheduleSafetyReminder(input.deadlineAt, input.message, localeRef.current);
-      dispatch({
-        type: 'patchSafety',
+      // Minted here rather than inline in the dispatch, so the row the server
+      // gets is the row the device holds — this is the one write where the two
+      // disagreeing would mean an escalation nobody can resolve.
+      const check: SafeArrivalCheck = {
+        id: uuid(),
+        deadlineAt: input.deadlineAt,
+        armedAt: Date.now(),
+        resolvedAt: null,
+        message: input.message,
+        contactIds: input.contactIds,
+      };
+      dispatch({ type: 'patchSafety', payload: { activeCheck: check } });
+      logQueue.enqueue({
+        id: check.id,
+        op: 'arm_check',
         payload: {
-          activeCheck: {
-            id: uuid(),
-            deadlineAt: input.deadlineAt,
-            armedAt: Date.now(),
-            resolvedAt: null,
-            message: input.message,
-            contactIds: input.contactIds,
-          },
+          id: check.id,
+          userId: stateRef.current.auth.userId ?? 'me',
+          // The server escalates through the night this belongs to, if there is
+          // one; a check armed outside a session simply has none.
+          sessionId: stateRef.current.sessions.find((x) => x.endedAt === null)?.id ?? null,
+          deadlineAt: check.deadlineAt,
+          message: check.message,
+          // WHICH contacts this check named. Somebody who deliberately left one
+          // person off the list must not have them messaged at 3am anyway —
+          // consent given on the arm screen has to survive to the thing that
+          // acts on it. Empty means all of them, which is what the screen means
+          // when nothing was picked.
+          contactIds: check.contactIds,
         },
       });
     },
     resolveSafeArrival() {
       analytics.track('check_resolved');
       void push.cancelSafetyReminders();
+      // Read before the dispatch clears it — the id is the only handle on the
+      // row the server is counting down.
+      const check = stateRef.current.safety.activeCheck;
       dispatch({ type: 'patchSafety', payload: { activeCheck: null } });
+      if (check) {
+        logQueue.enqueue({
+          id: check.id,
+          op: 'resolve_check',
+          payload: { id: check.id, resolvedAt: Date.now() },
+        });
+      }
     },
     addTrustedContact(c) {
       if (stateRef.current.safety.contacts.length >= 3) return;
+      const contact: TrustedContact = { ...c, id: uuid() };
       dispatch({
         type: 'patchSafety',
-        payload: { contacts: [...stateRef.current.safety.contacts, { ...c, id: uuid() }] },
+        payload: { contacts: [...stateRef.current.safety.contacts, contact] },
+      });
+      logQueue.enqueue({
+        id: contact.id,
+        op: 'upsert_contact',
+        payload: {
+          id: contact.id,
+          userId: stateRef.current.auth.userId ?? 'me',
+          name: contact.name,
+          phone: contact.phone,
+        },
       });
     },
     removeTrustedContact(id) {
@@ -1013,6 +1338,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         type: 'patchSafety',
         payload: { contacts: stateRef.current.safety.contacts.filter((c) => c.id !== id) },
       });
+      logQueue.enqueue({ id, op: 'delete_contact', payload: { id } });
     },
     shareLocationFor(hours) {
       dispatch({
