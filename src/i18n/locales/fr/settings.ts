@@ -116,7 +116,7 @@ export const settings = {
     'Les numéros sont hachés sur cet appareil. Les numéros bruts ne quittent jamais ton téléphone.',
   'settings.shareLocationDefault': 'Partager ma position par défaut',
   'settings.shareLocationDefaultSubtitle':
-    "Toujours à activer soirée par soirée ; ici c'est juste pré-coché",
+    "Démarre le partage pendant deux heures au début d’une soirée. Arrêtable à tout moment.",
   'settings.defaultVisibilityHeader': 'VISIBILITÉ PAR DÉFAUT DES SOIRÉES',
   'settings.defaultVisibilityLabel': 'Visibilité par défaut',
   'settings.visibilityPrivate': 'Privé',

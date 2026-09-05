@@ -92,7 +92,10 @@ export function TonightLive({ session }: { session: Session }) {
       largeTitle={false}
       mood={pace.state === 'slow_down' ? 'safety' : pace.state === 'quick' ? 'warm' : 'default'}
       accent={paceColor[pace.state]}
-      dimmed={lateNight}
+      // The hour alone used to decide this, so somebody who had turned the
+      // setting off was dimmed anyway. `Screen` defaults to the setting, and
+      // `undefined` here is what lets it.
+      dimmed={lateNight && store.settings.nightDimming ? true : undefined}
       tabBarSpace
       contentStyle={{ gap: space.md }}
     >

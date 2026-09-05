@@ -175,6 +175,11 @@ export function attachRemote(): boolean {
             currency: p.currency,
             region: p.region,
             onboarded: p.onboarded,
+            // The two that decide what the SERVER sends, and in which language.
+            // Both were device-local: a preference kept on the phone cannot be
+            // honoured by a job that composes and delivers the message.
+            locale: p.locale,
+            notification_prefs: p.notificationPrefs,
           })
           .eq('id', p.id);
         if (error) throw error;
@@ -336,6 +341,42 @@ async function writeExtended(supabase: SupabaseClient, item: QueueItem): Promise
      */
     case 'resolve_check':
       return fail((await supabase.rpc('resolve_safe_arrival', { p_check: p.id })).error);
+
+    case 'upsert_private_profile':
+      // "private is yours alone" is a `for all` policy keyed on auth.uid(), so
+      // this needs no scope of its own beyond the id it writes.
+      return fail(
+        (await supabase
+          .from('profiles_private')
+          .upsert(
+            {
+              id: p.id,
+              weight_kg: p.weightKg ?? null,
+              sex: p.sex ?? null,
+              modules: p.modules,
+              intent: p.intent ?? [],
+              home_address: p.homeAddress ?? null,
+            },
+            { onConflict: 'id' }
+          )).error
+      );
+
+    /**
+     * Both of these tell OTHER people something, so neither writes a row: the
+     * function decides who is in the audience for this night and refuses
+     * everybody else in silence. See 00039 for the rules.
+     */
+    case 'notify_night_started':
+      return fail((await supabase.rpc('notify_night_started', { p_session: p.sessionId })).error);
+    case 'ask_for_round':
+      return fail(
+        (await supabase.rpc('ask_for_round', {
+          p_session: p.sessionId,
+          p_round: p.roundId,
+          p_targets: p.targets,
+          p_drink: p.drink,
+        })).error
+      );
 
     /* ------------------------------------------------------------ people */
     /**
@@ -524,6 +565,8 @@ export interface PullResult {
   venues: Venue[];
   trustedContacts: TrustedContact[];
   activeCheck: SafeArrivalCheck | null;
+  /** Lives in `profiles_private`, belongs to safety state on this side. */
+  homeAddress: string | null;
   blocked: string[];
   notifications: AppNotification[];
   serverTime: number;
@@ -645,6 +688,7 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
       name: c.name,
       phone: c.phone,
     })),
+    homeAddress: (p.private as Record<string, any> | null)?.home_address ?? null,
     activeCheck: (() => {
       const c = rows('safe_arrival_checks')[0];
       if (!c) return null;
@@ -696,6 +740,8 @@ function toProfilePatch(r: Record<string, any>, priv: Record<string, any> | null
     privateAccount: Boolean(r.private_account),
     defaultVisibility: r.default_visibility ?? 'friends',
     onboarded: Boolean(r.onboarded),
+    locale: r.locale ?? 'en',
+    notificationPrefs: r.notification_prefs ?? undefined,
     ...(priv
       ? {
           weightKg: priv.weight_kg ?? null,

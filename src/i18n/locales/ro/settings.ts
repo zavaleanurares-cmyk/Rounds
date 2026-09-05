@@ -121,7 +121,7 @@ export const settings = {
   'settings.contactMatchingSubtitle':
     'Numerele sunt transformate în hashuri pe dispozitivul ăsta. Numerele brute nu îți părăsesc niciodată telefonul.',
   'settings.shareLocationDefault': 'Partajează locația implicit',
-  'settings.shareLocationDefaultSubtitle': 'Tot alegi seară de seară; asta doar o bifează dinainte',
+  'settings.shareLocationDefaultSubtitle': "Pornește partajarea pentru două ore la începutul unei seri. Poți opri oricând.",
   'settings.defaultVisibilityHeader': 'VIZIBILITATEA IMPLICITĂ A SERII',
   'settings.defaultVisibilityLabel': 'Vizibilitate implicită',
   'settings.visibilityPrivate': 'Privat',

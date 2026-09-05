@@ -183,4 +183,7 @@ export const social = {
   // a friend request the server declined
   'social.requestSelf': "Acesta ești tu.",
   'social.searchOffline': "Căutarea nu este posibilă acum. Verifică-ți conexiunea.",
+  'social.contactsDisabled': "Potrivirea contactelor este oprită. Nu se citește nimic din agenda ta până nu o pornești.",
+  'social.enableContactMatching': "Pornește potrivirea contactelor",
+  'social.stopBeingFindable': "Nu mai vreau să pot fi găsit",
 } satisfies Record<string, Message>;

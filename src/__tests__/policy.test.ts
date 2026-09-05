@@ -501,6 +501,99 @@ describe('the app is not write-only', () => {
     expect(room).not.toContain('setSharingLocation');
   });
 
+  /**
+   * Every switch the app offers has to reach something.
+   *
+   * A settings screen is a set of promises, and six of them were kept nowhere:
+   * `modules.social` ("ROUNDS is entirely private"), `contactMatching`,
+   * `locationSharingDefault`, `nightDimming` and four of the six notification
+   * categories were written to state, sometimes synced, and read by nothing.
+   * Written as a table because the failure mode is per-switch and a single
+   * assertion would pass while one of them rotted.
+   */
+  it('no settings switch is write-only', () => {
+    const ALL = [...APP, ...SRC].map(code).join('\n');
+    const readers: Record<string, RegExp> = {
+      // the social module: the tab, the route guard and the night's visibility
+      'modules.social': /modules\?\.social|useSocial\(\)/,
+      // gates the address-book read itself
+      contactMatching: /settings\.contactMatching/,
+      // decides whether a night starts sharing
+      locationSharingDefault: /settings\.locationSharingDefault/,
+      // the aurora, app-wide, through Screen
+      nightDimming: /settings\.nightDimming/,
+    };
+    for (const [name, reader] of Object.entries(readers)) {
+      expect({ name, read: reader.test(ALL) }).toEqual({ name, read: true });
+    }
+  });
+
+  it('the notification switches reach the thing that sends', () => {
+    // Every message this product sends is composed and delivered server-side,
+    // so a preference that never leaves the phone cannot be honoured. Four of
+    // the six governed nothing at all.
+    expect(store).toContain('notificationPrefs');
+    expect(remote).toContain('notification_prefs');
+    const prefs = readFileSync('supabase/migrations/00038_notification_prefs.sql', 'utf8');
+    expect(prefs).toContain('notification_prefs');
+    expect(prefs).toContain('may_notify');
+    // …and safety is never gated by one, because an escalation is not a
+    // notification somebody opted into.
+    expect(prefs).toMatch(/p_category = 'safety' then true/);
+  });
+
+  it('the server knows which language to write in', () => {
+    // Four locales in the app, one hard-coded English in every job. The
+    // safe-arrival check-in was the worst of it: the message that has to be
+    // understood at 3am, in the wrong language.
+    const strings = readFileSync('supabase/migrations/00037_server_strings.sql', 'utf8');
+    expect(strings).toContain('public.say(');
+    for (const locale of ['fr', 'ro', 'es']) {
+      expect(strings).toContain(`'safety.check.title', '${locale}'`);
+    }
+    expect(strings).not.toMatch(/'title',\s*'Are you home\?'/);
+    expect(store).toContain('locale');
+  });
+
+  it('the private half of the profile is written, not only read', () => {
+    // profiles_private holds weight, sex, the module switches and the intents.
+    // The sign-up trigger creates the row with defaults and sync_pull returns
+    // it, so the first pull after onboarding reset all four on the device — the
+    // weight the pace model runs on, and the switch that decides whether the
+    // app is social at all.
+    expect(OPS).toContain('upsert_private_profile');
+    expect(remote).toContain("from('profiles_private')");
+    expect(store).toContain("op: 'upsert_private_profile'");
+  });
+
+  it('telling other people something goes through a function, never a row', () => {
+    // `notifications` has no insert policy, deliberately: "anyone may write to
+    // anyone's inbox" is a spam feature.
+    expect(remote).toContain("rpc('notify_night_started'");
+    expect(remote).toContain("rpc('ask_for_round'");
+    const writes = [...remote.matchAll(/from\('notifications'\)\s*\.\s*(\w+)/g)].map((m) => m[1]);
+    expect(writes).not.toContain('insert');
+    expect(writes).not.toContain('upsert');
+    // And the two screens that promised it actually ask.
+    expect(code('app/session/start.tsx')).toContain('notify:');
+    expect(code('app/log/round.tsx')).toContain('askForRound');
+  });
+
+  it('the home address field keeps what is typed into it', () => {
+    // `onChangeText={() => {}}` — every keystroke discarded, so Ride home
+    // always opened Uber with no destination.
+    const screen = code('app/settings/safety.tsx');
+    expect(screen).toContain('setHomeAddress');
+    expect(screen).not.toMatch(/onChangeText=\{\(\) => \{\}\}/);
+    expect(store).toContain('setHomeAddress(address)');
+  });
+
+  it('being findable can be undone', () => {
+    // An opt-in with no opt-out is not an opt-in. `stopBeingFindable` existed
+    // from the start and was imported by nothing.
+    expect(code('app/people/contacts.tsx')).toContain('stopBeingFindable');
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

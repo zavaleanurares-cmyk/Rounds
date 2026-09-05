@@ -334,7 +334,21 @@ export interface Store extends State {
   deleteLog(id: string): void;
   undoLast(): void;
   /* sessions */
-  startSession(input: { title?: string | null; venueId?: string | null; visibility: Visibility; planId?: string | null }): Session;
+  startSession(input: {
+    title?: string | null;
+    venueId?: string | null;
+    visibility: Visibility;
+    planId?: string | null;
+    /**
+     * Whether to tell the people who can see this night that it started.
+     *
+     * The start sheet has had a switch for this, default on, saying "{crew}
+     * will be notified", since the beginning — and `startSession` had no
+     * parameter to receive it, so the value was read by the switch and by
+     * nothing else. Nobody was ever notified.
+     */
+    notify?: boolean;
+  }): Session;
   endSession(id: string, input: { mood: Mood | null; safeHome: boolean }): void;
   updateSessionVisibility(id: string, visibility: Visibility): void;
   activeSession: Session | null;
@@ -370,6 +384,21 @@ export interface Store extends State {
   /** Leaves a shared night without ending it for anybody else. */
   leaveSession(sessionId: string): void;
   addVenue(input: { name: string; area: string | null; category: string | null }): Venue;
+  /**
+   * Asks the named people whether they want one too.
+   *
+   * The round sheet says "Log mine · ask 3", its subtitle says "Logs yours now,
+   * asks the others", and the toast afterwards says "3 asked". None of it was
+   * true: the selection was used for the `roundSize` on your own log and
+   * nothing else, and the asking half of the feature did not exist.
+   *
+   * It never logs anything for anybody — somebody else's history is not yours
+   * to write. It puts a one-tap prompt in their inbox and, if they have social
+   * notifications on, on their phone.
+   */
+  askForRound(input: { roundId: string; targets: string[]; drink: string }): void;
+  /** Where "home" is, for the ride and walk actions. Private to this account. */
+  setHomeAddress(address: string): void;
   addFriend(personId: string): void;
   /** Acknowledges a declined request so the message stops being shown. */
   clearFriendRequestOutcome(): void;
@@ -538,6 +567,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             // An armed check the server still holds outranks local state: the
             // server is what will actually escalate.
             activeCheck: result.activeCheck ?? current.safety.activeCheck,
+            homeAddress: result.homeAddress ?? current.safety.homeAddress,
           },
         },
       });
@@ -932,6 +962,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         defaultVisibility: 'friends',
         modules: { nicotine: false, social: true },
         intent: [],
+        locale: 'en',
+        notificationPrefs: DEFAULT_SETTINGS.notifications,
         createdAt: Date.now(),
       };
       dispatch({ type: 'set', payload: { profile: { ...base, dob } } });
@@ -947,9 +979,58 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'patchProfile', payload: patch });
       const current = stateRef.current.profile;
       if (!current) return;
+      const next = { ...current, ...patch };
       // Queued rather than sent, so an edit made offline still lands. The
       // queue dedupes on id+op, so ten keystrokes are one write.
-      logQueue.enqueue({ id: current.id, op: 'upsert_profile', payload: { ...current, ...patch } });
+      logQueue.enqueue({ id: current.id, op: 'upsert_profile', payload: next });
+      /**
+       * And the private half, which for a long time was written nowhere.
+       *
+       * `profiles_private` holds weight, sex, the module switches and the
+       * intents chosen at onboarding. The sign-up trigger creates the row with
+       * defaults and `sync_pull` returns it, so the first pull after onboarding
+       * quietly reset all four on the device: the weight the pace model runs on
+       * and the privacy switch that decides whether the app is social at all.
+       */
+      logQueue.enqueue({
+        id: current.id,
+        op: 'upsert_private_profile',
+        payload: {
+          id: current.id,
+          weightKg: next.weightKg,
+          sex: next.sex,
+          modules: next.modules,
+          intent: next.intent,
+          homeAddress: stateRef.current.safety.homeAddress,
+        },
+      });
+    },
+    setHomeAddress(address) {
+      /**
+       * The field on Settings › Get home safe had `onChangeText={() => {}}`.
+       *
+       * Every keystroke was discarded, `homeAddress` was null forever, and the
+       * "Ride home" button therefore always opened Uber with no destination —
+       * on the screen somebody reaches for when they want to get home and stop
+       * thinking. It is stored in `profiles_private`, which is the only table
+       * in the schema that even a friend cannot read.
+       */
+      const trimmed = address.trim() || null;
+      dispatch({ type: 'patchSafety', payload: { homeAddress: trimmed } });
+      const current = stateRef.current.profile;
+      if (!current) return;
+      logQueue.enqueue({
+        id: current.id,
+        op: 'upsert_private_profile',
+        payload: {
+          id: current.id,
+          weightKg: current.weightKg,
+          sex: current.sex,
+          modules: current.modules,
+          intent: current.intent,
+          homeAddress: trimmed,
+        },
+      });
     },
 
     /* ------------------------------------------------------- logging */
@@ -1013,6 +1094,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         op: 'join_session',
         payload: { sessionId: session.id, userId: session.ownerId },
       });
+      /**
+       * "Share location by default" finally means something.
+       *
+       * The switch was written to local state and read by nothing: both entry
+       * points derived purely from `locationSharingUntil`, so a default that
+       * pre-selected nothing pre-selected nothing. A default for a per-night
+       * choice can only sensibly mean "make that choice when a night starts",
+       * so that is what it does — two hours, visible on both screens, and
+       * stoppable in one tap from either. The copy on the setting says so now.
+       *
+       * Never on a private night: there is nobody in it to share with.
+       */
+      if (stateRef.current.settings.locationSharingDefault && session.visibility !== 'private') {
+        dispatch({ type: 'patchSafety', payload: { locationSharingUntil: now + 2 * 3600000 } });
+      }
+      // Who can see it decides who is told; the switch decides whether anybody
+      // is. A private night notifies nobody whatever the switch says, which the
+      // server enforces again rather than trusting this line.
+      if (input.notify && session.visibility !== 'private') {
+        logQueue.enqueue({
+          id: session.id,
+          op: 'notify_night_started',
+          payload: { sessionId: session.id },
+        });
+      }
       analytics.track('session_start', { visibility: session.visibility, fromPlan: Boolean(session.planId) });
       return session;
     },
@@ -1397,6 +1503,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       logQueue.enqueue({ id: venue.id, op: 'upsert_venue', payload: venue });
       return venue;
     },
+    askForRound(input) {
+      const session = stateRef.current.sessions.find((x) => x.endedAt === null);
+      // A round with nobody in it, or outside a night, has nobody to ask: the
+      // audience for this is the people who can see the night.
+      if (!session || input.targets.length === 0) return;
+      logQueue.enqueue({
+        id: input.roundId,
+        op: 'ask_for_round',
+        payload: {
+          sessionId: session.id,
+          roundId: input.roundId,
+          targets: input.targets,
+          drink: input.drink,
+        },
+      });
+    },
     addFriend(personId) {
       const me = stateRef.current.auth.userId ?? 'me';
       dispatch({
@@ -1688,6 +1810,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state, queue, entitled, addLog, activeSession, lastLog, favourites, refreshEntitlement]
   );
+
+  /**
+   * Two device preferences the server needs a copy of.
+   *
+   * Language, because the server composes the push text: without this a
+   * Romanian user got a Romanian app that woke them in English, the
+   * safe-arrival check-in included. And the six notification switches, because
+   * four of them governed nothing — every message the product sends is composed
+   * and delivered server-side, so a preference that never left the phone could
+   * not be honoured, and turning "social" off changed nothing at all.
+   *
+   * Written through `updateProfile`, so it goes down the same offline queue as
+   * every other profile edit and survives being changed on a train.
+   */
+  const prefs = state.settings.notifications;
+  useEffect(() => {
+    const current = stateRef.current.profile;
+    if (!state.hydrated || !current) return;
+    const sameLocale = current.locale === locale;
+    const samePrefs =
+      current.notificationPrefs &&
+      (Object.keys(prefs) as Array<keyof typeof prefs>).every(
+        (k) => current.notificationPrefs[k] === prefs[k]
+      );
+    if (sameLocale && samePrefs) return;
+    store.updateProfile({ locale, notificationPrefs: { ...prefs } });
+  }, [state.hydrated, state.profile?.id, locale, prefs]);
+
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

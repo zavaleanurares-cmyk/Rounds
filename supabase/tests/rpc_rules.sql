@@ -209,7 +209,127 @@ select t.check('and calling it twice returns the same one',
     = public.ensure_join_code('00000000-0000-0000-0000-00000000e203'), true);
 reset role;
 
+-- ================================================ 7 · telling other people
+--
+-- `notifications` has no insert policy at all, deliberately: "anyone may write
+-- to anyone's inbox" is a spam feature. So both of these run as definer
+-- functions and every scope in them is hand-written — which is exactly the kind
+-- of code that needs asserting rather than reading.
+reset role;
+delete from public.notifications;
+delete from public.outbound;
+delete from public.sessions where owner_id in (:me, :other);
+delete from public.friendships where requester_id in (:me, :them, :other)
+                                  or addressee_id in (:me, :them, :other);
+
+insert into public.friendships (requester_id, addressee_id, status)
+  values (:me, :them, 'accepted'),
+         -- :them is a friend of BOTH, so "you cannot announce/ask on a night
+         -- you do not own" is refused by the ownership check rather than by
+         -- there happening to be nobody in the other account's audience. An
+         -- assertion that passes for the wrong reason is not an assertion.
+         (:other, :them, 'accepted');
+
+insert into public.sessions (id, owner_id, visibility, join_code, started_at)
+  values ('00000000-0000-0000-0000-00000000e301', :me, 'friends', 'NIGHT001', now());
+
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a friend is told the night started',
+  public.notify_night_started('00000000-0000-0000-0000-00000000e301')::bigint, 1);
+select public.notify_night_started('00000000-0000-0000-0000-00000000e301');
+reset role;
+-- Counted as the table owner: "your inbox" scopes a signed-in read to the
+-- reader, and the point here is what the OTHER account received.
+select t.count_eq('running it again tells nobody twice',
+  (select count(*) from public.notifications where user_id = :them), 1);
+select t.count_eq('and the row it wrote is the one the dedupe key names',
+  (select count(*) from public.notifications
+    where user_id = :them and dedupe_key = 'night:00000000-0000-0000-0000-00000000e301'), 1);
+select t.count_eq('a stranger hears nothing about it',
+  (select count(*) from public.notifications where user_id = :other), 0);
+
+-- A private night tells nobody, whatever the client asked for.
+insert into public.sessions (id, owner_id, visibility, started_at)
+  values ('00000000-0000-0000-0000-00000000e302', :me, 'private', now());
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('a private night notifies nobody',
+  public.notify_night_started('00000000-0000-0000-0000-00000000e302')::bigint, 0);
+
+-- Somebody else's night is not yours to announce.
+reset role;
+insert into public.sessions (id, owner_id, visibility, join_code, started_at)
+  values ('00000000-0000-0000-0000-00000000e303', :other, 'friends', 'NIGHT002', now());
+set role authenticated;
+select public.set_current_user(:me);
+select t.count_eq('you cannot announce a night you do not own',
+  public.notify_night_started('00000000-0000-0000-0000-00000000e303')::bigint, 0);
+
+-- The round. Named targets only, and only people in the night's audience.
+select t.count_eq('the friend in the round is asked',
+  public.ask_for_round('00000000-0000-0000-0000-00000000e301',
+                       '00000000-0000-0000-0000-00000000e401',
+                       array[:them]::uuid[], 'Negroni')::bigint, 1);
+select t.count_eq('a stranger named in the array is skipped in silence',
+  public.ask_for_round('00000000-0000-0000-0000-00000000e301',
+                       '00000000-0000-0000-0000-00000000e402',
+                       array[:other]::uuid[], 'Negroni')::bigint, 0);
+select t.count_eq('you cannot ask people on a night you do not own',
+  public.ask_for_round('00000000-0000-0000-0000-00000000e303',
+                       '00000000-0000-0000-0000-00000000e403',
+                       array[:them]::uuid[], 'Negroni')::bigint, 0);
+select t.count_eq('an empty selection asks nobody',
+  public.ask_for_round('00000000-0000-0000-0000-00000000e301',
+                       '00000000-0000-0000-0000-00000000e404',
+                       array[]::uuid[], 'Negroni')::bigint, 0);
+select t.count_eq('and a list too long to be a round is refused whole',
+  public.ask_for_round('00000000-0000-0000-0000-00000000e301',
+                       '00000000-0000-0000-0000-00000000e405',
+                       (select array_agg(:them::uuid) from generate_series(1, 13)), 'Negroni')::bigint, 0);
+select t.count_eq('the same round asked twice asks once',
+  public.ask_for_round('00000000-0000-0000-0000-00000000e301',
+                       '00000000-0000-0000-0000-00000000e401',
+                       array[:them]::uuid[], 'Negroni')::bigint, 1);
+reset role;
+select t.count_eq('so the friend has exactly one round prompt',
+  (select count(*) from public.notifications
+    where user_id = :them and dedupe_key like 'round:%'), 1);
+
+-- ============================================ 8 · the notification switches
+--
+-- Four of the six governed nothing: every message is composed and delivered
+-- server-side, so a preference kept on the phone could not be honoured.
+update public.profiles
+   set notification_prefs = jsonb_set(notification_prefs, '{social}', 'false')
+ where id = :them;
+delete from public.outbound;
+delete from public.notifications where user_id = :them;
+
+set role authenticated;
+select public.set_current_user(:me);
+select public.notify_night_started('00000000-0000-0000-0000-00000000e301');
+reset role;
+select t.count_eq('with social notifications off, nothing is pushed',
+  (select count(*) from public.outbound where user_id = :them), 0);
+select t.count_eq('but the inbox row is still written — the switch is about interruption',
+  (select count(*) from public.notifications where user_id = :them), 1);
+
+select t.check('safety is never gated by a switch',
+  public.may_notify(:them, 'safety'), true);
+
+-- ==================================================== 9 · the server's language
+update public.profiles set locale = 'ro' where id = :them;
+select t.text_eq('a Romanian account is addressed in Romanian',
+  public.say(:them, 'safety.check.title'), 'Ai ajuns acasă?');
+update public.profiles set locale = 'en' where id = :them;
+select t.text_eq('and an English one in English',
+  public.say(:them, 'safety.check.title'), 'Are you home?');
+select t.text_eq('an unknown key degrades to the key, never to an empty message',
+  public.say(:them, 'no.such.string'), 'no.such.string');
+
 -- ------------------------------------------------------------------ cleanup
+delete from public.notifications;
 delete from public.sessions where owner_id in (:me, :other);
 delete from public.outbound;
 delete from public.safe_arrival_checks;

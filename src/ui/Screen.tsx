@@ -11,6 +11,7 @@ import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
 import { Glass } from './Glass';
 import { OfflinePill } from './States';
+import { useNightDimming } from '@/hooks/useNightDimming';
 import { useT } from '@/i18n';
 import { useStore } from '@/data/store';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
@@ -81,6 +82,12 @@ export function Screen({
   const router = useRouter();
   const { queue } = useStore();
   const reduceMotion = useReduceMotion();
+  /**
+   * The default for `dimmed`, not an override: a screen that dims on purpose
+   * (the morning recap, the winddown) still says so and still wins. This is
+   * what makes "Dim after 1am" a setting rather than a stored boolean.
+   */
+  const nightDim = useNightDimming();
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const showOffline = queue.pending > 0 && !queue.online;
@@ -147,7 +154,7 @@ export function Screen({
   return (
     <View style={{ flex: 1, backgroundColor: color.bg.canvas }}>
       <StatusBar style="light" />
-      <Aurora mood={mood} accent={accent} dimmed={dimmed} />
+      <Aurora mood={mood} accent={accent} dimmed={dimmed ?? nightDim} />
 
       <View style={{ flex: 1, paddingTop: topInset }}>
         {scroll ? (

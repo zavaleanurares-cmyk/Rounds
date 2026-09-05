@@ -35,7 +35,11 @@ export default function RoundBuilder() {
           onPress={() => {
             // The round size is a social fact about this log, not a quantity:
             // one drink is still logged for you and none for anybody else.
-            store.addLog({ drink, roundSize: selected.length + 1 });
+            const mine = store.addLog({ drink, roundSize: selected.length + 1 });
+            // And this is the "ask" half, which the button has been promising
+            // since the first version and did not do. Keyed on the log's own id
+            // so a retry from the queue asks the same people once.
+            store.askForRound({ roundId: mine.id, targets: selected, drink: drink.name });
             router.back();
             setTimeout(
               () =>

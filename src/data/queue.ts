@@ -46,8 +46,30 @@ export type QueueOp =
   | 'leave_session'
   | 'insert_message'
   | 'insert_reaction'
+  /**
+   * Telling other people something, which is not the same as writing a row.
+   *
+   * `notifications` has no insert policy — deliberately, because "anyone may
+   * write to anyone's inbox" is a spam feature — so both of these go through
+   * definer functions that decide who may be told. Queued like everything else,
+   * and idempotent on the server by a dedupe key, so a retry after a tunnel
+   * cannot notify a table full of people twice.
+   */
+  | 'notify_night_started'
+  | 'ask_for_round'
   /* the account */
   | 'upsert_profile'
+  /**
+   * The other half of the profile, which was never sent anywhere.
+   *
+   * `profiles_private` holds weight, sex, the module switches and the intents
+   * chosen at onboarding. A row is created with defaults by the sign-up
+   * trigger, `sync_pull` returns it, and nothing ever wrote to it — so the
+   * first pull after onboarding quietly reset all four on the device. Weight
+   * feeds the pace model, and `modules.social` is a privacy switch, so this was
+   * a sync that undid the user's own answers.
+   */
+  | 'upsert_private_profile'
   | 'upsert_goal'
   | 'earn_achievement'
   /* safety — the reason this list grew */

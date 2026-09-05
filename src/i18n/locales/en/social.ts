@@ -148,4 +148,7 @@ export const social = {
   // a friend request the server declined
   'social.requestSelf': "That's you.",
   'social.searchOffline': "Can't search right now. Check your connection.",
+  'social.contactsDisabled': "Contact matching is off. Nothing is read from your address book until you turn it on.",
+  'social.enableContactMatching': "Turn on contact matching",
+  'social.stopBeingFindable': "Stop being findable",
 } satisfies Record<string, Message>;

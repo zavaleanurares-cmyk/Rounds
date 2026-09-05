@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Sheet, Card, Text, Button, Icon, Avatar, Spinner } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
-import { findFriends, makeFindable, type Match } from '@/services/contacts';
+import { findFriends, makeFindable, stopBeingFindable, type Match } from '@/services/contacts';
 import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
@@ -26,14 +26,21 @@ import { color, space } from '@/design/tokens';
 export default function ContactMatch() {
   const router = useRouter();
   const t = useT();
-  const { addFriend } = useStore();
+  const { addFriend, settings, updateSettings } = useStore();
 
   const [state, setState] = useState<'idle' | 'working' | 'done' | 'refused'>('idle');
   const [matches, setMatches] = useState<Match[]>([]);
   const [number, setNumber] = useState('');
   const [findable, setFindable] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  /**
+   * Settings › Privacy has a "Contact matching" switch. It was written to local
+   * state and read by nothing: this screen called `findFriends()` regardless,
+   * so the address book was read and hashed whether or not somebody had turned
+   * the feature off. The switch is now what decides.
+   */
   const run = async () => {
+    if (!settings.contactMatching) return;
     setState('working');
     const found = await findFriends();
     if (found === null) {
@@ -58,7 +65,18 @@ export default function ContactMatch() {
           </View>
         </Card>
 
-        {state === 'idle' ? (
+        {!settings.contactMatching ? (
+          <View style={{ gap: space.m }}>
+            <Text variant="subheadline" tone="tertiary">{t('social.contactsDisabled')}</Text>
+            <Button
+              title={t('social.enableContactMatching')}
+              kind="glass"
+              compact
+              full={false}
+              onPress={() => updateSettings({ contactMatching: true })}
+            />
+          </View>
+        ) : state === 'idle' ? (
           <Button title={t('social.matchContacts')} onPress={() => void run()} />
         ) : state === 'working' ? (
           <Spinner />
@@ -115,6 +133,24 @@ export default function ContactMatch() {
                 setFindable(ok ? 'saved' : 'idle');
               }}
             />
+            {/*
+              The way back out. `stopBeingFindable` has existed since the
+              service was written and was imported by nothing, so this was a
+              one-way door: an opt-in with no opt-out is not really an opt-in.
+            */}
+            {findable === 'saved' ? (
+              <Button
+                title={t('social.stopBeingFindable')}
+                kind="plain"
+                compact
+                full={false}
+                onPress={async () => {
+                  await stopBeingFindable();
+                  setNumber('');
+                  setFindable('idle');
+                }}
+              />
+            ) : null}
           </View>
         </Card>
       </View>

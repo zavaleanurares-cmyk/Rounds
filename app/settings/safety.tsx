@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Group, NavRow, Card, Text } from '@/ui';
@@ -11,7 +11,15 @@ import { space } from '@/design/tokens';
 export default function SafetySettings() {
   const router = useRouter();
   const t = useT();
-  const { safety } = useStore();
+  const { safety, setHomeAddress } = useStore();
+
+  // Local while typing, committed on blur: an address is a whole thing, and
+  // writing a queue item per keystroke would be twenty half-addresses.
+  const [home, setHome] = useState(safety.homeAddress ?? '');
+  useEffect(() => {
+    setHome(safety.homeAddress ?? '');
+  }, [safety.homeAddress]);
+
   return (
     <Screen title={t('settings.safety')} back mood="safety">
       <Group>
@@ -30,7 +38,21 @@ export default function SafetySettings() {
           {t('settings.homeAddressNote')}
         </Text>
         <View style={{ marginTop: space.m }}>
-          <Field label="" value={safety.homeAddress ?? ''} onChangeText={() => {}} placeholder={t('settings.homeAddressPlaceholder')} autoCapitalize="words" />
+          {/*
+            This field used to discard every keystroke: `onChangeText={() => {}}`,
+            no store action behind it, `homeAddress` null forever — and so the
+            Ride home button on the safety screen always opened Uber with no
+            destination, on the screen somebody reaches for at the point they
+            want to stop thinking.
+          */}
+          <Field
+            label=""
+            value={home}
+            onChangeText={setHome}
+            onBlur={() => setHomeAddress(home)}
+            placeholder={t('settings.homeAddressPlaceholder')}
+            autoCapitalize="words"
+          />
         </View>
       </Card>
 

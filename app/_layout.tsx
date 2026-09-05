@@ -13,6 +13,7 @@ import { attachRemote } from '@/data/remote';
 import { useSystemSurfaces } from '@/hooks/useSystemSurfaces';
 import { installPwa } from '@/services/pwa';
 import { useNightState } from '@/hooks/useNightState';
+import { isSocialRoute } from '@/hooks/useSocial';
 import { useProgress } from '@/hooks/useProgress';
 import { Celebration } from '@/ui/Celebrate';
 import { color } from '@/design/tokens';
@@ -39,6 +40,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     'BarlowCondensed-SemiBold': require('../assets/fonts/BarlowCondensed-SemiBold.ttf'),
   });
   const night = useNightState();
+  const social = profile?.modules?.social ?? true;
   const segments = useSegments();
   const router = useRouter();
 
@@ -78,12 +80,26 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace(href as never);
       return;
     }
+    /**
+     * Social off means social gone, including by deep link.
+     *
+     * The switch used to be a boolean nobody read: the Circle tab stayed
+     * mounted, friend requests kept arriving, and somebody who turned it off
+     * believing they had made the app private was as social as before. Hiding
+     * the tab is not enough on its own — a notification, a QR code, an invite
+     * link and the back stack all reach these screens without it.
+     */
+    if (!social && isSocialRoute(`/${segments.join('/')}`)) {
+      router.replace('/(tabs)/tonight');
+      return;
+    }
+
     if (inAuth || inOnboarding) {
       router.replace(night.morningDue && night.morningSessionId
         ? (`/morning/${night.morningSessionId}` as never)
         : '/(tabs)/tonight');
     }
-  }, [ready, auth.status, auth.underageBlocked, auth.pendingHref, profile?.dob, profile?.onboarded, segments, night.morningDue, night.morningSessionId, router]);
+  }, [ready, auth.status, auth.underageBlocked, auth.pendingHref, profile?.dob, profile?.onboarded, segments, night.morningDue, night.morningSessionId, router, social]);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: color.bg.canvas }} />;
   return <>{children}</>;

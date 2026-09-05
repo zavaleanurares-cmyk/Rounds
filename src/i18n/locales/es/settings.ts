@@ -117,7 +117,7 @@ export const settings = {
     'Los números se convierten en hashes en este dispositivo. Los números en bruto no salen nunca de tu teléfono.',
   'settings.shareLocationDefault': 'Compartir ubicación por defecto',
   'settings.shareLocationDefaultSubtitle':
-    'Sigue siendo opcional cada noche; esto solo lo deja preseleccionado',
+    "Empieza a compartir durante dos horas al iniciar una noche. Puedes parar cuando quieras.",
   'settings.defaultVisibilityHeader': 'VISIBILIDAD POR DEFECTO DE LA NOCHE',
   'settings.defaultVisibilityLabel': 'Visibilidad por defecto',
   'settings.visibilityPrivate': 'Privada',

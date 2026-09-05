@@ -13,6 +13,7 @@ export function Field({
   multiline,
   hint,
   error,
+  onBlur,
 }: {
   label: string;
   value: string;
@@ -23,6 +24,8 @@ export function Field({
   multiline?: boolean;
   hint?: string;
   error?: string;
+  /** For fields that commit on leaving rather than on every keystroke. */
+  onBlur?: () => void;
 }) {
   return (
     <View>
@@ -30,6 +33,7 @@ export function Field({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={color.label.quaternary}
         keyboardType={keyboardType}

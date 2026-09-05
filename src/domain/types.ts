@@ -2,6 +2,7 @@ import type { ReactionKind } from '@/ui/Reaction';
 import type { UnitSystem } from './units';
 import type { Sex } from './pace';
 import type { DrinkArt } from './art';
+import type { Locale } from '@/i18n/plurals';
 
 export type Visibility = 'private' | 'friends' | 'crew' | 'link';
 export type Mood = 'great' | 'good' | 'rough' | 'bad';
@@ -35,6 +36,23 @@ export interface Profile {
   defaultVisibility: Visibility;
   modules: { nicotine: boolean; social: boolean };
   intent: string[];
+  /**
+   * The language this account reads.
+   *
+   * Kept on the profile rather than only on the device because the server
+   * composes and sends the notifications. Without it a Romanian user got a
+   * Romanian app that woke them in English — including the safe-arrival
+   * check-in, which is the one that has to be understood at 3am.
+   */
+  locale: Locale;
+  /**
+   * A mirror of the six switches on Settings › Notifications.
+   *
+   * Same reason: four of the six governed nothing, because every message the
+   * product sends is composed server-side and the preference never left the
+   * phone. `may_notify` reads this column.
+   */
+  notificationPrefs: Record<'morning' | 'weekly' | 'plans' | 'social' | 'safety' | 'gamification', boolean>;
   createdAt: number;
 }
 

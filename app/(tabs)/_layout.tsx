@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { TabBar, type TabItem } from '@/ui';
 import { useT, type MessageKey } from '@/i18n';
+import { useSocial } from '@/hooks/useSocial';
 import { color } from '@/design/tokens';
 
 const ITEMS: Array<Omit<TabItem, 'label'> & { labelKey: MessageKey }> = [
@@ -22,10 +23,18 @@ export default function TabsLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const t = useT();
+  // Circle is the whole social half of the app in one tab. With social off it
+  // is not dimmed or emptied — it is not there, which is what the switch says.
+  // The route guard in the root layout covers every other way in.
+  const social = useSocial();
   const activeKey = ITEMS.find((i) => pathname.includes(i.key))?.key ?? 'tonight';
   const items = React.useMemo<TabItem[]>(
-    () => ITEMS.map(({ labelKey, ...rest }) => ({ ...rest, label: t(labelKey) })),
-    [t]
+    () =>
+      ITEMS.filter((i) => social || i.key !== 'circle').map(({ labelKey, ...rest }) => ({
+        ...rest,
+        label: t(labelKey),
+      })),
+    [t, social]
   );
 
   return (

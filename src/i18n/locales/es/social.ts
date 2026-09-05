@@ -167,4 +167,7 @@ export const social = {
   // a friend request the server declined
   'social.requestSelf': "Ese eres tú.",
   'social.searchOffline': "No se puede buscar ahora. Comprueba tu conexión.",
+  'social.contactsDisabled': "La búsqueda por contactos está desactivada. No se lee nada de tu agenda hasta que la actives.",
+  'social.enableContactMatching': "Activar búsqueda por contactos",
+  'social.stopBeingFindable': "Dejar de ser localizable",
 } satisfies Record<string, Message>;

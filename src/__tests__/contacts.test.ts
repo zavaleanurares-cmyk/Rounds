@@ -82,10 +82,14 @@ describe('the privacy promise', () => {
     // No AsyncStorage, no key in the store. Nothing to leak from a backup.
     expect(code).not.toContain('AsyncStorage');
     expect(code).not.toContain('writeJson');
-    const types = readFileSync('src/domain/types.ts', 'utf8');
+    const types = readFileSync('src/domain/types.ts', 'utf8')
+      // The FIELDS, not the prose around them: a doc comment that happens to
+      // use the word "phone" (as in "never left the phone") is not a field.
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
     const profile = types.match(/export interface Profile \{[\s\S]*?\n\}/)?.[0] ?? '';
     expect(profile).toBeTruthy();
-    expect(profile).not.toMatch(/\bphone\b/);
+    expect(profile).not.toMatch(/\bphone\b/i);
   });
 
   it('is honest in its own comments about what the salt does not do', () => {

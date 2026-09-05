@@ -106,7 +106,7 @@ export const settings = {
   'settings.contactMatchingSubtitle':
     'Hashes numbers on this device. Raw numbers never leave your phone.',
   'settings.shareLocationDefault': 'Share location by default',
-  'settings.shareLocationDefaultSubtitle': 'Still opt-in per night; this just pre-selects it',
+  'settings.shareLocationDefaultSubtitle': "Starts sharing for two hours when a night starts. Stop any time.",
   'settings.defaultVisibilityHeader': 'DEFAULT NIGHT VISIBILITY',
   'settings.defaultVisibilityLabel': 'Default visibility',
   'settings.visibilityPrivate': 'Private',

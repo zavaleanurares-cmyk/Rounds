@@ -89,7 +89,20 @@ export default function Safety() {
           label={t('safety.rideHome')}
           onPress={() => void Linking.openURL(safety.homeAddress ? `https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${encodeURIComponent(safety.homeAddress)}` : 'https://m.uber.com')}
         />
-        <Action icon="figure.walk" label={t('safety.walkIt')} onPress={() => void Linking.openURL('https://maps.google.com')} />
+        {/* Both of these need a destination to be worth a tap. Home comes from
+            Settings › Get home safe, which is now a field that keeps what is
+            typed into it. */}
+        <Action
+          icon="figure.walk"
+          label={t('safety.walkIt')}
+          onPress={() =>
+            void Linking.openURL(
+              safety.homeAddress
+                ? `https://maps.google.com/maps/dir/?api=1&destination=${encodeURIComponent(safety.homeAddress)}&travelmode=walking`
+                : 'https://maps.google.com'
+            )
+          }
+        />
         <Action icon="bubble.left" label={t('safety.checkOnMe')} onPress={() => router.push('/safety/contacts')} />
       </View>
 
