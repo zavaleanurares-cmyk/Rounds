@@ -318,4 +318,13 @@ export const stats = {
   'stats.backToTonight': 'Înapoi la Diseară',
   'stats.nicotineLogged': "Am notat: {what}",
   'stats.nicotineTonight': "ÎN SEARA ASTA",
+  'stats.pouchMgHeader': "NICOTINĂ DIN PLICULEȚE SĂPTĂMÂNA ASTA",
+  'stats.pouchMgValue': "{mg} mg",
+  'stats.pouchMgNote': "Din pliculețe, care sunt etichetate. Țigările se numără, nu se cântăresc — vezi mai jos.",
+  'stats.pouches': "Pliculețe",
+  'stats.smoked': "Fumat",
+  'stats.mg': "{mg} mg",
+  'stats.pouchLabel': "{name}, {mg} miligrame",
+  'stats.pouchCapNote': "Tăriile așa cum se vând. Legea românească limitează un pliculeț la {max} mg, așa că nimic mai tare nu apare aici.",
+  'stats.noYieldNote': "Aici nu sunt miligrame, intenționat. Regulile UE au scos cifrele de nicotină de pe pachete pentru că făceau unele mărci să pară mai puțin dăunătoare. Numărarea este măsura cinstită.",
 } satisfies Record<string, Message>;

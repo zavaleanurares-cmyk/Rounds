@@ -46,7 +46,10 @@ export type GlassShape =
    * empty cavity so the liquid layer has nothing to fill.
    */
   | 'cigarette'
-  | 'vape';
+  | 'vape'
+  | 'pouch'       // a single white pouch, from the tin
+  | 'pack'        // a cigarette pack, flip-top open
+  | 'heatstick';  // a heated-tobacco stick and its holder
 
 export type Garnish =
   | 'citrusWheel' | 'citrusWedge' | 'citrusTwist' | 'orangePeel'

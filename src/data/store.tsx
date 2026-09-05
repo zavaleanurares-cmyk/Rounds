@@ -54,7 +54,7 @@ import * as locationShare from '@/services/locationShare';
 import * as purchases from '@/services/purchases';
 import { configureFeedback, releaseFeedback } from '@/services/feedback';
 import { BILLING_VISIBLE } from '@/config/flags';
-import { NICOTINE } from '@/domain/nicotine';
+import { nicotineById, asDrink } from '@/domain/nicotine';
 import {
   DEMO_CREWS,
   DEMO_PEOPLE,
@@ -287,6 +287,8 @@ function reducer(state: State, action: Action): State {
 export interface LogDraft {
   drink: Drink;
   priceMinor?: number | null;
+  /** Pouches only. See the note on `Log.nicotineMg`. */
+  nicotineMg?: number | null;
   at?: number;
   venueId?: string | null;
   /**
@@ -440,7 +442,7 @@ export interface Store extends State {
    * the drink sheet — which is a grid of drinks — never grows a cigarette in
    * it. The row itself is an ordinary log with no ethanol in it.
    */
-  logNicotine(drinkId: string): void;
+  logNicotine(productId: string): void;
   addFriend(personId: string): void;
   /** Acknowledges a declined request so the message stops being shown. */
   clearFriendRequestOutcome(): void;
@@ -874,6 +876,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         abv: draft.drink.abv,
         ethanolG: draft.drink.ethanolG,
         priceMinor: draft.priceMinor ?? null,
+        nicotineMg: draft.nicotineMg ?? null,
         currency: profile?.currency ?? 'EUR',
         venueId: draft.venueId ?? live?.venueId ?? null,
         at,
@@ -1602,13 +1605,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       logQueue.enqueue({ id: venue.id, op: 'upsert_venue', payload: venue });
       return venue;
     },
-    logNicotine(drinkId) {
-      const drink = NICOTINE.find((x) => x.id === drinkId);
-      if (!drink) return;
+    logNicotine(productId) {
+      const product = nicotineById(productId);
+      if (!product) return;
       // No price: a night's spend is what the night cost at the bar, and
-      // folding a pack of cigarettes into it would quietly change what that
-      // number means on the morning screen.
-      addLog({ drink, priceMinor: null });
+      // folding a tin or a pack into it would quietly change what that number
+      // means on the morning screen.
+      //
+      // The strength rides along for a pouch and is null for everything else —
+      // not missing, deliberate. See `domain/nicotine.ts`.
+      addLog({ drink: asDrink(product), priceMinor: null, nicotineMg: product.mg });
     },
     askForRound(input) {
       const session = stateRef.current.sessions.find((x) => x.endedAt === null);

@@ -638,12 +638,45 @@ describe('the app is not write-only', () => {
     const screen = code('app/nicotine.tsx');
     expect(screen).toContain('logNicotine');
     expect(screen).not.toMatch(/f\.number\(0, 0\)/);
-    expect(store).toContain('logNicotine(drinkId)');
+    expect(store).toContain('logNicotine(productId)');
     expect(code('src/domain/stats.ts')).toContain("goal.type === 'nicotine_free'");
     // And nothing nicotine ever carries ethanol, which is what keeps every
     // alcohol total right without a filter anybody has to remember.
     const nic = code('src/domain/nicotine.ts');
     expect(nic).toMatch(/ml: 0,\s*\n\s*abv: 0,/);
+  });
+
+  /**
+   * The one number this module must never invent.
+   *
+   * EU Directive 2014/40 Article 13(1)(a) forbids printing nicotine content on
+   * a cigarette pack, and recital 25 gives the reason: the figures "proved to
+   * be misleading as [they lead] consumers to believe that certain cigarettes
+   * are less harmful than others". A per-brand milligram table in this app
+   * would rebuild exactly what the Directive removed from the packaging — and
+   * it is an easy, well-meant thing for somebody to add later, which is why it
+   * is asserted rather than only explained.
+   */
+  it('carries no per-cigarette nicotine figure, and says why on screen', () => {
+    const nic = read('src/domain/nicotine.ts');
+    const products = nic.slice(nic.indexOf('export const SMOKED'), nic.indexOf('export const NICOTINE_PRODUCTS'));
+    expect(products).toBeTruthy();
+    // Every smoked product's strength is null. Not "small", not "estimated".
+    expect(products).not.toMatch(/format: '(cigarette|rolled|heated|vape)',\s*mg: (?!null)/);
+    // And the database refuses one, so a future client cannot send it either.
+    const mg = readFileSync('supabase/migrations/00047_nicotine_mg.sql', 'utf8');
+    expect(mg).toMatch(/category = 'nicotine' and nicotine_mg > 0 and nicotine_mg <= 20/);
+    // The screen states the reason, so the absence cannot be mistaken for a gap.
+    expect(read('src/i18n/locales/en/stats.ts')).toContain('stats.noYieldNote');
+  });
+
+  it('lists no pouch stronger than the law allows', () => {
+    // Romanian Law 64/2024 caps a pouch at 20 mg. Stronger products exist and
+    // cannot legally be sold here, so listing them would be listing contraband.
+    const nic = read('src/domain/nicotine.ts');
+    const strengths = [...nic.matchAll(/format: 'pouch', mg: ([\d.]+)/g)].map((m) => Number(m[1]));
+    expect(strengths.length).toBeGreaterThan(15);
+    expect(Math.max(...strengths)).toBeLessThanOrEqual(20);
   });
 
   /**

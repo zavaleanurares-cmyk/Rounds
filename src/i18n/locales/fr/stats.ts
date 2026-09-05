@@ -285,4 +285,13 @@ export const stats = {
   'stats.backToTonight': 'Retour à Ce soir',
   'stats.nicotineLogged': "{what} enregistrée",
   'stats.nicotineTonight': "CE SOIR",
+  'stats.pouchMgHeader': "NICOTINE EN SACHETS CETTE SEMAINE",
+  'stats.pouchMgValue': "{mg} mg",
+  'stats.pouchMgNote': "Depuis les sachets, qui sont étiquetés. Les cigarettes sont comptées, pas pesées — voir ci-dessous.",
+  'stats.pouches': "Sachets",
+  'stats.smoked': "Fumé",
+  'stats.mg': "{mg} mg",
+  'stats.pouchLabel': "{name}, {mg} milligrammes",
+  'stats.pouchCapNote': "Les forces telles qu'elles sont vendues. La loi roumaine plafonne un sachet à {max} mg ; rien de plus fort n'est listé.",
+  'stats.noYieldNote': "Pas de milligrammes ici, volontairement. Les règles européennes ont retiré les taux de nicotine des paquets parce qu'ils faisaient paraître certaines marques moins nocives. Compter est la mesure honnête.",
 } satisfies Record<string, Message>;

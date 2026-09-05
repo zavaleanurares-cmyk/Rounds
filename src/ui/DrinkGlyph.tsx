@@ -81,6 +81,58 @@ const GLASSES: Record<GlassShape, GlassDef> = {
       </>
     ),
   },
+  /**
+   * A pouch, as it sits between lip and gum: a rounded slim rectangle with the
+   * soft seam across it. The tin's colour arrives through `liquid`, which is
+   * why these three are NOT opaque — the fill is what makes a Killa read black
+   * and a ZYN read white at 18pt in a chip.
+   */
+  pouch: {
+    cavity: { path: 'M9 20 Q9 16.5 12.5 16.5 L31.5 16.5 Q35 16.5 35 20 L35 36 Q35 39.5 31.5 39.5 L12.5 39.5 Q9 39.5 9 36 Z', top: 16.5, bottom: 39.5, rimHalf: 13, cx: 22 },
+    front: (s) => (
+      <>
+        <Path {...s} d="M9 20 Q9 16.5 12.5 16.5 L31.5 16.5 Q35 16.5 35 20 L35 36 Q35 39.5 31.5 39.5 L12.5 39.5 Q9 39.5 9 36 Z" />
+        {/* the seam, and the fold at each end */}
+        <Path {...s} d="M11.5 28 Q22 25.5 32.5 28" strokeWidth={1} opacity={0.55} />
+        <Path {...s} d="M13.5 17 Q13 28 13.5 39" strokeWidth={0.9} opacity={0.4} />
+        <Path {...s} d="M30.5 17 Q31 28 30.5 39" strokeWidth={0.9} opacity={0.4} />
+      </>
+    ),
+  },
+  /**
+   * A flip-top pack with two cigarettes standing proud of it. The brand colour
+   * fills the body; the lid and the two filters are drawn over it.
+   */
+  pack: {
+    cavity: { path: 'M13 18 L31 18 L31 50 Q31 51.5 29.5 51.5 L14.5 51.5 Q13 51.5 13 50 Z', top: 18, bottom: 51.5, rimHalf: 9, cx: 22 },
+    front: (s) => (
+      <>
+        {/* the two cigarettes, behind the lid line */}
+        <Path {...s} d="M17.5 12 L17.5 18 M24 9.5 L24 18" strokeWidth={3.4} strokeLinecap="round" />
+        <Path {...s} d="M13 18 L31 18 L31 50 Q31 51.5 29.5 51.5 L14.5 51.5 Q13 51.5 13 50 Z" />
+        {/* the lid seam */}
+        <Line {...s} x1="13.4" y1="25" x2="30.6" y2="25" strokeWidth={1} opacity={0.6} />
+      </>
+    ),
+  },
+  /**
+   * A heated-tobacco stick standing in its holder — the shape of an IQOS or a
+   * glo rather than of a cigarette, because they are not the same thing and the
+   * person logging one knows the difference.
+   */
+  heatstick: {
+    cavity: { path: 'M16 26 L28 26 Q29.5 26 29.5 27.5 L29.5 48 Q29.5 50 27.5 50 L16.5 50 Q14.5 50 14.5 48 L14.5 27.5 Q14.5 26 16 26 Z', top: 26, bottom: 50, rimHalf: 7.5, cx: 22 },
+    front: (s) => (
+      <>
+        {/* the stick */}
+        <Path {...s} d="M19 7 L25 7 L25 26 L19 26 Z" />
+        <Line {...s} x1="19.4" y1="13" x2="24.6" y2="13" strokeWidth={0.9} opacity={0.5} />
+        {/* the holder */}
+        <Path {...s} d="M16 26 L28 26 Q29.5 26 29.5 27.5 L29.5 48 Q29.5 50 27.5 50 L16.5 50 Q14.5 50 14.5 48 L14.5 27.5 Q14.5 26 16 26 Z" />
+        <Line {...s} x1="17.5" y1="44" x2="26.5" y2="44" strokeWidth={1} opacity={0.5} />
+      </>
+    ),
+  },
   vape: {
     cavity: { path: 'M22 28 L22 28 Z', top: 28, bottom: 28, rimHalf: 0, cx: 22 },
     opaque: true,

@@ -706,6 +706,40 @@ delete from public.consumption_logs where session_id in
 delete from public.live_activity_tokens;
 set role authenticated;
 
+-- ================================================== nicotine strength (00047)
+--
+-- A pouch is sold by the milligrams on its tin, and Romanian Law 64/2024 caps
+-- one at 20 mg. A cigarette carries no figure at all — EU Directive 2014/40
+-- Article 13(1)(a) took nicotine content off packs because, per recital 25, it
+-- misled people into believing some brands were less harmful. The constraint is
+-- what stops a future client putting it back.
+select public.set_current_user(:owner);
+insert into public.consumption_logs (id, user_id, drink_id, drink_name, category, volume_ml, abv, nicotine_mg)
+  values ('00000000-0000-0000-0000-00000000a101', :owner, 'zyn-6', 'ZYN Slim 6', 'nicotine', 0, 0, 6);
+select t.check('a pouch may carry the strength on its tin',
+  (select nicotine_mg = 6 from public.consumption_logs
+    where id = '00000000-0000-0000-0000-00000000a101'), true);
+
+select t.rejects('a pouch stronger than the legal ceiling is refused by the database',
+  $$insert into public.consumption_logs (id, user_id, drink_id, drink_name, category, volume_ml, abv, nicotine_mg)
+    values (gen_random_uuid(), auth.uid(), 'siberia', 'Siberia', 'nicotine', 0, 0, 43)$$);
+
+select t.rejects('and a DRINK can never carry a nicotine strength at all',
+  $$insert into public.consumption_logs (id, user_id, drink_id, drink_name, category, volume_ml, abv, nicotine_mg)
+    values (gen_random_uuid(), auth.uid(), 'beer-pint', 'Pint', 'beer', 568, 4.5, 6)$$);
+
+insert into public.consumption_logs (id, user_id, drink_id, drink_name, category, volume_ml, abv)
+  values ('00000000-0000-0000-0000-00000000a102', :owner, 'cig-marlboro', 'Marlboro', 'nicotine', 0, 0);
+select t.check('a cigarette is a count, with no strength beside it',
+  (select nicotine_mg is null from public.consumption_logs
+    where id = '00000000-0000-0000-0000-00000000a102'), true);
+select t.check('and nothing nicotine ever contributes ethanol',
+  (select sum(ethanol_g) = 0 from public.consumption_logs where category = 'nicotine'), true);
+
+-- No cleanup, and none possible: there is no delete policy on
+-- `consumption_logs` — deletes are tombstones — so this block runs after the
+-- log matrix rather than before it, and leaves its rows behind deliberately.
+
 -- ============================================ profile personalisation (27)
 select public.set_current_user(:owner);
 update public.profiles set bio = 'A line about me', avatar_tint = 3, home_city = 'Bucharest'

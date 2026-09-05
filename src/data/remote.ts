@@ -77,6 +77,8 @@ function logRow(log: Log) {
     venue_id: log.venueId,
     consumed_at: new Date(log.at).toISOString(),
     round_size: log.roundSize ?? null,
+    // Pouches only, and capped at 20 by `nicotine_mg_sane` — see 00047.
+    nicotine_mg: log.nicotineMg ?? null,
     // ethanol_g and night_key are GENERATED columns — never sent, so a client
     // that computes them differently cannot corrupt the data.
   };
@@ -815,6 +817,7 @@ function toLog(r: Record<string, any>): Log {
     createdAt: new Date(r.created_at).getTime(),
     source: r.source ?? 'app',
     roundSize: r.round_size ?? null,
+    nicotineMg: r.nicotine_mg === null || r.nicotine_mg === undefined ? null : Number(r.nicotine_mg),
   };
 }
 

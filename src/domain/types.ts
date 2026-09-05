@@ -119,6 +119,17 @@ export interface Log {
   abv: number;
   ethanolG: number;
   priceMinor: number | null;
+  /**
+   * Milligrams of nicotine, where the product publishes a figure.
+   *
+   * Pouches only. Set from the tin's own labelling, which is what the category
+   * is sold and stepped down by. `null` for everything else, including every
+   * cigarette — EU Directive 2014/40 Article 13(1)(a) forbids printing nicotine
+   * content on a pack precisely because, per recital 25, the figures mislead
+   * people into believing some cigarettes are less harmful than others. See the
+   * note at the top of `domain/nicotine.ts`.
+   */
+  nicotineMg?: number | null;
   currency: string;
   venueId: string | null;
   at: number;

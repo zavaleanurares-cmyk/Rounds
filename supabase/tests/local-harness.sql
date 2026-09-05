@@ -53,6 +53,21 @@ as $$ select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '
 
 -- The real project grants these to the API roles; the harness must too, or the
 -- matrix cannot even reach the bucket to prove its policies work.
+/**
+ * `auth.uid()` has to be callable by the roles that run the assertions.
+ *
+ * In a real Supabase project the `auth` schema is usable by `authenticated` and
+ * `anon`; here it was not, and the effect was quiet and bad: seven `t.rejects`
+ * assertions whose statement mentions `auth.uid()` were passing because the
+ * statement raised "permission denied for schema auth" — not because the
+ * constraint or policy under test refused anything. A security test that passes
+ * for the wrong reason is worse than one that fails.
+ *
+ * Found when a deliberately broken constraint did not fail its own assertion.
+ */
+grant usage on schema auth to authenticated, anon;
+grant execute on function auth.uid() to authenticated, anon;
+
 grant usage on schema storage to authenticated;
 grant select on storage.buckets to authenticated;
 grant select, insert, update, delete on storage.objects to authenticated;

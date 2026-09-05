@@ -279,4 +279,13 @@ export const stats = {
   'stats.backToTonight': 'Volver a Esta noche',
   'stats.nicotineLogged': "{what} registrado",
   'stats.nicotineTonight': "ESTA NOCHE",
+  'stats.pouchMgHeader': "NICOTINA EN BOLSITAS ESTA SEMANA",
+  'stats.pouchMgValue': "{mg} mg",
+  'stats.pouchMgNote': "De las bolsitas, que vienen etiquetadas. Los cigarrillos se cuentan, no se pesan — ver abajo.",
+  'stats.pouches': "Bolsitas",
+  'stats.smoked': "Fumado",
+  'stats.mg': "{mg} mg",
+  'stats.pouchLabel': "{name}, {mg} miligramos",
+  'stats.pouchCapNote': "Intensidades tal como se venden. La ley rumana limita una bolsita a {max} mg, así que no aparece nada más fuerte.",
+  'stats.noYieldNote': "Aquí no hay miligramos, a propósito. Las normas de la UE quitaron las cifras de nicotina de las cajetillas porque hacían que unas marcas parecieran menos dañinas. Contar es la medida honesta.",
 } satisfies Record<string, Message>;
