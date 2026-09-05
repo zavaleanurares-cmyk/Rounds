@@ -7,19 +7,20 @@ import { capabilities, isExpoGo, whyMissing } from '@/services/optional';
 import { pushDiagnostics, permissionStatus, requestPermission } from '@/services/push';
 import { isRemoteEnabled } from '@/data/remote';
 import { isOptedOut, setOptOut, outOfAppShare } from '@/services/analytics';
+import { useT, useI18n, type MessageKey } from '@/i18n';
 import { color, space } from '@/design/tokens';
 import { BILLING_VISIBLE } from '@/config/flags';
 
 const SURFACES = [
-  { id: 'X-01', name: 'Live night HUD', ios: 'Live Activity + Dynamic Island', android: 'Ongoing notification' },
-  { id: 'X-02', name: 'One-tap log', ios: 'App Intent button', android: 'Notification action' },
-  { id: 'X-03', name: 'Widget · small', ios: 'WidgetKit', android: 'AppWidget 2×2' },
-  { id: 'X-04', name: 'Widget · medium', ios: 'WidgetKit, interactive', android: 'AppWidget 4×2' },
-  { id: 'X-05', name: 'Widget · large', ios: 'Year heatmap', android: 'AppWidget 4×4' },
-  { id: 'X-06', name: 'Quick toggle', ios: 'Control Center control', android: 'Quick Settings tile' },
-  { id: 'X-07', name: 'Voice', ios: 'App Intents / Siri', android: 'App Actions' },
-  { id: 'X-08', name: 'Watch', ios: 'watchOS app', android: 'Wear OS tile' },
-];
+  { id: 'X-01', name: 'settings.surfaceHudName', ios: 'settings.surfaceHudIos', android: 'settings.surfaceHudAndroid' },
+  { id: 'X-02', name: 'settings.surfaceQuickLogName', ios: 'settings.surfaceQuickLogIos', android: 'settings.surfaceQuickLogAndroid' },
+  { id: 'X-03', name: 'settings.surfaceWidgetSmallName', ios: 'settings.surfaceWidgetSmallIos', android: 'settings.surfaceWidgetSmallAndroid' },
+  { id: 'X-04', name: 'settings.surfaceWidgetMediumName', ios: 'settings.surfaceWidgetMediumIos', android: 'settings.surfaceWidgetMediumAndroid' },
+  { id: 'X-05', name: 'settings.surfaceWidgetLargeName', ios: 'settings.surfaceWidgetLargeIos', android: 'settings.surfaceWidgetLargeAndroid' },
+  { id: 'X-06', name: 'settings.surfaceTileName', ios: 'settings.surfaceTileIos', android: 'settings.surfaceTileAndroid' },
+  { id: 'X-07', name: 'settings.surfaceVoiceName', ios: 'settings.surfaceVoiceIos', android: 'settings.surfaceVoiceAndroid' },
+  { id: 'X-08', name: 'settings.surfaceWatchName', ios: 'settings.surfaceWatchIos', android: 'settings.surfaceWatchAndroid' },
+] as const satisfies ReadonlyArray<{ id: string; name: MessageKey; ios: MessageKey; android: MessageKey }>;
 
 /**
  * Where the out-of-app logging actually stands.
@@ -29,6 +30,8 @@ const SURFACES = [
  * in an analytics dashboard nobody opens.
  */
 export default function Surfaces() {
+  const t = useT();
+  const { locale } = useI18n();
   const { logs, entitled } = useStore();
   const [pending, setPending] = useState(0);
   const [perm, setPerm] = useState<string>('…');
@@ -45,14 +48,14 @@ export default function Surfaces() {
   const share = Math.round(outOfAppShare(logs) * 100);
 
   return (
-    <Screen title="System surfaces" subtitle="Logging without opening the app." back mood="night">
+    <Screen title={t('settings.systemSurfaces')} subtitle={t('settings.surfacesSubtitle')} back mood="night">
       <Card aurora accent={share >= 40 ? color.pace.steady : color.brand.tint}>
-        <Text variant="sectionHeader" tone="tertiary">LOGGED OUTSIDE THE APP</Text>
-        <Text variant="numericLarge" style={{ marginTop: space.xs }}>{share}%</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('settings.loggedOutsideHeader')}</Text>
+        <Text variant="numericLarge" style={{ marginTop: space.xs }}>
+          {t('settings.percent', { value: share })}
+        </Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-          {outside} of {live.length} logs. The target is 40% — below that, the lock-screen surfaces
-          are not carrying their weight and the app is asking for effort at the moment people have
-          the least of it.
+          {t('settings.outsideShare', { outside, count: live.length })}
         </Text>
       </Card>
 
@@ -61,83 +64,78 @@ export default function Surfaces() {
           <View style={{ flexDirection: 'row', gap: space.m }}>
             <Icon name="exclamationmark.triangle" size={20} color={color.warning} />
             <Text variant="subheadline" tone="secondary" style={{ flex: 1 }}>
-              These need a development build. Live Activities, WidgetKit, App Intents, Control
-              Center controls, foreground services and Quick Settings tiles cannot run in Expo Go or
-              a browser — the config plugin in `modules/rounds-native` adds the targets on
-              `expo prebuild`.
+              {t('settings.devBuildNote')}
             </Text>
           </View>
         </Card>
       ) : null}
 
-      <Group title="WHAT THIS BUILD CAN DO">
-        <ValueRow title="Map" value={caps.map ? 'real map' : 'projected pins'} />
-        <ValueRow title="QR scanner" value={caps.camera ? 'camera' : 'code entry only'} />
-        <ValueRow title="Location" value={caps.location ? 'available' : 'unavailable'} />
-        <ValueRow title="Notifications" value={caps.notifications ? `local · ${perm}` : 'unavailable'} />
-        <ValueRow title="Remote push" value={caps.remotePush ? 'available' : whyMissing('remotePush')} />
-        <ValueRow title="Purchases" value={caps.purchases ? 'store connected' : whyMissing('purchases')} />
-        <ValueRow title="Backend" value={isRemoteEnabled() ? 'Supabase' : 'on-device only'} last />
+      <Group title={t('settings.buildCanDoHeader')}>
+        <ValueRow title={t('settings.capMap')} value={caps.map ? t('settings.capMapReal') : t('settings.capMapProjected')} />
+        <ValueRow title={t('settings.capScanner')} value={caps.camera ? t('settings.capScannerCamera') : t('settings.capScannerCodeOnly')} />
+        <ValueRow title={t('settings.capLocation')} value={caps.location ? t('settings.capAvailable') : t('settings.capUnavailable')} />
+        <ValueRow title={t('settings.notifications')} value={caps.notifications ? t('settings.capNotificationsLocal', { status: perm }) : t('settings.capUnavailable')} />
+        <ValueRow title={t('settings.capRemotePush')} value={caps.remotePush ? t('settings.capAvailable') : whyMissing('remotePush', locale)} />
+        <ValueRow title={t('settings.capPurchases')} value={caps.purchases ? t('settings.capPurchasesConnected') : whyMissing('purchases', locale)} />
+        <ValueRow title={t('settings.capBackend')} value={isRemoteEnabled() ? 'Supabase' : t('settings.capBackendOnDevice')} last />
       </Group>
 
       {caps.notifications && perm !== 'granted' ? (
         <Button
-          title="Turn on notifications"
+          title={t('settings.turnOnNotifications')}
           kind="glass"
           icon="bell"
-          onPress={() => void requestPermission().then(setPerm)}
+          onPress={() => void requestPermission(locale).then(setPerm)}
         />
       ) : null}
 
-      <Group title="ON THIS PLATFORM">
-        <ValueRow title="HUD" value={String(platformSurfaces.hud)} />
-        <ValueRow title="Widgets" value={String(platformSurfaces.widget)} />
-        <ValueRow title="Quick toggle" value={String(platformSurfaces.tile)} />
-        <ValueRow title="Voice" value={String(platformSurfaces.voice)} />
-        <ValueRow title="Native module" value={nativeAvailable ? 'attached' : 'not in this build'} last />
+      <Group title={t('settings.onThisPlatformHeader')}>
+        <ValueRow title={t('settings.platformHud')} value={String(platformSurfaces.hud)} />
+        <ValueRow title={t('settings.platformWidgets')} value={String(platformSurfaces.widget)} />
+        <ValueRow title={t('settings.platformQuickToggle')} value={String(platformSurfaces.tile)} />
+        <ValueRow title={t('settings.platformVoice')} value={String(platformSurfaces.voice)} />
+        <ValueRow title={t('settings.platformNativeModule')} value={nativeAvailable ? t('settings.platformAttached') : t('settings.platformNotInBuild')} last />
       </Group>
 
-      <Group title="THE EIGHT">
+      <Group title={t('settings.theEightHeader')}>
         {SURFACES.map((s, i) => (
           <ValueRow
             key={s.id}
-            title={`${s.id} · ${s.name}`}
-            value={Platform.OS === 'android' ? s.android : s.ios}
+            title={t('settings.surfaceRow', { id: s.id, name: t(s.name) })}
+            value={Platform.OS === 'android' ? t(s.android) : t(s.ios)}
             last={i === SURFACES.length - 1}
           />
         ))}
       </Group>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">THE RULE</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('settings.theRuleHeader')}</Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.sm }}>
-          Every one of these writes through the same offline queue as the log sheet, with a UUID the
-          surface mints itself. There is never a second write path — which is why a watch that syncs
-          an hour late cannot turn one drink into two.
+          {t('settings.theRuleBody')}
         </Text>
         {pending > 0 ? (
           <Text variant="footnote" color={color.warning} style={{ marginTop: space.m }}>
-            {pending} logs waiting in the shared container.
+            {t('settings.sharedContainerPending', { count: pending })}
           </Text>
         ) : null}
       </Card>
 
-      <Group title="DIAGNOSTICS">
-        <ValueRow title="Build" value={isExpoGo() ? 'Expo Go' : nativeAvailable ? 'development' : 'web'} />
+      <Group title={t('settings.diagnosticsHeader')}>
+        <ValueRow title={t('settings.diagBuild')} value={isExpoGo() ? 'Expo Go' : nativeAvailable ? t('settings.diagBuildDevelopment') : t('settings.diagBuildWeb')} />
         {BILLING_VISIBLE ? (
-          <ValueRow title="Entitlement (server)" value={entitled ? 'paid' : 'free'} />
+          <ValueRow title={t('settings.diagEntitlement')} value={entitled ? t('settings.diagEntitlementPaid') : t('settings.diagEntitlementFree')} />
         ) : null}
         <ToggleRow
-          title="Send diagnostics"
-          subtitle="Counts and categories only — never a drink, a venue or a person"
+          title={t('settings.sendDiagnostics')}
+          subtitle={t('settings.sendDiagnosticsSubtitle')}
           value={!noAnalytics}
           onValueChange={(v) => { setNoAnalytics(!v); void setOptOut(!v); }}
           last
         />
       </Group>
 
-      {pushDiagnostics().note ? (
-        <Text variant="footnote" tone="quaternary" center>{pushDiagnostics().note}</Text>
+      {pushDiagnostics(locale).note ? (
+        <Text variant="footnote" tone="quaternary" center>{pushDiagnostics(locale).note}</Text>
       ) : null}
     </Screen>
   );

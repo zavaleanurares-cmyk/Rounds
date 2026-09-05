@@ -2,18 +2,26 @@ import React, { useMemo, useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Aurora, Card, Text, Button, Chip, Icon, StatTile, EmptyState, MoodFace, MOODS } from '@/ui';
+import { Aurora, Card, Text, Button, Chip, Icon, StatTile, EmptyState, MoodFace, MOODS, MOOD_LABEL } from '@/ui';
 import { useStore } from '@/data/store';
-import {
-  summariseNights, estimateMissedDrinks, hangoverForecast, formatDuration, formatMoney, formatClock,
-} from '@/domain/stats';
+import { summariseNights, estimateMissedDrinks, hangoverForecast } from '@/domain/stats';
 import { CATALOG } from '@/domain/catalog';
 import type { Mood } from '@/domain/types';
+import { useT, useFormat } from '@/i18n';
 import { color, geometry, radius, space } from '@/design/tokens';
 
-const FEELING_LABEL: Record<Mood, string> = {
-  great: 'Fine', good: 'Okay', rough: 'Tender', bad: 'Rough',
-};
+/**
+ * The mood words live in one place — `MOOD_LABEL` — so the sheet that captures
+ * a mood and the screen that shows it back cannot disagree.
+ */
+const FEELING_LABEL = MOOD_LABEL;
+
+/** The forecast band, as it reads inside the sentence that quotes it. */
+const BAND_LABEL = {
+  fine: 'morning.bandFine',
+  tender: 'morning.bandTender',
+  rough: 'morning.bandRough',
+} as const;
 
 /**
  * Y-04 · Morning after — the second most important screen in the app.
@@ -30,6 +38,8 @@ const FEELING_LABEL: Record<Mood, string> = {
  */
 export default function MorningAfter() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const insets = useSafeAreaInsets();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const store = useStore();
@@ -49,7 +59,7 @@ export default function MorningAfter() {
   if (!session) {
     return (
       <View style={{ flex: 1, backgroundColor: color.bg.canvas, paddingTop: insets.top + 60, paddingHorizontal: geometry.screenMargin }}>
-        <EmptyState title="Nothing to show" body="That night isn't on this device." icon="moon.stars" />
+        <EmptyState title={t('morning.notFoundTitle')} body={t('morning.notFoundBody')} icon="moon.stars" />
       </View>
     );
   }
@@ -81,19 +91,21 @@ export default function MorningAfter() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>YOUR MORNING</Text>
-          <Pressable onPress={() => router.replace('/(tabs)/tonight')} hitSlop={10} accessibilityLabel="Close">
+          <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>{t('morning.header')}</Text>
+          <Pressable onPress={() => router.replace('/(tabs)/tonight')} hitSlop={10} accessibilityLabel={t('ui.close')}>
             <Icon name="xmark" size={18} color={color.label.tertiary} />
           </Pressable>
         </View>
 
         {/* card 1 — last night. Emotional hook before metric. */}
         <Card aurora accent={color.night[session.accentIndex % 4]}>
-          <Text variant="title1">{venue?.name ?? session.title ?? 'Last night'}</Text>
+          <Text variant="title1">{venue?.name ?? session.title ?? t('morning.lastNight')}</Text>
           <Text variant="body" tone="secondary" style={{ marginTop: space.xs }}>
-            You were out {formatDuration((session.endedAt ?? 0) - session.startedAt)} across{' '}
-            {summary?.venueIds.length ?? 1} {(summary?.venueIds.length ?? 1) === 1 ? 'place' : 'places'}.
-            {session.safeHomeAt ? ` Home at ${formatClock(session.safeHomeAt)}.` : ''}
+            {t('morning.outAcross', {
+              duration: f.duration((session.endedAt ?? 0) - session.startedAt),
+              count: summary?.venueIds.length ?? 1,
+            })}
+            {session.safeHomeAt ? ` ${t('morning.homeAt', { time: f.clock(session.safeHomeAt) })}` : ''}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 46, marginTop: space.md }}>
             {logs.map((l) => (
@@ -114,21 +126,22 @@ export default function MorningAfter() {
         {/* card 2 — fill the gaps. The critical one. */}
         {missed - added > 0 ? (
           <Card accent={color.brand.tint}>
-            <Text variant="sectionHeader" tone="tertiary">FILL THE GAPS</Text>
+            <Text variant="sectionHeader" tone="tertiary">{t('morning.fillTheGaps')}</Text>
             <Text variant="headline" style={{ marginTop: space.xs }}>
-              You were out {formatDuration((session.endedAt ?? 0) - session.startedAt)} for{' '}
-              {logs.filter((l) => l.ethanolG > 0).length} logged drinks.
+              {t('morning.gapsHeadline', {
+                duration: f.duration((session.endedAt ?? 0) - session.startedAt),
+                count: logs.filter((l) => l.ethanolG > 0).length,
+              })}
             </Text>
             <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-              Roughly {missed - added} probably didn't get logged. Adding them now is what keeps every
-              number after this honest.
+              {t('morning.gapsBody', { count: missed - added })}
             </Text>
             <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md, flexWrap: 'wrap' }}>
-              <Chip label="+1" onPress={() => addMissed(1)} />
-              <Chip label="+2" onPress={() => addMissed(2)} />
-              <Chip label="+3" onPress={() => addMissed(3)} />
-              <Chip label="Nothing more" onPress={() => setAdded(missed)} />
-              <Chip label="Let me add them" onPress={() => router.push(`/session/${session.id}/edit` as never)} />
+              <Chip label={t('morning.addN', { count: 1 })} onPress={() => addMissed(1)} />
+              <Chip label={t('morning.addN', { count: 2 })} onPress={() => addMissed(2)} />
+              <Chip label={t('morning.addN', { count: 3 })} onPress={() => addMissed(3)} />
+              <Chip label={t('morning.nothingMore')} onPress={() => setAdded(missed)} />
+              <Chip label={t('morning.letMeAddThem')} onPress={() => router.push(`/session/${session.id}/edit` as never)} />
             </View>
           </Card>
         ) : added > 0 ? (
@@ -136,7 +149,7 @@ export default function MorningAfter() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
               <Icon name="checkmark" size={20} color={color.success} />
               <Text variant="subheadline" style={{ flex: 1 }}>
-                Added {added}. Your pace, spend and streaks have already updated.
+                {t('morning.addedConfirm', { count: added })}
               </Text>
             </View>
           </Card>
@@ -144,70 +157,69 @@ export default function MorningAfter() {
 
         {/* card 3 — how do you feel, against the forecast */}
         <Card>
-          <Text variant="sectionHeader" tone="tertiary">HOW DO YOU FEEL</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('morning.howDoYouFeel')}</Text>
           <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.m }}>
-            {MOODS.map((f) => (
+            {MOODS.map((mood) => (
               <Pressable
-                key={f}
+                key={mood}
                 onPress={() => {
-                  setFeeling(f);
-                  store.endSession(session.id, { mood: f, safeHome: session.safeHomeAt !== null });
+                  setFeeling(mood);
+                  store.endSession(session.id, { mood, safeHome: session.safeHomeAt !== null });
                 }}
                 accessibilityRole="button"
-                accessibilityState={{ selected: feeling === f }}
-                accessibilityLabel={FEELING_LABEL[f]}
+                accessibilityState={{ selected: feeling === mood }}
+                accessibilityLabel={t(FEELING_LABEL[mood])}
                 style={{
                   flex: 1,
                   minHeight: 72,
                   borderRadius: radius.control,
                   borderWidth: 1.5,
-                  borderColor: feeling === f ? color.brand.tint : color.separator,
+                  borderColor: feeling === mood ? color.brand.tint : color.separator,
                   backgroundColor: color.surface.secondary,
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 4,
                 }}
               >
-                <MoodFace mood={f} size={28} active={feeling === f} />
-                <Text variant="caption2" tone="secondary">{FEELING_LABEL[f]}</Text>
+                <MoodFace mood={mood} size={28} active={feeling === mood} />
+                <Text variant="caption2" tone="secondary">{t(FEELING_LABEL[mood])}</Text>
               </Pressable>
             ))}
           </View>
           {feeling ? (
             <Text variant="footnote" tone="tertiary" style={{ marginTop: space.m }}>
-              We guessed "{forecast.band}". Every time you answer this, the guess gets closer to you
-              specifically.
+              {t('morning.weGuessed', { band: t(BAND_LABEL[forecast.band]) })}
             </Text>
           ) : null}
         </Card>
 
         {/* card 4 — numbers. Plain, no red. */}
         <View style={{ flexDirection: 'row', gap: space.m }}>
-          <StatTile label="Drinks" value={String(summary?.drinks ?? 0)} icon="wineglass" tint={color.label.primary} />
-          <StatTile label="Water" value={String(summary?.waters ?? 0)} icon="drop" tint={color.brand.tintLight} />
+          <StatTile label={t('morning.drinks')} value={String(summary?.drinks ?? 0)} icon="wineglass" tint={color.label.primary} />
+          <StatTile label={t('morning.water')} value={String(summary?.waters ?? 0)} icon="drop" tint={color.brand.tintLight} />
         </View>
         <View style={{ flexDirection: 'row', gap: space.m }}>
           <StatTile
-            label="Spend"
-            value={formatMoney(summary?.spendMinor ?? 0, store.profile?.currency ?? 'EUR')}
+            label={t('morning.spend')}
+            value={f.money(summary?.spendMinor ?? 0, store.profile?.currency ?? 'EUR')}
             icon="creditcard"
             tint={color.pace.quick}
           />
-          <StatTile label="Home" value={session.safeHomeAt ? formatClock(session.safeHomeAt) : '—'} icon="house" />
+          <StatTile label={t('morning.home')} value={session.safeHomeAt ? f.clock(session.safeHomeAt) : '—'} icon="house" />
         </View>
 
         {/* card 5 — exactly one next line. Never more. */}
         <Card>
           <Text variant="subheadline" tone="secondary">
             {(summary?.waters ?? 0) === 0
-              ? "No water logged last night — one glass between rounds is the single thing that changes how the morning feels."
-              : `Two dry nights this week would put you back under your weekly goal.`}
+              ? t('morning.noWaterNote')
+              : t('morning.dryNightsNote')}
           </Text>
         </Card>
 
         <View style={{ gap: space.m, marginTop: space.sm }}>
-          <Button title="See the full night" kind="glass" onPress={() => router.replace(`/session/${session.id}` as never)} />
-          <Button title="Done" onPress={() => router.replace('/(tabs)/tonight')} />
+          <Button title={t('morning.seeTheFullNight')} kind="glass" onPress={() => router.replace(`/session/${session.id}` as never)} />
+          <Button title={t('ui.done')} onPress={() => router.replace('/(tabs)/tonight')} />
         </View>
       </ScrollView>
     </View>

@@ -5,15 +5,16 @@ import { Screen, Card, Text, Button, Icon } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
 import type { Report } from '@/domain/types';
+import { useT, type MessageKey } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
-const REASONS: Array<{ value: Report['reason']; label: string }> = [
-  { value: 'harassment', label: 'Harassment or bullying' },
-  { value: 'spam', label: 'Spam' },
-  { value: 'impersonation', label: 'Impersonation' },
-  { value: 'inappropriate', label: 'Inappropriate content' },
-  { value: 'safety', label: "I'm worried about someone's safety" },
-  { value: 'other', label: 'Something else' },
+const REASONS: Array<{ value: Report['reason']; label: MessageKey }> = [
+  { value: 'harassment', label: 'stats.reasonHarassment' },
+  { value: 'spam', label: 'stats.reasonSpam' },
+  { value: 'impersonation', label: 'stats.reasonImpersonation' },
+  { value: 'inappropriate', label: 'stats.reasonInappropriate' },
+  { value: 'safety', label: 'stats.reasonSafety' },
+  { value: 'other', label: 'stats.reasonOther' },
 ];
 
 /**
@@ -25,6 +26,7 @@ const REASONS: Array<{ value: Report['reason']; label: string }> = [
  */
 export default function ReportScreen() {
   const router = useRouter();
+  const t = useT();
   const { targetType, targetId } = useLocalSearchParams<{ targetType: string; targetId: string }>();
   const store = useStore();
   const [reason, setReason] = useState<Report['reason'] | null>(null);
@@ -34,18 +36,17 @@ export default function ReportScreen() {
 
   if (sent) {
     return (
-      <Screen title="Reported" back mood="safety">
+      <Screen title={t('stats.reportedTitle')} back mood="safety">
         <Card aurora>
           <Icon name="checkmark.shield" size={28} color={color.success} />
-          <Text variant="title3" style={{ marginTop: space.m }}>Thank you</Text>
+          <Text variant="title3" style={{ marginTop: space.m }}>{t('stats.reportThankYou')}</Text>
           <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-            A human reviews every report, usually within 24 hours. You won't hear back unless we need
-            something from you, and the person is never told who reported them.
+            {t('stats.reportThankYouBody')}
           </Text>
         </Card>
         {person && !store.blocked.includes(person.id) ? (
           <Button
-            title={`Also block ${person.displayName}`}
+            title={t('stats.reportAlsoBlock', { name: person.displayName })}
             kind="destructive"
             icon="hand.raised"
             onPress={() => {
@@ -54,20 +55,20 @@ export default function ReportScreen() {
             }}
           />
         ) : null}
-        <Button title="Done" kind="glass" onPress={() => router.replace('/(tabs)/circle')} />
+        <Button title={t('ui.done')} kind="glass" onPress={() => router.replace('/(tabs)/circle')} />
       </Screen>
     );
   }
 
   return (
     <Screen
-      title="Report"
+      title={t('stats.reportTitle')}
       subtitle={person ? person.displayName : `${targetType}`}
       back
       mood="safety"
       footer={
         <Button
-          title="Send report"
+          title={t('stats.sendReport')}
           disabled={!reason}
           onPress={() => {
             store.reportTarget({
@@ -82,7 +83,7 @@ export default function ReportScreen() {
       }
     >
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">WHAT HAPPENED</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('stats.whatHappened')}</Text>
         <View style={{ marginTop: space.m }}>
           {REASONS.map((r, i) => (
             <Pressable
@@ -90,7 +91,7 @@ export default function ReportScreen() {
               onPress={() => setReason(r.value)}
               accessibilityRole="radio"
               accessibilityState={{ selected: reason === r.value }}
-              accessibilityLabel={r.label}
+              accessibilityLabel={t(r.label)}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -101,14 +102,14 @@ export default function ReportScreen() {
               }}
             >
               <Icon name={reason === r.value ? 'checkmark' : 'plus'} size={16} color={reason === r.value ? color.brand.tintLight : color.label.quaternary} />
-              <Text variant="body" style={{ flex: 1 }}>{r.label}</Text>
+              <Text variant="body" style={{ flex: 1 }}>{t(r.label)}</Text>
             </Pressable>
           ))}
         </View>
       </Card>
 
       <Card>
-        <Field label="Anything else (optional)" value={detail} onChangeText={setDetail} multiline autoCapitalize="sentences" />
+        <Field label={t('stats.reportDetail')} value={detail} onChangeText={setDetail} multiline autoCapitalize="sentences" />
       </Card>
     </Screen>
   );

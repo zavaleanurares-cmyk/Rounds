@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Text } from './Text';
+import { useT } from '@/i18n';
 import { color, radius, space, blur } from '@/design/tokens';
 
 /**
@@ -24,13 +25,14 @@ export function Sheet({
   onClose?: () => void;
   footer?: React.ReactNode;
 }) {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const close = onClose ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/tonight')));
 
   return (
     <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
-      <Pressable style={{ flex: 1 }} onPress={close} accessibilityLabel="Dismiss" accessibilityRole="button" />
+      <Pressable style={{ flex: 1 }} onPress={close} accessibilityLabel={t('ui.dismiss')} accessibilityRole="button" />
       <View
         style={{
           borderTopLeftRadius: radius.sheet,

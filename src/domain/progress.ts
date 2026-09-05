@@ -1,4 +1,5 @@
 import type { Log, Session, Person, Crew, Plan, Goal } from './types';
+import type { MessageKey } from '@/i18n';
 import { summariseNights, computeStreaks } from './stats';
 
 /**
@@ -23,37 +24,42 @@ import { summariseNights, computeStreaks } from './stats';
 export interface AchievementDef {
   id: string;
   group: 'exploration' | 'consistency' | 'moderation' | 'social';
-  name: string;
-  hint: string;
+  /**
+   * The name and the hint are message KEYS, not words. This table is a
+   * module-level constant evaluated at import time, so it cannot call a hook —
+   * the screen and the celebration overlay translate it as they render it.
+   */
+  nameKey: MessageKey;
+  hintKey: MessageKey;
   /** XP granted once, when it is first earned. */
   xp: number;
 }
 
 export const ACHIEVEMENTS: readonly AchievementDef[] = [
-  { id: 'first-night', group: 'consistency', name: 'First night', hint: 'Record a night from start to end.', xp: 40 },
-  { id: 'gap-filler', group: 'consistency', name: 'Gap filler', hint: 'Fill the gaps on a morning-after screen.', xp: 30 },
-  { id: 'week-of-logs', group: 'consistency', name: 'Seven straight', hint: 'Record seven nights out.', xp: 80 },
-  { id: 'morning-person', group: 'consistency', name: 'Morning person', hint: 'Answer "how do you feel" five times.', xp: 60 },
-  { id: 'honest-editor', group: 'consistency', name: 'Honest editor', hint: 'Correct a night after the fact.', xp: 30 },
-  { id: 'five-venues', group: 'exploration', name: 'Five places', hint: 'Log at five different venues.', xp: 50 },
-  { id: 'ten-venues', group: 'exploration', name: 'Ten places', hint: 'Log at ten different venues.', xp: 90 },
-  { id: 'new-place', group: 'exploration', name: 'Somewhere new', hint: 'Visit a venue nobody in your crew has.', xp: 40 },
-  { id: 'passport-page', group: 'exploration', name: 'Passport page', hint: 'Collect stamps at three venues in a month.', xp: 60 },
-  { id: 'home-city', group: 'exploration', name: 'Local', hint: 'Log in the same city twenty times.', xp: 70 },
-  { id: 'far-afield', group: 'exploration', name: 'Away game', hint: 'Record a night in another city.', xp: 50 },
-  { id: 'hydrated', group: 'moderation', name: 'Hydrated', hint: 'Log water on three nights in a row.', xp: 50 },
-  { id: 'dry-week', group: 'moderation', name: 'Dry week', hint: 'Seven nights with nothing logged.', xp: 80 },
-  { id: 'dry-fortnight', group: 'moderation', name: 'Two dry weeks', hint: 'Fourteen nights with nothing logged.', xp: 140 },
-  { id: 'under-goal', group: 'moderation', name: 'Under goal', hint: 'Finish a week under your weekly cap.', xp: 60 },
-  { id: 'under-goal-month', group: 'moderation', name: 'A whole month', hint: 'Four weeks under your weekly cap.', xp: 160 },
-  { id: 'early-home', group: 'moderation', name: 'Home before two', hint: 'End three nights before 02:00.', xp: 60 },
-  { id: 'water-first', group: 'moderation', name: 'Water first', hint: 'Start a night with water.', xp: 40 },
-  { id: 'safe-arrival', group: 'moderation', name: 'Checked in', hint: 'Arm and resolve a safe-arrival check.', xp: 70 },
-  { id: 'first-friend', group: 'social', name: 'Not alone', hint: 'Add your first friend.', xp: 30 },
-  { id: 'crew-founder', group: 'social', name: 'Crew founder', hint: 'Create a crew.', xp: 40 },
-  { id: 'plan-maker', group: 'social', name: 'Plan maker', hint: 'Create a plan three people say yes to.', xp: 60 },
-  { id: 'round-buyer', group: 'social', name: 'Your round', hint: 'Buy a round for three people.', xp: 40 },
-  { id: 'looked-out', group: 'social', name: 'Looked out', hint: "Be someone's trusted contact.", xp: 50 },
+  { id: 'first-night', group: 'consistency', nameKey: 'common.achFirstNightName', hintKey: 'common.achFirstNightHint', xp: 40 },
+  { id: 'gap-filler', group: 'consistency', nameKey: 'common.achGapFillerName', hintKey: 'common.achGapFillerHint', xp: 30 },
+  { id: 'week-of-logs', group: 'consistency', nameKey: 'common.achWeekOfLogsName', hintKey: 'common.achWeekOfLogsHint', xp: 80 },
+  { id: 'morning-person', group: 'consistency', nameKey: 'common.achMorningPersonName', hintKey: 'common.achMorningPersonHint', xp: 60 },
+  { id: 'honest-editor', group: 'consistency', nameKey: 'common.achHonestEditorName', hintKey: 'common.achHonestEditorHint', xp: 30 },
+  { id: 'five-venues', group: 'exploration', nameKey: 'common.achFiveVenuesName', hintKey: 'common.achFiveVenuesHint', xp: 50 },
+  { id: 'ten-venues', group: 'exploration', nameKey: 'common.achTenVenuesName', hintKey: 'common.achTenVenuesHint', xp: 90 },
+  { id: 'new-place', group: 'exploration', nameKey: 'common.achNewPlaceName', hintKey: 'common.achNewPlaceHint', xp: 40 },
+  { id: 'passport-page', group: 'exploration', nameKey: 'common.achPassportPageName', hintKey: 'common.achPassportPageHint', xp: 60 },
+  { id: 'home-city', group: 'exploration', nameKey: 'common.achHomeCityName', hintKey: 'common.achHomeCityHint', xp: 70 },
+  { id: 'far-afield', group: 'exploration', nameKey: 'common.achFarAfieldName', hintKey: 'common.achFarAfieldHint', xp: 50 },
+  { id: 'hydrated', group: 'moderation', nameKey: 'common.achHydratedName', hintKey: 'common.achHydratedHint', xp: 50 },
+  { id: 'dry-week', group: 'moderation', nameKey: 'common.achDryWeekName', hintKey: 'common.achDryWeekHint', xp: 80 },
+  { id: 'dry-fortnight', group: 'moderation', nameKey: 'common.achDryFortnightName', hintKey: 'common.achDryFortnightHint', xp: 140 },
+  { id: 'under-goal', group: 'moderation', nameKey: 'common.achUnderGoalName', hintKey: 'common.achUnderGoalHint', xp: 60 },
+  { id: 'under-goal-month', group: 'moderation', nameKey: 'common.achUnderGoalMonthName', hintKey: 'common.achUnderGoalMonthHint', xp: 160 },
+  { id: 'early-home', group: 'moderation', nameKey: 'common.achEarlyHomeName', hintKey: 'common.achEarlyHomeHint', xp: 60 },
+  { id: 'water-first', group: 'moderation', nameKey: 'common.achWaterFirstName', hintKey: 'common.achWaterFirstHint', xp: 40 },
+  { id: 'safe-arrival', group: 'moderation', nameKey: 'common.achSafeArrivalName', hintKey: 'common.achSafeArrivalHint', xp: 70 },
+  { id: 'first-friend', group: 'social', nameKey: 'common.achFirstFriendName', hintKey: 'common.achFirstFriendHint', xp: 30 },
+  { id: 'crew-founder', group: 'social', nameKey: 'common.achCrewFounderName', hintKey: 'common.achCrewFounderHint', xp: 40 },
+  { id: 'plan-maker', group: 'social', nameKey: 'common.achPlanMakerName', hintKey: 'common.achPlanMakerHint', xp: 60 },
+  { id: 'round-buyer', group: 'social', nameKey: 'common.achRoundBuyerName', hintKey: 'common.achRoundBuyerHint', xp: 40 },
+  { id: 'looked-out', group: 'social', nameKey: 'common.achLookedOutName', hintKey: 'common.achLookedOutHint', xp: 50 },
 ] as const;
 
 export const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));

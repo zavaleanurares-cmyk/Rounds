@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { Text } from './Text';
+import { useT } from '@/i18n';
 import { color } from '@/design/tokens';
 
 /**
@@ -49,6 +50,7 @@ export interface AvatarProps {
  * replaces one deliberate thing with another.
  */
 export function Avatar({ name, size = 34, live, url, tint, ring }: AvatarProps) {
+  const t = useT();
   const index = tint === null || tint === undefined ? hueFor(name) : tint % AVATAR_TINTS.length;
   const bg = AVATAR_TINTS[index];
   const [failed, setFailed] = React.useState(false);
@@ -76,7 +78,7 @@ export function Avatar({ name, size = 34, live, url, tint, ring }: AvatarProps) 
             contentFit="cover"
             transition={160}
             onError={() => setFailed(true)}
-            accessibilityLabel={`${name}'s photo`}
+            accessibilityLabel={t('ui.avatarPhoto', { name })}
           />
         ) : (
           <Text
@@ -90,7 +92,7 @@ export function Avatar({ name, size = 34, live, url, tint, ring }: AvatarProps) 
       </View>
       {live ? (
         <View
-          accessibilityLabel="out right now"
+          accessibilityLabel={t('ui.outRightNow')}
           style={{
             position: 'absolute',
             right: -1,
@@ -109,10 +111,14 @@ export function Avatar({ name, size = 34, live, url, tint, ring }: AvatarProps) 
 }
 
 export function AvatarStack({ names, size = 28, max = 4 }: { names: string[]; size?: number; max?: number }) {
+  const t = useT();
   const shown = names.slice(0, max);
   const extra = names.length - shown.length;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center' }} accessibilityLabel={names.length === 1 ? '1 person' : `${names.length} people`}>
+    <View
+      style={{ flexDirection: 'row', alignItems: 'center' }}
+      accessibilityLabel={t('ui.people', { count: names.length })}
+    >
       {shown.map((n, i) => (
         <View key={n + i} style={{ marginLeft: i === 0 ? 0 : -size * 0.32 }}>
           <View style={{ borderRadius: size, borderWidth: 2, borderColor: color.surface.primary }}>

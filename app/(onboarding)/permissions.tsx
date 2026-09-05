@@ -3,12 +3,13 @@ import { View, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Icon, InlineLink } from '@/ui';
 import { requestPermission } from '@/services/push';
+import { useT, useI18n } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 const REASONS = [
-  { icon: 'moon.stars' as const, title: 'Your morning after', body: 'One push at your usual wake time, with the night and the gaps to fill.' },
-  { icon: 'checkmark.shield' as const, title: 'Safe arrival', body: "If you armed a check-in and the deadline passes, we ask you before we ask anyone else." },
-  { icon: 'calendar' as const, title: 'Plans', body: 'When someone invites you or a plan is about to start.' },
+  { icon: 'moon.stars' as const, title: 'onboarding.pushMorningTitle' as const, body: 'onboarding.pushMorningBody' as const },
+  { icon: 'checkmark.shield' as const, title: 'onboarding.pushSafetyTitle' as const, body: 'onboarding.pushSafetyBody' as const },
+  { icon: 'calendar' as const, title: 'onboarding.pushPlansTitle' as const, body: 'onboarding.pushPlansBody' as const },
 ];
 
 /**
@@ -20,6 +21,8 @@ const REASONS = [
  */
 export default function Permissions() {
   const router = useRouter();
+  const t = useT();
+  const { locale } = useI18n();
   const [busy, setBusy] = useState(false);
 
   /**
@@ -30,21 +33,21 @@ export default function Permissions() {
    */
   const allow = async () => {
     setBusy(true);
-    await requestPermission();
+    await requestPermission(locale);
     setBusy(false);
     router.push('/(onboarding)/done');
   };
 
   return (
     <Screen
-      title="Three things we'd send"
-      subtitle="Never during a live night. Capped at three a week by default."
+      title={t('onboarding.permissionsTitle')}
+      subtitle={t('onboarding.permissionsSubtitle')}
       mood="calm"
       footer={
         <View style={{ gap: space.m }}>
-          <Button title="Allow notifications" loading={busy} onPress={() => void allow()} />
+          <Button title={t('onboarding.allowNotifications')} loading={busy} onPress={() => void allow()} />
           <View style={{ alignItems: 'center' }}>
-            <InlineLink title="Not now" onPress={() => router.push('/(onboarding)/done')} />
+            <InlineLink title={t('onboarding.notNow')} onPress={() => router.push('/(onboarding)/done')} />
           </View>
         </View>
       }
@@ -55,8 +58,8 @@ export default function Permissions() {
             <View key={r.title} style={{ flexDirection: 'row', gap: space.md }}>
               <Icon name={r.icon} size={22} color={color.brand.tintLight} />
               <View style={{ flex: 1 }}>
-                <Text variant="headline">{r.title}</Text>
-                <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>{r.body}</Text>
+                <Text variant="headline">{t(r.title)}</Text>
+                <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>{t(r.body)}</Text>
               </View>
             </View>
           ))}
@@ -64,7 +67,7 @@ export default function Permissions() {
       </Card>
       {Platform.OS === 'android' ? (
         <Text variant="footnote" tone="quaternary" center>
-          Android will ask you next. Declining is fine — safety check-ins still work in the app.
+          {t('onboarding.androidNote')}
         </Text>
       ) : null}
     </Screen>

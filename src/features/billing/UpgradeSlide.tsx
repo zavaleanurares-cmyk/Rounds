@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card, Text, Button } from '@/ui';
+import { useT } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /**
@@ -17,14 +18,15 @@ import { space } from '@/design/tokens';
  */
 export function UpgradeSlide() {
   const router = useRouter();
+  const t = useT();
   return (
     <Card aurora>
-      <Text variant="title2">The rest is ROUNDS+</Text>
+      <Text variant="title2">{t('billing.upgradeTitle')}</Text>
       <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-        Two more slides, and the version you can export for Stories.
+        {t('billing.upgradeBody')}
       </Text>
       <View style={{ marginTop: space.md }}>
-        <Button title="See it all" onPress={() => router.push('/paywall')} />
+        <Button title={t('billing.seeItAll')} onPress={() => router.push('/paywall')} />
       </View>
     </Card>
   );

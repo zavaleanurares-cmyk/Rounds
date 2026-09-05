@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Path, Circle, G, Line } from 'react-native-svg';
+import type { MessageKey } from '@/i18n';
 import { color } from '@/design/tokens';
 
 /**
@@ -14,12 +15,13 @@ export type ReactionKind = 'cheers' | 'fire' | 'laugh' | 'heart' | 'eyes';
 
 export const REACTIONS: ReactionKind[] = ['cheers', 'fire', 'laugh', 'heart', 'eyes'];
 
-export const REACTION_LABEL: Record<ReactionKind, string> = {
-  cheers: 'Cheers',
-  fire: 'Going off',
-  laugh: 'Laughing',
-  heart: 'Love it',
-  eyes: 'Watching',
+/** Message keys — a module constant cannot hold a hook. Callers use `t(...)`. */
+export const REACTION_LABEL: Record<ReactionKind, MessageKey> = {
+  cheers: 'ui.reactionCheers',
+  fire: 'ui.reactionFire',
+  laugh: 'ui.reactionLaugh',
+  heart: 'ui.reactionHeart',
+  eyes: 'ui.reactionEyes',
 };
 
 const TINT: Record<ReactionKind, string> = {

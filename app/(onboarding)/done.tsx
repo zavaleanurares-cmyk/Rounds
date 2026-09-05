@@ -3,27 +3,29 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Icon } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 const MARKS = [
-  { icon: 'moon.stars' as const, text: 'Tonight changes shape through the night — plan, live, wind-down, morning.' },
-  { icon: 'plus' as const, text: 'The middle button logs a drink. From the lock screen it is one tap.' },
-  { icon: 'checkmark.shield' as const, text: 'Get home safe is reachable from anywhere and always free.' },
+  { icon: 'moon.stars' as const, text: 'onboarding.markTonight' as const },
+  { icon: 'plus' as const, text: 'onboarding.markLog' as const },
+  { icon: 'checkmark.shield' as const, text: 'onboarding.markSafety' as const },
 ];
 
 /** A-11 · Ready. Coach marks over the three things that are not obvious. */
 export default function Done() {
   const router = useRouter();
+  const t = useT();
   const { completeOnboarding } = useStore();
 
   return (
     <Screen
-      title="You're set"
-      subtitle="Three things worth knowing before your first night."
+      title={t('onboarding.doneTitle')}
+      subtitle={t('onboarding.doneSubtitle')}
       mood="default"
       footer={
         <Button
-          title="Take me in"
+          title={t('onboarding.takeMeIn')}
           onPress={() => {
             completeOnboarding();
             router.replace('/(tabs)/tonight');
@@ -47,7 +49,7 @@ export default function Done() {
               >
                 <Icon name={m.icon} size={17} color={color.brand.tintLight} />
               </View>
-              <Text variant="subheadline" tone="secondary" style={{ flex: 1, paddingTop: 6 }}>{m.text}</Text>
+              <Text variant="subheadline" tone="secondary" style={{ flex: 1, paddingTop: 6 }}>{t(m.text)}</Text>
             </View>
           ))}
         </View>

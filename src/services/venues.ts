@@ -13,6 +13,9 @@
  * show you the place you are standing in is a bar-finder nobody uses.
  */
 import type { Venue } from '@/domain/types';
+import type { Locale } from '@/i18n';
+import { translate } from '@/i18n/translate';
+import { formatNumber } from '@/i18n/format';
 import { readJson, writeJson } from '@/data/storage';
 
 const CACHE_KEY = 'rounds.venues.cache.v1';
@@ -230,6 +233,15 @@ export function distanceM(a: { lat: number; lng: number }, b: { lat: number; lng
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-export function formatDistance(m: number): string {
-  return m < 950 ? `${Math.round(m / 10) * 10}m` : `${(m / 1000).toFixed(1)}km`;
+/**
+ * "240m" / "1.4km".
+ *
+ * Locale in, finished string out — the unit letter and the decimal separator
+ * both change between languages, and this is called from list rows rather than
+ * from a component that could hold a hook.
+ */
+export function formatDistance(m: number, locale: Locale): string {
+  return m < 950
+    ? translate(locale, 'common.distanceMetres', { value: formatNumber(locale, Math.round(m / 10) * 10, 0) })
+    : translate(locale, 'common.distanceKilometres', { value: formatNumber(locale, m / 1000, 1) });
 }

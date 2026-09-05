@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Sheet, Text, Button, Chip, Avatar, Icon, useToast , DrinkGlyph } from '@/ui';
 import { useStore } from '@/data/store';
 import { CATALOG } from '@/domain/catalog';
+import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /**
@@ -15,6 +16,7 @@ import { color, space } from '@/design/tokens';
  */
 export default function RoundBuilder() {
   const router = useRouter();
+  const t = useT();
   const toast = useToast();
   const store = useStore();
   const friends = store.people.filter((p) => p.status === 'friend');
@@ -24,12 +26,12 @@ export default function RoundBuilder() {
 
   return (
     <Sheet
-      title="Buying a round"
-      subtitle="Logs yours now, asks the others."
+      title={t('log.buyingARound')}
+      subtitle={t('log.roundSubtitle')}
       onClose={() => router.back()}
       footer={
         <Button
-          title={`Log mine · ask ${selected.length}`}
+          title={t('log.roundAction', { count: selected.length })}
           onPress={() => {
             // The round size is a social fact about this log, not a quantity:
             // one drink is still logged for you and none for anybody else.
@@ -38,8 +40,8 @@ export default function RoundBuilder() {
             setTimeout(
               () =>
                 toast.show({
-                  message: `${drink.name} logged, ${selected.length} asked`,
-                  actionLabel: 'Undo',
+                  message: t('log.roundLogged', { drink: drink.name, count: selected.length }),
+                  actionLabel: t('ui.undo'),
                   onAction: () => store.undoLast(),
                 }),
               120
@@ -49,16 +51,16 @@ export default function RoundBuilder() {
       }
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
-        <Text variant="sectionHeader" tone="tertiary">WHAT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('log.what')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {CATALOG.filter((d) => d.ethanolG > 0).slice(0, 8).map((d) => (
             <Chip key={d.id} label={d.name} glyph={<DrinkGlyph drink={d} size={18} />} selected={d.id === drinkId} onPress={() => setDrinkId(d.id)} compact />
           ))}
         </View>
 
-        <Text variant="sectionHeader" tone="tertiary" style={{ marginTop: space.sm }}>WHO'S IN IT</Text>
+        <Text variant="sectionHeader" tone="tertiary" style={{ marginTop: space.sm }}>{t('log.whosInIt')}</Text>
         {friends.length === 0 ? (
-          <Text variant="subheadline" tone="tertiary">Add some friends first and they'll show up here.</Text>
+          <Text variant="subheadline" tone="tertiary">{t('log.noFriends')}</Text>
         ) : (
           friends.map((f) => {
             const on = selected.includes(f.id);

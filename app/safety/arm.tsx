@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Sheet, Text, Button, Chip, Card } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /**
@@ -12,19 +13,23 @@ import { color, space } from '@/design/tokens';
  */
 export default function ArmCheck() {
   const router = useRouter();
+  const t = useT();
   const { armSafeArrival, safety, profile } = useStore();
   const [hours, setHours] = useState(2);
+  const firstName = profile?.displayName?.split(' ')[0];
   const [message, setMessage] = useState(
-    `${profile?.displayName?.split(' ')[0] ?? 'Your friend'} asked ROUNDS to check they got home and hasn't answered. Last seen out tonight.`
+    firstName === undefined
+      ? t('safety.messageDefaultNoName')
+      : t('safety.messageDefault', { name: firstName })
   );
 
   return (
     <Sheet
-      title="Arm a check-in"
+      title={t('safety.armCheckIn')}
       onClose={() => router.back()}
       footer={
         <Button
-          title={`Check on me in ${hours}h`}
+          title={t('safety.checkOnMeIn', { count: hours })}
           onPress={() => {
             armSafeArrival({
               deadlineAt: Date.now() + hours * 3600000,
@@ -37,28 +42,25 @@ export default function ArmCheck() {
       }
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
-        <Text variant="sectionHeader" tone="tertiary">WHEN</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('safety.when')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           {[1, 2, 3, 4].map((h) => (
-            <Chip key={h} label={`${h}h`} selected={hours === h} onPress={() => setHours(h)} />
+            <Chip key={h} label={t('safety.hours', { count: h })} selected={hours === h} onPress={() => setHours(h)} />
           ))}
         </View>
 
-        <Field label="What they'd be sent" value={message} onChangeText={setMessage} multiline autoCapitalize="sentences" />
+        <Field label={t('safety.messageLabel')} value={message} onChangeText={setMessage} multiline autoCapitalize="sentences" />
 
         <Card>
           <Text variant="footnote" tone="secondary">
-            At the deadline you get a notification with a fifteen-minute grace period. Only if that
-            goes unanswered do{' '}
+            {t('safety.gracePeriod')}{' '}
             {safety.contacts.length > 0
-              ? safety.contacts.map((c) => c.name).join(', ')
-              : 'your trusted contacts'}{' '}
-            hear anything.
+              ? t('safety.onlyThenNamed', { names: safety.contacts.map((c) => c.name).join(', ') })
+              : t('safety.onlyThen')}
           </Text>
           {safety.contacts.length === 0 ? (
             <Text variant="footnote" color={color.warning} style={{ marginTop: space.sm }}>
-              You haven't added any trusted contacts yet — add one so this can actually reach
-              someone.
+              {t('safety.noContactsWarning')}
             </Text>
           ) : null}
         </Card>

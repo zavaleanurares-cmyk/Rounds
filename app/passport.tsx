@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, EmptyState, Icon } from '@/ui';
 import { useStore } from '@/data/store';
 import { color, radius, space } from '@/design/tokens';
-import { plural } from '@/domain/stats';
+import { useT, useFormat } from '@/i18n';
 
 /**
  * D-05 / Y-11 · Bar passport.
@@ -14,6 +14,8 @@ import { plural } from '@/domain/stats';
  */
 export default function Passport() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { logs, venues } = useStore();
 
   const stamps = useMemo(() => {
@@ -30,14 +32,24 @@ export default function Passport() {
 
   if (stamps.length === 0) {
     return (
-      <Screen title="Passport" back mood="calm">
-        <EmptyState icon="location" title="No stamps yet" body="Every venue you log at earns one stamp per night. It fills up faster than you'd think." actionLabel="Find somewhere" onAction={() => router.push('/(tabs)/discover')} />
+      <Screen title={t('stats.passport')} back mood="calm">
+        <EmptyState icon="location" title={t('stats.passportEmptyTitle')} body={t('stats.passportEmptyBody')} actionLabel={t('stats.findSomewhere')} onAction={() => router.push('/(tabs)/discover')} />
       </Screen>
     );
   }
 
+  const total = stamps.reduce((s, x) => s + x.count, 0);
+
   return (
-    <Screen title="Passport" subtitle={`${plural(stamps.length, 'place')} · ${plural(stamps.reduce((s, x) => s + x.count, 0), 'stamp')}`} back mood="calm">
+    <Screen
+      title={t('stats.passport')}
+      subtitle={t('stats.passportSubtitle', {
+        places: t('stats.places', { count: stamps.length }),
+        stamps: t('stats.stampsCount', { count: total }),
+      })}
+      back
+      mood="calm"
+    >
       <Card>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.m }}>
           {stamps.map((s) => {
@@ -45,7 +57,7 @@ export default function Passport() {
             return (
               <View
                 key={s.venueId}
-                accessibilityLabel={`${v?.name}, ${s.count} ${s.count === 1 ? 'stamp' : 'stamps'}`}
+                accessibilityLabel={t('stats.stampLabel', { venue: v?.name ?? t('stats.somewhere'), count: s.count })}
                 style={{
                   width: '30%',
                   aspectRatio: 0.86,
@@ -61,14 +73,14 @@ export default function Passport() {
                 }}
               >
                 <Icon name="wineglass" size={20} color={color.brand.tintLight} />
-                <Text variant="caption1" center numberOfLines={2}>{v?.name ?? 'Somewhere'}</Text>
-                <Text variant="caption2" tone="tertiary">×{s.count}</Text>
+                <Text variant="caption1" center numberOfLines={2}>{v?.name ?? t('stats.somewhere')}</Text>
+                <Text variant="caption2" tone="tertiary">{t('stats.stampTimes', { count: f.number(s.count, 0) })}</Text>
               </View>
             );
           })}
         </View>
       </Card>
-      <Text variant="footnote" tone="quaternary" center>One stamp per venue per night. Exploration, not volume.</Text>
+      <Text variant="footnote" tone="quaternary" center>{t('stats.passportNote')}</Text>
     </Screen>
   );
 }

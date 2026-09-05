@@ -1,4 +1,5 @@
 import type { Drink } from './types';
+import type { MessageKey } from '@/i18n';
 import { LIQUID } from './art';
 import { makeDrink as d, type DrinkSpec } from './makeDrink';
 
@@ -151,8 +152,9 @@ export const NEW_ERA: Drink[] = [
 
 export const COCKTAILS: Drink[] = [...UNFORGETTABLES, ...CONTEMPORARY, ...NEW_ERA];
 
+/** The three IBA families, as message keys. Translated at the render site. */
 export const IBA_FAMILY_LABEL = {
-  unforgettable: 'The Unforgettables',
-  contemporary: 'Contemporary Classics',
-  newera: 'New Era Drinks',
-} as const;
+  unforgettable: 'common.ibaUnforgettable',
+  contemporary: 'common.ibaContemporary',
+  newera: 'common.ibaNewEra',
+} as const satisfies Record<string, MessageKey>;

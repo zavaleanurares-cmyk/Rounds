@@ -2,32 +2,34 @@ import React from 'react';
 import { View } from 'react-native';
 import { Screen, Card, Text, Avatar, Button, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /** C-12 · Friend requests. */
 export default function Requests() {
+  const t = useT();
   const { people, respondToRequest } = useStore();
   const incoming = people.filter((p) => p.status === 'pending_in');
   const sent = people.filter((p) => p.status === 'pending_out');
 
   return (
-    <Screen title="Requests" back mood="calm">
+    <Screen title={t('social.requestsTitle')} back mood="calm">
       {incoming.length === 0 && sent.length === 0 ? (
-        <EmptyState icon="person.2" title="Nothing waiting" body="Friend requests show up here, both the ones you get and the ones you send." />
+        <EmptyState icon="person.2" title={t('social.requestsEmptyTitle')} body={t('social.requestsEmptyBody')} />
       ) : null}
 
       {incoming.length > 0 ? (
         <Card>
-          <Text variant="sectionHeader" tone="tertiary">INCOMING</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('social.incoming')}</Text>
           {incoming.map((p) => (
             <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: space.m }}>
               <Avatar name={p.displayName} size={40} />
               <View style={{ flex: 1 }}>
                 <Text variant="body">{p.displayName}</Text>
-                <Text variant="footnote" tone="tertiary">@{p.username}</Text>
+                <Text variant="footnote" tone="tertiary">{t('social.handle', { username: p.username })}</Text>
               </View>
-              <Button title="Accept" compact full={false} onPress={() => respondToRequest(p.id, true)} />
-              <Button title="No" kind="plain" compact full={false} onPress={() => respondToRequest(p.id, false)} />
+              <Button title={t('social.accept')} compact full={false} onPress={() => respondToRequest(p.id, true)} />
+              <Button title={t('social.decline')} kind="plain" compact full={false} onPress={() => respondToRequest(p.id, false)} />
             </View>
           ))}
         </Card>
@@ -35,12 +37,12 @@ export default function Requests() {
 
       {sent.length > 0 ? (
         <Card>
-          <Text variant="sectionHeader" tone="tertiary">SENT</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('social.sentHeader')}</Text>
           {sent.map((p) => (
             <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: space.m }}>
               <Avatar name={p.displayName} size={34} />
               <Text variant="body" style={{ flex: 1 }}>{p.displayName}</Text>
-              <Button title="Cancel" kind="plain" compact full={false} onPress={() => respondToRequest(p.id, false)} />
+              <Button title={t('ui.cancel')} kind="plain" compact full={false} onPress={() => respondToRequest(p.id, false)} />
             </View>
           ))}
         </Card>

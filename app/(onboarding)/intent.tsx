@@ -4,28 +4,30 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Chip, Icon } from '@/ui';
 import { color } from '@/design/tokens';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { space } from '@/design/tokens';
 
 const OPTIONS = [
-  { id: 'track', label: 'Keep track', icon: 'chart.bar' as const },
-  { id: 'social', label: 'Go out with people', icon: 'person.2' as const },
-  { id: 'easier', label: 'Take it easier', icon: 'checkmark.shield' as const },
+  { id: 'track', label: 'onboarding.intentTrack' as const, icon: 'chart.bar' as const },
+  { id: 'social', label: 'onboarding.intentSocial' as const, icon: 'person.2' as const },
+  { id: 'easier', label: 'onboarding.intentEasier' as const, icon: 'checkmark.shield' as const },
 ];
 
 /** A-08 · Intent. Drives week-one messaging and which tab gets the first coach mark. */
 export default function Intent() {
   const router = useRouter();
+  const t = useT();
   const { updateProfile } = useStore();
   const [picked, setPicked] = useState<string[]>([]);
 
   return (
     <Screen
-      title="What's this for?"
-      subtitle="Pick what's true. It changes what we show you in week one, nothing else."
+      title={t('onboarding.intentTitle')}
+      subtitle={t('onboarding.intentSubtitle')}
       mood="calm"
       footer={
         <Button
-          title="Continue"
+          title={t('onboarding.continue')}
           onPress={() => {
             updateProfile({ intent: picked });
             router.push('/(onboarding)/modules');
@@ -38,7 +40,7 @@ export default function Intent() {
           {OPTIONS.map((o) => (
             <Chip
               key={o.id}
-              label={o.label}
+              label={t(o.label)}
               glyph={<Icon name={o.icon} size={18} color={picked.includes(o.id) ? color.brand.tintLight : color.label.secondary} />}
               selected={picked.includes(o.id)}
               onPress={() =>
@@ -48,7 +50,7 @@ export default function Intent() {
           ))}
         </View>
       </Card>
-      <Text variant="footnote" tone="quaternary" center>You can pick more than one, or none.</Text>
+      <Text variant="footnote" tone="quaternary" center>{t('onboarding.intentNote')}</Text>
     </Screen>
   );
 }

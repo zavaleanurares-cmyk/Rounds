@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Screen, Card, Text, Button, useToast } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /**
@@ -17,15 +18,18 @@ import { color, space } from '@/design/tokens';
  */
 export default function DataAccount() {
   const router = useRouter();
+  const t = useT();
   const toast = useToast();
   const store = useStore();
   const [confirm, setConfirm] = useState('');
   const [stage, setStage] = useState<'idle' | 'confirming'>('idle');
 
-  const deliver = async (payload: string, what: string) => {
+  // `copied` arrives already translated: the two clipboard confirmations are
+  // whole sentences in the catalogue rather than a noun glued onto a suffix.
+  const deliver = async (payload: string, copied: string) => {
     if (Platform.OS === 'web') {
       await Clipboard.setStringAsync(payload);
-      toast.show({ message: `${what} is on the clipboard` });
+      toast.show({ message: copied });
     } else {
       // Share has a practical payload ceiling; a very long history is truncated
       // rather than silently failing to open the sheet at all.
@@ -33,7 +37,7 @@ export default function DataAccount() {
     }
   };
 
-  const exportData = () => deliver(store.exportData(), 'Your data');
+  const exportData = () => deliver(store.exportData(), t('settings.exportDataCopied'));
 
   /**
    * One row per log, with the night key so a spreadsheet can group by night
@@ -68,58 +72,59 @@ export default function DataAccount() {
         l.source,
       ]);
     const csv = [header, ...rows].map((r) => r.map(esc).join(',')).join('\n');
-    return deliver(csv, 'Your CSV');
+    return deliver(csv, t('settings.exportCsvCopied'));
   };
 
   return (
-    <Screen title="Data & account" back mood="night">
+    <Screen title={t('settings.dataAccount')} back mood="night">
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">EXPORT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('settings.exportHeader')}</Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-          Everything ROUNDS holds about you. JSON keeps every field; CSV is one row per drink,
-          ready for a spreadsheet. Both free, always.
+          {t('settings.exportBody')}
         </Text>
         <View style={{ marginTop: space.m, gap: space.m }}>
-          <Button title="Export my data" kind="glass" icon="square.and.arrow.up" onPress={() => void exportData()} />
-          <Button title="Export as CSV" kind="plain" onPress={() => void exportCsv()} />
+          <Button title={t('settings.exportMyData')} kind="glass" icon="square.and.arrow.up" onPress={() => void exportData()} />
+          <Button title={t('settings.exportAsCsv')} kind="plain" onPress={() => void exportCsv()} />
         </View>
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">DELETE ACCOUNT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('settings.deleteAccountHeader')}</Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-          You're signed out immediately. Everything is removed by a server-side cascade after a
-          30-day grace period — sign back in within 30 days and nothing has been lost.
+          {t('settings.deleteAccountBody')}
         </Text>
 
         {stage === 'idle' ? (
           <View style={{ marginTop: space.m }}>
-            <Button title="Delete my account" kind="destructive" icon="trash" onPress={() => setStage('confirming')} />
+            <Button title={t('settings.deleteMyAccount')} kind="destructive" icon="trash" onPress={() => setStage('confirming')} />
           </View>
         ) : (
           <View style={{ marginTop: space.m, gap: space.m }}>
             <Field
-              label="Type DELETE to confirm"
+              label={t('settings.typeDeleteToConfirm')}
               value={confirm}
               onChangeText={setConfirm}
               autoCapitalize="none"
+              // DELETE is the word the field is checked against, so it stays
+              // literal in every language — translating it would make the
+              // button unreachable.
               placeholder="DELETE"
             />
             <Button
-              title="Delete everything"
+              title={t('settings.deleteEverything')}
               kind="destructive"
               disabled={confirm.trim().toUpperCase() !== 'DELETE'}
               onPress={() => void store.deleteAccount()}
             />
-            <Button title="Never mind" kind="plain" onPress={() => setStage('idle')} />
+            <Button title={t('settings.neverMind')} kind="plain" onPress={() => setStage('idle')} />
           </View>
         )}
       </Card>
 
       <Text variant="footnote" tone="quaternary" center>
         {store.queue.pending > 0
-          ? `${store.queue.pending} logs are still waiting to sync. They'll be included.`
-          : 'Everything on this device is synced.'}
+          ? t('settings.pendingSync', { count: store.queue.pending })
+          : t('settings.allSynced')}
       </Text>
     </Screen>
   );

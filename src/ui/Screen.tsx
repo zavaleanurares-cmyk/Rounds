@@ -11,6 +11,7 @@ import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
 import { Glass } from './Glass';
 import { OfflinePill } from './States';
+import { useT } from '@/i18n';
 import { useStore } from '@/data/store';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { color, space, geometry, type as typeRamp } from '@/design/tokens';
@@ -75,6 +76,7 @@ export function Screen({
   contentStyle,
   footer,
 }: ScreenProps) {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { queue } = useStore();
@@ -197,7 +199,7 @@ export function Screen({
                 <Pressable
                   onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/tonight')))}
                   accessibilityRole="button"
-                  accessibilityLabel="Back"
+                  accessibilityLabel={t('ui.back')}
                   hitSlop={12}
                   style={({ pressed }) => ({
                     width: 36, height: 36, alignItems: 'center', justifyContent: 'center',

@@ -27,6 +27,7 @@ import { settings } from './settings';
 import { profile } from './profile';
 import { notifications } from './notifications';
 import { drinks } from './drinks';
+import { billing } from './billing';
 
 export const en = {
   ...common,
@@ -47,6 +48,7 @@ export const en = {
   ...profile,
   ...notifications,
   ...drinks,
+  ...billing,
 } as const;
 
 /** Every key in the app. Derived, never hand-maintained. */

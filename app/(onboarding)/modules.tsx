@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, ToggleRow } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /**
@@ -13,18 +14,19 @@ import { space } from '@/design/tokens';
  */
 export default function Modules() {
   const router = useRouter();
+  const t = useT();
   const { profile, updateProfile } = useStore();
   const [nicotine, setNicotine] = useState(profile?.modules.nicotine ?? false);
   const [social, setSocial] = useState(profile?.modules.social ?? true);
 
   return (
     <Screen
-      title="Anything else?"
-      subtitle="Both optional. You can change these any time in Settings."
+      title={t('onboarding.modulesTitle')}
+      subtitle={t('onboarding.modulesSubtitle')}
       mood="calm"
       footer={
         <Button
-          title="Continue"
+          title={t('onboarding.continue')}
           onPress={() => {
             updateProfile({ modules: { nicotine, social } });
             router.push('/(onboarding)/permissions');
@@ -34,21 +36,21 @@ export default function Modules() {
     >
       <Card>
         <ToggleRow
-          title="Nicotine tracking"
-          subtitle="Cigarettes, vapes and pouches, with cost and free-day streaks."
+          title={t('onboarding.nicotineTitle')}
+          subtitle={t('onboarding.nicotineSubtitle')}
           value={nicotine}
           onValueChange={setNicotine}
         />
         <ToggleRow
-          title="Social features"
-          subtitle="Friends, crews, shared nights and plans. Turning this off makes ROUNDS entirely private."
+          title={t('onboarding.socialTitle')}
+          subtitle={t('onboarding.socialSubtitle')}
           value={social}
           onValueChange={setSocial}
           last
         />
       </Card>
       <Text variant="footnote" tone="quaternary" center>
-        With social off you keep pace, spend, history and everything in Get home safe.
+        {t('onboarding.modulesNote')}
       </Text>
     </Screen>
   );

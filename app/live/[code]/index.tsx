@@ -6,8 +6,8 @@ import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
 import { useSessionRealtime } from '@/hooks/useSessionRealtime';
 import { paceState } from '@/domain/pace';
+import { useT } from '@/i18n';
 import { paceColor, paceWord, color, radius, space } from '@/design/tokens';
-import { plural } from '@/domain/stats';
 
 /**
  * C-06 · Live room.
@@ -20,13 +20,14 @@ import { plural } from '@/domain/stats';
  */
 export default function LiveRoom() {
   const router = useRouter();
+  const t = useT();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { sessions, people, logs, profile, blocked } = useStore();
   const session = sessions.find((s) => s.joinCode === code);
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState<Array<{ id: string; who: string; text?: string; reaction?: ReactionKind }>>([
-    { id: '1', who: 'Ana Marin', text: 'we are at the back, past the bar' },
-    { id: '2', who: 'Tudor', text: 'ordering, anyone want anything' },
+    { id: '1', who: 'Ana Marin', text: t('live.sampleMessageOne') },
+    { id: '2', who: 'Tudor', text: t('live.sampleMessageTwo') },
   ]);
   const [sharingLocation, setSharingLocation] = useState(false);
 
@@ -53,37 +54,37 @@ export default function LiveRoom() {
 
   if (!session) {
     return (
-      <Screen title="Live" back>
-        <EmptyState icon="qrcode.viewfinder" title="That night's over" body="The code expired when the host ended the night." />
+      <Screen title={t('live.title')} back>
+        <EmptyState icon="qrcode.viewfinder" title={t('live.overTitle')} body={t('live.overBody')} />
       </Screen>
     );
   }
 
   return (
     <Screen
-      title={session.title ?? 'Live'}
-      subtitle={`code ${session.joinCode}`}
+      title={session.title ?? t('live.title')}
+      subtitle={t('live.codeLine', { code: session.joinCode ?? code })}
       back
       mood="default"
       right={{
         icon: 'square.and.arrow.up',
-        label: 'Share the code',
-        onPress: () => void Share.share({ message: `Join my night on ROUNDS: ${session.joinCode}` }),
+        label: t('live.shareCode'),
+        onPress: () => void Share.share({ message: t('live.shareMessage', { code: session.joinCode ?? code }) }),
       }}
       footer={
         <Glass radius={radius.control}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.sm }}>
             <View style={{ flex: 1 }}>
-              <Field label="" value={message} onChangeText={setMessage} placeholder="Say something" autoCapitalize="sentences" />
+              <Field label="" value={message} onChangeText={setMessage} placeholder={t('live.chatPlaceholder')} autoCapitalize="sentences" />
             </View>
             <Pressable
               onPress={() => {
                 if (!message.trim()) return;
-                setChat((c) => [...c, { id: String(Date.now()), who: 'You', text: message.trim() }]);
+                setChat((c) => [...c, { id: String(Date.now()), who: t('live.you'), text: message.trim() }]);
                 setMessage('');
               }}
               accessibilityRole="button"
-              accessibilityLabel="Send"
+              accessibilityLabel={t('live.send')}
               style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
             >
               <Icon name="arrow.up.right" size={20} color={color.brand.tintLight} />
@@ -101,22 +102,22 @@ export default function LiveRoom() {
             }}
           />
           <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>
-            LIVE · {roster.length + 1} HERE
+            {t('live.hereHeader', { count: roster.length + 1 })}
           </Text>
           {realtime === 'reconnecting' ? (
-            <Text variant="caption2" color={color.warning}>reconnecting</Text>
+            <Text variant="caption2" color={color.warning}>{t('live.reconnecting')}</Text>
           ) : null}
         </View>
         <View style={{ marginTop: space.m, gap: space.m }}>
-          <RosterRow name={profile?.displayName ?? 'You'} state={myPace ? paceWord[myPace.state] : '—'} tint={myPace ? paceColor[myPace.state] : color.label.tertiary} drinks={myPace?.drinks ?? 0} you />
+          <RosterRow name={profile?.displayName ?? t('live.you')} state={myPace ? t(paceWord[myPace.state]) : '—'} tint={myPace ? paceColor[myPace.state] : color.label.tertiary} drinks={myPace?.drinks ?? 0} you />
           {roster.map((p) => (
-            <RosterRow key={p.id} name={p.displayName} state="STEADY" tint={color.pace.steady} drinks={3} />
+            <RosterRow key={p.id} name={p.displayName} state={t(paceWord.steady)} tint={color.pace.steady} drinks={3} />
           ))}
         </View>
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">WHERE EVERYONE IS</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('live.whereEveryoneIs')}</Text>
         <View
           style={{
             height: 130,
@@ -130,14 +131,12 @@ export default function LiveRoom() {
         >
           <Icon name="location" size={22} color={sharingLocation ? color.brand.tintLight : color.label.quaternary} />
           <Text variant="footnote" tone="tertiary" center style={{ maxWidth: 250 }}>
-            {sharingLocation
-              ? 'Sharing with this night only. Stops automatically when the night ends.'
-              : 'Off. Nobody in this night can see where you are.'}
+            {sharingLocation ? t('live.locationOn') : t('live.locationOff')}
           </Text>
         </View>
         <View style={{ marginTop: space.m }}>
           <Button
-            title={sharingLocation ? 'Stop sharing my location' : 'Share my location with this night'}
+            title={sharingLocation ? t('live.stopSharingLocation') : t('live.shareLocation')}
             kind={sharingLocation ? 'plain' : 'glass'}
             compact
             onPress={() => setSharingLocation((s) => !s)}
@@ -146,7 +145,7 @@ export default function LiveRoom() {
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">CHAT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('live.chat')}</Text>
         <View style={{ marginTop: space.m, gap: space.m }}>
           {chat.map((c) => (
             <View key={c.id} style={{ flexDirection: 'row', gap: space.m }}>
@@ -166,16 +165,16 @@ export default function LiveRoom() {
           {REACTIONS.map((r: ReactionKind) => (
             <Chip
               key={r}
-              label={REACTION_LABEL[r]}
+              label={t(REACTION_LABEL[r])}
               compact
               glyph={<Reaction kind={r} size={18} />}
-              onPress={() => setChat((c) => [...c, { id: String(Date.now()), who: 'You', reaction: r }])}
+              onPress={() => setChat((c) => [...c, { id: String(Date.now()), who: t('live.you'), reaction: r }])}
             />
           ))}
         </View>
       </Card>
 
-      <Button title="Party mode: night bingo" kind="plain" icon="sparkles" onPress={() => router.push(`/live/${code}/bingo` as never)} />
+      <Button title={t('live.partyMode')} kind="plain" icon="sparkles" onPress={() => router.push(`/live/${code}/bingo` as never)} />
     </Screen>
   );
 }
@@ -193,15 +192,16 @@ function RosterRow({
   drinks: number;
   you?: boolean;
 }) {
+  const t = useT();
   return (
     <View
       style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}
-      accessibilityLabel={`${name}, pace ${state}, ${plural(drinks, 'drink')}`}
+      accessibilityLabel={t('live.rosterLabel', { name, state, count: drinks })}
     >
       <Avatar name={name} size={34} live />
       <View style={{ flex: 1 }}>
-        <Text variant="headline">{you ? 'You' : name}</Text>
-        <Text variant="caption1" tone="tertiary">{drinks} logged</Text>
+        <Text variant="headline">{you ? t('live.you') : name}</Text>
+        <Text variant="caption1" tone="tertiary">{t('live.drinksLogged', { count: drinks })}</Text>
       </View>
       <Text variant="numericSmall" color={tint}>{state}</Text>
     </View>

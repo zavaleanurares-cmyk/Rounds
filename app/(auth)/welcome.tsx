@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Aurora, Text, Button, InlineLink } from '@/ui';
+import { useT } from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, space, geometry } from '@/design/tokens';
 
@@ -12,6 +13,7 @@ import { color, space, geometry } from '@/design/tokens';
  */
 export default function Welcome() {
   const router = useRouter();
+  const t = useT();
   const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: color.bg.canvas }}>
@@ -28,28 +30,27 @@ export default function Welcome() {
         <View style={{ marginTop: 60 }}>
           <Text variant="caption2" tone="tertiary" style={{ letterSpacing: 3 }}>ROUNDS</Text>
           <Text variant="largeTitle" style={{ marginTop: space.lg, fontSize: 40, lineHeight: 46 }}>
-            Know your night.
+            {t('auth.tagline')}
           </Text>
           <Text variant="body" tone="secondary" style={{ marginTop: space.md, maxWidth: 320 }}>
-            Open it before you go out, check it the next morning. It keeps your pace, keeps your
-            group together, and gets you home.
+            {t('auth.welcomeBody')}
           </Text>
         </View>
 
         <View style={{ gap: space.m }}>
-          <Button title="Get started" onPress={() => router.push('/(auth)/sign-in')} />
+          <Button title={t('auth.getStarted')} onPress={() => router.push('/(auth)/sign-in')} />
           <Button
-            title="I already have an account"
+            title={t('auth.haveAccount')}
             kind="glass"
             onPress={() => router.push({ pathname: '/(auth)/sign-in', params: { mode: 'signin' } })}
           />
           <View style={{ alignItems: 'center', marginTop: space.sm }}>
             <Text variant="footnote" tone="quaternary" center style={{ maxWidth: 320 }}>
-              17+. ROUNDS estimates pace — it is never a measure of whether you are fit to drive.
+              {t('auth.ageAndPaceNote')}
             </Text>
             <View style={{ marginTop: space.sm }}>
               <InlineLink
-                title="Drinking support resources"
+                title={t('auth.supportResources')}
                 onPress={() => void Linking.openURL('https://www.who.int/health-topics/alcohol')}
               />
             </View>

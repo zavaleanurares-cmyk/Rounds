@@ -3,11 +3,13 @@ import { View, TextInput, Animated, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Text, Card, InlineLink } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 /** A-03 · OTP verify. Six boxes, auto-advance, paste, 60s resend timer. */
 export default function Verify() {
   const router = useRouter();
+  const t = useT();
   const { verifyOtp, auth } = useStore();
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
@@ -43,10 +45,10 @@ export default function Verify() {
   };
 
   return (
-    <Screen title="Check your email" back mood="calm" subtitle={auth.pendingEmail ?? undefined}>
+    <Screen title={t('auth.checkYourEmail')} back mood="calm" subtitle={auth.pendingEmail ?? undefined}>
       <Card aurora>
         <Animated.View style={{ transform: [{ translateX: shake }] }}>
-          <Pressable onPress={() => input.current?.focus()} accessibilityLabel="Verification code">
+          <Pressable onPress={() => input.current?.focus()} accessibilityLabel={t('auth.verificationCode')}>
             <View style={{ flexDirection: 'row', gap: space.sm, justifyContent: 'center' }}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <View
@@ -92,22 +94,28 @@ export default function Verify() {
 
         {error ? (
           <Text variant="footnote" color={color.safety} center style={{ marginTop: space.md }}>
-            That code didn't work. Check the last email we sent.
+            {t('auth.codeWrong')}
           </Text>
         ) : null}
 
         <View style={{ alignItems: 'center', marginTop: space.lg }}>
           {seconds > 0 ? (
-            <Text variant="footnote" tone="tertiary">Resend in {seconds}s</Text>
+            <Text variant="footnote" tone="tertiary">{t('auth.resendIn', { count: seconds })}</Text>
           ) : (
-            <InlineLink title="Send another code" onPress={() => setSeconds(60)} />
+            <InlineLink title={t('auth.sendAnotherCode')} onPress={() => setSeconds(60)} />
           )}
         </View>
       </Card>
-      <Text variant="footnote" tone="quaternary" center>
-        In this build any six digits work — the OTP call is wired to Supabase behind the same
-        function.
-      </Text>
+      {/*
+        A note about how the build is wired, for whoever is testing it. It has
+        no business on a user's screen and none at all in a store build, so it
+        is compiled out rather than merely written small.
+      */}
+      {__DEV__ ? (
+        <Text variant="footnote" tone="quaternary" center>
+          {t('auth.otpBuildNote')}
+        </Text>
+      ) : null}
     </Screen>
   );
 }

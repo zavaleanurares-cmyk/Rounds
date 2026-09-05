@@ -6,6 +6,8 @@ import { pluralCategory, REQUIRED_FORMS, type Locale } from '@/i18n/plurals';
 import { isPlural, type Message } from '@/i18n/types';
 import { translate } from '@/i18n/translate';
 import * as fmt from '@/i18n/format';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, sep } from 'node:path';
 
 type Catalogue = Record<string, Message>;
 const CATALOGUES: Record<Locale, Catalogue> = { en, fr, ro, es };
@@ -148,7 +150,11 @@ describe('the catalogues', () => {
         if (!b.trim()) suspicious.push(`${locale}:${key} is empty`);
         // Identical strings are fine when there is nothing to translate — a
         // brand name, a phone number, a bare placeholder. Flag only prose.
-        if (a === b && /\s/.test(a) && a.split(/\s+/).length > 2 && !/ROUNDS|@|\d{3}/.test(a)) {
+        // A message made only of placeholders and punctuation — "{id} · {name}"
+        // — is the same in every language, and so is a brand name or a phone
+        // number. Only flag prose.
+        const prose = a.replace(/\{\w+\}/g, '').replace(/[^\p{L}]+/gu, ' ').trim();
+        if (a === b && prose.split(/\s+/).filter(Boolean).length > 2 && !/ROUNDS/.test(a)) {
           suspicious.push(`${locale}:${key} is still English: "${a}"`);
         }
       }
@@ -194,6 +200,8 @@ describe('formatting', () => {
     expect(fmt.formatDuration('en', 3 * 3600_000 + 20 * 60_000)).toBe('3h 20m');
     expect(fmt.formatDuration('fr', 3 * 3600_000 + 20 * 60_000)).toBe('3h 20min');
     expect(fmt.formatDuration('ro', 45 * 60_000)).toBe('45min');
+    // Not zero-padded — "2h 5m" is how a person says it.
+    expect(fmt.formatDuration('en', 2 * 3600_000 + 5 * 60_000)).toBe('2h 5m');
   });
 
   it('never throws, whatever it is handed', () => {
@@ -219,5 +227,57 @@ describe('translate', () => {
     // Nothing should be missing — the type system and the tests above see to
     // that — but the fallback must be a real sentence, not a key.
     expect(translate('fr', 'ui.retry')).toBe('Réessayer');
+  });
+});
+
+describe('the app uses the catalogue', () => {
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full, out);
+      else if (/\.tsx?$/.test(entry)) out.push(full);
+    }
+    return out;
+  };
+
+  const SOURCE = [...walk('app'), ...walk('src')].filter(
+    (f) => !f.includes('__tests__') && !f.includes(`i18n${sep}locales`)
+  );
+  const ALL = SOURCE.map((f) => readFileSync(f, 'utf8')).join('\n');
+
+  it('every key is used somewhere', () => {
+    // A key nobody reads is a key three people translate for nothing.
+    const unused = Object.keys(en).filter((k) => !ALL.includes(`'${k}'`) && !ALL.includes(`"${k}"`));
+    expect(unused).toEqual([]);
+  });
+
+  /**
+   * The catch-all. Any user-facing string left as a literal is a string that
+   * will still be English after the app is switched to Romanian, and the only
+   * way to find those reliably is to look for them.
+   */
+  it('no screen renders a hardcoded English sentence', () => {
+    const offenders: string[] = [];
+    for (const file of SOURCE) {
+      const src = readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+
+      // Props that reach an eye or a screen reader.
+      const props =
+        /\b(title|subtitle|label|placeholder|hint|actionLabel|accessibilityLabel|accessibilityHint|eyebrow)=["']([^"']{4,})["']/g;
+      for (const m of src.matchAll(props)) {
+        const value = m[2];
+        if (/^[a-z0-9.[\]_-]+$/i.test(value)) continue;        // an id, an icon name
+        if (!/\s/.test(value)) continue;                        // a single word
+        offenders.push(`${file}: ${m[1]}="${value}"`);
+      }
+
+      // JSX text nodes that are prose rather than an interpolation.
+      for (const m of src.matchAll(/>\s*([A-Z][a-z]+(?:\s+[\w',.!?-]+){2,})\s*</g)) {
+        offenders.push(`${file}: >${m[1]}<`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

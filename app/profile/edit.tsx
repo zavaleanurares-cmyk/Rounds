@@ -7,6 +7,7 @@ import { useStore } from '@/data/store';
 import { CATALOG } from '@/domain/catalog';
 import * as remote from '@/data/remote';
 import { feedback } from '@/services/feedback';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 const MAX_BIO = 140;
@@ -29,6 +30,7 @@ type HandleState = { checking: boolean; available: boolean | null; reason: strin
  */
 export default function EditProfile() {
   const router = useRouter();
+  const t = useT();
   const toast = useToast();
   const { profile, updateProfile } = useStore();
 
@@ -57,7 +59,7 @@ export default function EditProfile() {
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     if (unchangedHandle || !shapeOk) {
-      setHandle({ checking: false, available: null, reason: shapeOk || !normalised ? null : 'Letters, numbers and underscores. 3 to 20.' });
+      setHandle({ checking: false, available: null, reason: shapeOk || !normalised ? null : t('profile.handleRule') });
       return;
     }
     setHandle({ checking: true, available: null, reason: null });
@@ -66,13 +68,13 @@ export default function EditProfile() {
       setHandle({
         checking: false,
         available: ok,
-        reason: ok === false ? 'Taken.' : null,
+        reason: ok === false ? t('profile.handleTaken') : null,
       });
     }, 450);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [normalised, shapeOk, unchangedHandle]);
+  }, [normalised, shapeOk, unchangedHandle, t]);
 
   const pickPhoto = async () => {
     setPicking(true);
@@ -80,7 +82,7 @@ export default function EditProfile() {
       const picker = require('expo-image-picker') as typeof import('expo-image-picker');
       const perm = await picker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        toast.show({ message: 'ROUNDS needs photo access to set a picture.' });
+        toast.show({ message: t('profile.photoPermission') });
         return;
       }
       const result = await picker.launchImageLibraryAsync({
@@ -95,7 +97,7 @@ export default function EditProfile() {
       setAvatarUrl(result.assets[0].uri);
       feedback('tap');
     } catch {
-      toast.show({ message: 'Could not open your photos.' });
+      toast.show({ message: t('profile.photoFailed') });
     } finally {
       setPicking(false);
     }
@@ -131,28 +133,28 @@ export default function EditProfile() {
       });
       feedback('tap');
       router.back();
-      setTimeout(() => toast.show({ message: 'Profile updated' }), 120);
+      setTimeout(() => toast.show({ message: t('profile.updated') }), 120);
     } finally {
       setSaving(false);
     }
   };
 
   const signature = useMemo(() => CATALOG.find((d) => d.id === drinkId) ?? null, [drinkId]);
-  const preview = displayName.trim() || 'You';
+  const preview = displayName.trim() || t('profile.you');
 
   return (
     <Screen
-      title="Your profile"
+      title={t('profile.title')}
       back
       mood="calm"
-      footer={<Button title={saving ? 'Saving…' : 'Save'} onPress={save} disabled={!canSave || saving} />}
+      footer={<Button title={saving ? t('ui.saving') : t('ui.save')} onPress={save} disabled={!canSave || saving} />}
     >
       <Card>
         <View style={{ alignItems: 'center', gap: space.m }}>
           <Pressable
             onPress={pickPhoto}
             accessibilityRole="button"
-            accessibilityLabel={avatarUrl ? 'Change your photo' : 'Add a photo'}
+            accessibilityLabel={avatarUrl ? t('profile.changePhotoLabel') : t('profile.addPhoto')}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
             <Avatar name={preview} url={avatarUrl} tint={tint} size={96} />
@@ -176,14 +178,14 @@ export default function EditProfile() {
           </Pressable>
 
           <View style={{ flexDirection: 'row', gap: space.m }}>
-            <Pressable onPress={pickPhoto} accessibilityRole="button" accessibilityLabel="Choose a photo">
+            <Pressable onPress={pickPhoto} accessibilityRole="button" accessibilityLabel={t('profile.choosePhoto')}>
               <Text variant="footnote" color={color.brand.tintLight}>
-                {avatarUrl ? 'Change photo' : 'Add a photo'}
+                {avatarUrl ? t('profile.changePhoto') : t('profile.addPhoto')}
               </Text>
             </Pressable>
             {avatarUrl ? (
-              <Pressable onPress={() => setAvatarUrl(null)} accessibilityRole="button" accessibilityLabel="Remove photo">
-                <Text variant="footnote" tone="tertiary">Remove</Text>
+              <Pressable onPress={() => setAvatarUrl(null)} accessibilityRole="button" accessibilityLabel={t('profile.removePhotoLabel')}>
+                <Text variant="footnote" tone="tertiary">{t('profile.remove')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -191,16 +193,16 @@ export default function EditProfile() {
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">COLOUR</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('profile.colourHeader')}</Text>
         <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>
-          Behind your initials, and on your stamps and crews.
+          {t('profile.colourNote')}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: space.m }}>
           <View style={{ flexDirection: 'row', gap: space.sm, paddingRight: space.md }}>
             <Pressable
               onPress={() => setTint(null)}
               accessibilityRole="button"
-              accessibilityLabel="Automatic colour"
+              accessibilityLabel={t('profile.automaticColour')}
               accessibilityState={{ selected: tint === null }}
               style={{
                 width: 38,
@@ -223,7 +225,7 @@ export default function EditProfile() {
                   feedback('tap');
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Colour ${i + 1}`}
+                accessibilityLabel={t('profile.colourNumbered', { index: i + 1 })}
                 accessibilityState={{ selected: tint === i }}
                 style={{
                   width: 38,
@@ -243,59 +245,59 @@ export default function EditProfile() {
       <Card>
         <View style={{ gap: space.md }}>
           <Field
-            label="NAME"
+            label={t('profile.nameLabel')}
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder="What people call you"
+            placeholder={t('profile.namePlaceholder')}
             autoCapitalize="words"
           />
           <Field
-            label="HANDLE"
+            label={t('profile.handleLabel')}
             value={username}
-            onChangeText={(t) => setUsername(t.replace(/[^A-Za-z0-9_]/g, '').toLowerCase())}
-            placeholder="handle"
+            onChangeText={(next) => setUsername(next.replace(/[^A-Za-z0-9_]/g, '').toLowerCase())}
+            placeholder={t('profile.handlePlaceholder')}
             autoCapitalize="none"
             hint={
               handle.checking
-                ? 'Checking…'
+                ? t('profile.handleChecking')
                 : handle.available === true
-                  ? 'Available'
+                  ? t('profile.handleAvailable')
                   : unchangedHandle
-                    ? 'This is your handle now'
-                    : 'Letters, numbers and underscores'
+                    ? t('profile.handleCurrent')
+                    : t('profile.handleHint')
             }
             error={handle.reason ?? undefined}
           />
           <Field
-            label={`ABOUT (${bio.length}/${MAX_BIO})`}
+            label={t('profile.aboutLabel', { used: bio.length, max: MAX_BIO })}
             value={bio}
-            onChangeText={(t) => setBio(t.slice(0, MAX_BIO))}
-            placeholder="A line about you"
+            onChangeText={(next) => setBio(next.slice(0, MAX_BIO))}
+            placeholder={t('profile.aboutPlaceholder')}
             multiline
             autoCapitalize="sentences"
           />
           <Field
-            label="CITY"
+            label={t('profile.cityLabel')}
             value={homeCity}
             onChangeText={setHomeCity}
-            placeholder="Where you usually go out"
+            placeholder={t('profile.cityPlaceholder')}
             autoCapitalize="words"
-            hint="Just the name. ROUNDS never puts a location on your profile."
+            hint={t('profile.cityHint')}
           />
         </View>
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">YOUR DRINK</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('profile.drinkHeader')}</Text>
         <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>
-          Optional. Shown as a glyph on your profile — never as a suggestion to anyone.
+          {t('profile.drinkNote')}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: space.m }}>
           <View style={{ flexDirection: 'row', gap: space.sm, paddingRight: space.md }}>
             <Pressable
               onPress={() => setDrinkId(null)}
               accessibilityRole="button"
-              accessibilityLabel="No drink"
+              accessibilityLabel={t('profile.noDrink')}
               accessibilityState={{ selected: drinkId === null }}
               style={{
                 width: 60,
@@ -346,8 +348,7 @@ export default function EditProfile() {
       </Card>
 
       <Text variant="footnote" tone="quaternary" center>
-        Your name, handle, photo and about line are visible to people you have added. Nothing you
-        drink ever is.
+        {t('profile.visibilityNote')}
       </Text>
     </Screen>
   );

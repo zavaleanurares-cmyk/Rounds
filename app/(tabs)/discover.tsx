@@ -6,6 +6,7 @@ import {
   Aurora, Glass, Text, Icon, Chip, Card, Button, Avatar, TAB_BAR_CLEARANCE, DrinkGlyph,
 } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT, useI18n, type Locale } from '@/i18n';
 import { useLocation } from '@/hooks/useLocation';
 import { findVenues, distanceM, formatDistance } from '@/services/venues';
 import { capabilities } from '@/services/optional';
@@ -28,6 +29,8 @@ import { color, radius, space, geometry } from '@/design/tokens';
  */
 export default function Discover() {
   const router = useRouter();
+  const t = useT();
+  const { locale } = useI18n();
   const insets = useSafeAreaInsets();
   const { people, logs, venues: localVenues, mergeVenues } = useStore();
   const { status, coords, request } = useLocation(true);
@@ -75,6 +78,9 @@ export default function Discover() {
   }, [found, localVenues, layers.been, visited, coords]);
 
   const liveFriends = people.filter((p) => p.liveNow && p.status === 'friend');
+  const friendNames = liveFriends.map((f) => f.displayName.split(' ')[0]).join(', ');
+  const peekMetaText = peek ? peekMeta(peek) : '';
+  const peekDistanceText = peek ? peekDistance(peek, coords, status, locale) : null;
   const usualAt = (venueId: string) => {
     const mine = logs.filter((l) => l.venueId === venueId && !l.deleted);
     const counts = new Map<string, number>();
@@ -98,24 +104,22 @@ export default function Discover() {
 
       {/* glass search toolbar */}
       <View style={{ position: 'absolute', top: insets.top + space.sm, left: geometry.screenMargin, right: geometry.screenMargin, gap: space.m }}>
-        <Pressable onPress={() => router.push('/venue/search')} accessibilityRole="search" accessibilityLabel="Search venues">
+        <Pressable onPress={() => router.push('/venue/search')} accessibilityRole="search" accessibilityLabel={t('discover.searchVenues')}>
           <Glass radius={radius.control}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, height: 48, paddingHorizontal: space.md }}>
               <Icon name="magnifyingglass" size={18} color={color.label.secondary} />
-              <Text variant="body" tone="tertiary" style={{ flex: 1 }}>Search bars and clubs</Text>
+              <Text variant="body" tone="tertiary" style={{ flex: 1 }}>{t('discover.searchPlaceholder')}</Text>
               {loading ? <ActivityIndicator size="small" color={color.label.tertiary} /> : null}
             </View>
           </Glass>
         </Pressable>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Chip label="Friends out" compact selected={layers.friends} onPress={() => setLayers((l) => ({ ...l, friends: !l.friends }))} />
-          <Chip label="Been here" compact selected={layers.been} onPress={() => setLayers((l) => ({ ...l, been: !l.been }))} />
-          <Chip label="Open now" compact selected={layers.open} onPress={() => setLayers((l) => ({ ...l, open: !l.open }))} />
+          <Chip label={t('discover.filterFriends')} compact selected={layers.friends} onPress={() => setLayers((l) => ({ ...l, friends: !l.friends }))} />
+          <Chip label={t('discover.filterBeen')} compact selected={layers.been} onPress={() => setLayers((l) => ({ ...l, been: !l.been }))} />
+          <Chip label={t('discover.filterOpen')} compact selected={layers.open} onPress={() => setLayers((l) => ({ ...l, open: !l.open }))} />
         </View>
         {stale ? (
-          <Text variant="caption1" color={color.warning}>
-            Showing places you've seen before — we couldn't reach the venue service.
-          </Text>
+          <Text variant="caption1" color={color.warning}>{t('discover.stale')}</Text>
         ) : null}
       </View>
 
@@ -123,7 +127,7 @@ export default function Discover() {
       <Pressable
         onPress={() => void request()}
         accessibilityRole="button"
-        accessibilityLabel="Find me"
+        accessibilityLabel={t('discover.findMe')}
         style={{ position: 'absolute', right: geometry.screenMargin, top: insets.top + 118 }}
       >
         <Glass radius={20}>
@@ -141,57 +145,54 @@ export default function Discover() {
               <View style={{ flex: 1 }}>
                 <Text variant="title3">{peek.name}</Text>
                 <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>
-                  {[peek.category, peek.area, peek.priceBand ? '€'.repeat(peek.priceBand) : null]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  {peek.lat != null && status !== 'approximate'
-                    ? ` · ${formatDistance(distanceM(coords, { lat: peek.lat, lng: peek.lng! }))}`
-                    : ''}
+                  {peekDistanceText !== null
+                    ? t('discover.peekMetaDistance', { meta: peekMetaText, distance: peekDistanceText })
+                    : peekMetaText}
                 </Text>
               </View>
               {usualAt(peek.id) ? <DrinkGlyph drink={usualAt(peek.id)!} size={30} /> : null}
-              <Pressable onPress={() => setPeek(null)} hitSlop={10} accessibilityLabel="Close">
+              <Pressable onPress={() => setPeek(null)} hitSlop={10} accessibilityLabel={t('ui.close')}>
                 <Icon name="xmark" size={16} color={color.label.tertiary} />
               </Pressable>
             </View>
             <View style={{ flexDirection: 'row', gap: space.m, marginTop: space.md }}>
               <View style={{ flex: 1 }}>
-                <Button title="Start here" compact onPress={() => router.push({ pathname: '/session/start', params: { venueId: peek.id } })} />
+                <Button title={t('discover.startHere')} compact onPress={() => router.push({ pathname: '/session/start', params: { venueId: peek.id } })} />
               </View>
               <View style={{ flex: 1 }}>
-                <Button title="Details" kind="glass" compact onPress={() => router.push(`/venue/${peek.id}` as never)} />
+                <Button title={t('discover.details')} kind="glass" compact onPress={() => router.push(`/venue/${peek.id}` as never)} />
               </View>
             </View>
           </Card>
         ) : status === 'denied' || status === 'unavailable' ? (
           <Card>
-            <Text variant="headline">Location is off</Text>
+            <Text variant="headline">{t('discover.locationOffTitle')}</Text>
             <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-              That's fine — search for the place by name instead. Everything else in ROUNDS works
-              exactly the same.
+              {t('discover.locationOffBody')}
             </Text>
             <View style={{ marginTop: space.m, flexDirection: 'row', gap: space.m }}>
               <View style={{ flex: 1 }}>
-                <Button title="Search venues" kind="glass" compact onPress={() => router.push('/venue/search')} />
+                <Button title={t('discover.searchVenues')} kind="glass" compact onPress={() => router.push('/venue/search')} />
               </View>
               <View style={{ flex: 1 }}>
-                <Button title="Try again" kind="plain" compact onPress={() => void request()} />
+                <Button title={t('ui.retry')} kind="plain" compact onPress={() => void request()} />
               </View>
             </View>
           </Card>
         ) : layers.friends && liveFriends.length > 0 ? (
           <Card aurora accent={color.pace.steady}>
-            <Text variant="sectionHeader" tone="tertiary">OUT RIGHT NOW</Text>
+            <Text variant="sectionHeader" tone="tertiary">{t('discover.outRightNow')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
               {liveFriends.map((f) => <Avatar key={f.id} name={f.displayName} size={34} live />)}
               <Text variant="footnote" tone="secondary" style={{ flex: 1, marginLeft: space.xs }}>
-                {liveFriends.map((f) => f.displayName.split(' ')[0]).join(', ')}
-                {status === 'approximate' ? ' · nearby' : ''}
+                {status === 'approximate'
+                  ? t('discover.friendsNearby', { names: friendNames })
+                  : friendNames}
               </Text>
             </View>
             {status === 'approximate' ? (
               <Text variant="caption1" tone="quaternary" style={{ marginTop: space.sm }}>
-                Approximate location only, so distances are hidden.
+                {t('discover.approximate')}
               </Text>
             ) : null}
           </Card>
@@ -199,4 +200,22 @@ export default function Discover() {
       </View>
     </View>
   );
+}
+
+/** Category, area and price band — venue data, joined, never translated. */
+function peekMeta(venue: Venue): string {
+  return [venue.category, venue.area, venue.priceBand ? '€'.repeat(venue.priceBand) : null]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** Null when there is no coordinate, or when location is approximate. */
+function peekDistance(
+  venue: Venue,
+  coords: { lat: number; lng: number },
+  status: string,
+  locale: Locale
+): string | null {
+  if (venue.lat == null || status === 'approximate') return null;
+  return formatDistance(distanceM(coords, { lat: venue.lat, lng: venue.lng! }), locale);
 }

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Icon } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT, useI18n } from '@/i18n';
 import { capabilities, optional, whyMissing } from '@/services/optional';
 import { color, radius, space } from '@/design/tokens';
 
@@ -20,6 +21,8 @@ import { color, radius, space } from '@/design/tokens';
  */
 export default function JoinNight() {
   const router = useRouter();
+  const t = useT();
+  const { locale } = useI18n();
   const { sessions, auth, setPendingHref } = useStore();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,15 +45,18 @@ export default function JoinNight() {
     // Accept a bare code, a rounds:// link or a https://rounds.app/n/ link —
     // whatever the host's screen happens to be showing.
     const clean = (raw.match(/([A-Z0-9]{8})\s*$/i)?.[1] ?? raw).trim().toUpperCase();
-    if (clean.length < 4) return;
+    // Join codes are exactly eight characters — see `ensure_join_code` in
+    // 00003. Accepting four meant the button enabled on a half-typed code and
+    // then failed, which reads as the code being wrong rather than short.
+    if (clean.length < 8) return;
 
     const session = sessions.find((s) => s.joinCode === clean);
     if (!session) {
-      setError("We don't know that code. Check it against the host's screen.");
+      setError(t('live.unknownCode'));
       return;
     }
     if (session.endedAt !== null) {
-      setError('That night has already ended.');
+      setError(t('live.nightEnded'));
       return;
     }
     handled.current = true;
@@ -65,11 +71,11 @@ export default function JoinNight() {
 
   return (
     <Screen
-      title="Join a night"
-      subtitle="Point the camera at the host's code."
+      title={t('live.joinTitle')}
+      subtitle={t('live.joinSubtitle')}
       back
       mood="default"
-      footer={<Button title="Join" disabled={code.trim().length < 4} onPress={() => join(code)} />}
+      footer={<Button title={t('live.join')} disabled={code.trim().length < 8} onPress={() => join(code)} />}
     >
       <Card aurora padding={space.m}>
         <View
@@ -94,10 +100,10 @@ export default function JoinNight() {
               <Icon name="qrcode.viewfinder" size={40} color={color.brand.tintLight} />
               <Text variant="footnote" tone="tertiary" center style={{ maxWidth: 250 }}>
                 {permission === 'denied'
-                  ? 'Camera access is off. Type the code below instead — it works just as well.'
+                  ? t('live.cameraDenied')
                   : canScan
-                    ? 'Asking for the camera…'
-                    : whyMissing('camera')}
+                    ? t('live.cameraAsking')
+                    : whyMissing('camera', locale)}
               </Text>
             </View>
           )}
@@ -115,22 +121,22 @@ export default function JoinNight() {
 
       <Card>
         <Field
-          label="Or type the 8-character code"
+          label={t('live.codeLabel')}
           value={code}
-          onChangeText={(t) => {
-            setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8));
+          onChangeText={(v) => {
+            setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8));
             setError(null);
           }}
-          placeholder="ABCD1234"
+          placeholder={t('live.codePlaceholder')}
           autoCapitalize="none"
           error={error ?? undefined}
-          hint="The host finds it on their Tonight screen."
+          hint={t('live.codeHint')}
         />
       </Card>
 
       {auth.status !== 'signed_in' ? (
         <Text variant="footnote" tone="quaternary" center>
-          You'll sign in once — everything else can wait until tomorrow.
+          {t('live.signInNote')}
         </Text>
       ) : null}
     </Screen>

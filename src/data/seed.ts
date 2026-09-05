@@ -8,6 +8,8 @@
  * calls to flip into the has-history state.
  */
 import type { Log, Session, Person, Plan, Crew, Venue, AppNotification } from '@/domain/types';
+import type { Locale } from '@/i18n';
+import { translate } from '@/i18n/translate';
 import { CATALOG, WATER } from '@/domain/catalog';
 import { nightKey } from '@/domain/nightKey';
 import { uuid } from './uuid';
@@ -62,12 +64,18 @@ export function demoPlans(): Plan[] {
   ];
 }
 
-export function demoNotifications(): AppNotification[] {
+/**
+ * The demo tray. A notification carries finished copy rather than a key —
+ * that is the shape a real one arrives in — so it is rendered in the language
+ * the account was seeded in.
+ */
+export function demoNotifications(locale: Locale): AppNotification[] {
   const now = Date.now();
+  const t = (key: string) => translate(locale, key);
   return [
-    { id: uuid(), kind: 'plan', title: 'Ana added a plan', body: 'Friday, properly · 21:30', at: now - 3 * 3600000, read: false, href: '/plan/plan1' },
-    { id: uuid(), kind: 'social', title: 'Sara sent a friend request', body: 'Tap to accept or decline', at: now - 26 * 3600000, read: false, href: '/people/requests' },
-    { id: uuid(), kind: 'morning', title: 'Your night is ready', body: 'Two venues, 4h10. Fill the gaps?', at: now - 30 * 3600000, read: true, href: null },
+    { id: uuid(), kind: 'plan', title: t('common.demoPlanNotificationTitle'), body: t('common.demoPlanNotificationBody'), at: now - 3 * 3600000, read: false, href: '/plan/plan1' },
+    { id: uuid(), kind: 'social', title: t('common.demoRequestNotificationTitle'), body: t('common.demoRequestNotificationBody'), at: now - 26 * 3600000, read: false, href: '/people/requests' },
+    { id: uuid(), kind: 'morning', title: t('common.demoMorningNotificationTitle'), body: t('common.demoMorningNotificationBody'), at: now - 30 * 3600000, read: true, href: null },
   ];
 }
 

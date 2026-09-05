@@ -9,6 +9,7 @@ import { Glow } from './Glow';
 import { Bloom } from './Bloom';
 import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
+import { useT } from '@/i18n';
 import { color, gradient, radius, space, geometry } from '@/design/tokens';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -41,6 +42,7 @@ export function TabBar({
   onSelect: (item: TabItem) => void;
   onLog: () => void;
 }) {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const threeButtonNav = Platform.OS === 'android' && insets.bottom < 16;
   const bottom = Math.max(insets.bottom, 12) + (threeButtonNav ? 12 : 0);
@@ -116,8 +118,8 @@ export function TabBar({
               }}
               {...fab.handlers}
               accessibilityRole="button"
-              accessibilityLabel="Log a drink"
-              accessibilityHint="Opens the log sheet. One tap logs the same again."
+              accessibilityLabel={t('ui.logDrink')}
+              accessibilityHint={t('ui.logDrinkHint')}
               style={[fab.style, {
                 width: geometry.fab.size,
                 height: geometry.fab.size,

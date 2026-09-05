@@ -4,6 +4,7 @@ import { View, Pressable } from 'react-native';
 import { Sheet, Button, Text, Icon, useToast } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 const MARKS = ['moon.stars', 'flame', 'sparkles', 'bolt', 'star', 'person.2'] as const;
@@ -11,6 +12,7 @@ const MARKS = ['moon.stars', 'flame', 'sparkles', 'bolt', 'star', 'person.2'] as
 /** C-10 · Create crew. */
 export default function NewCrew() {
   const router = useRouter();
+  const t = useT();
   const toast = useToast();
   const { createCrew } = useStore();
   const [name, setName] = useState('');
@@ -18,23 +20,29 @@ export default function NewCrew() {
   const [accentIndex, setAccentIndex] = useState(0);
   return (
     <Sheet
-      title="New crew"
+      title={t('social.newCrewTitle')}
       onClose={() => router.back()}
       footer={
         <Button
-          title="Create"
+          title={t('social.create')}
           disabled={name.trim().length < 2}
           onPress={() => {
             const crew = createCrew({ name, icon, accentIndex });
             router.replace(`/crew/${crew.slug}` as never);
-            setTimeout(() => toast.show({ message: `${crew.name} created` }), 160);
+            setTimeout(() => toast.show({ message: t('social.crewCreated', { name: crew.name }) }), 160);
           }}
         />
       }
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
-        <Field label="Name" value={name} onChangeText={setName} placeholder="Vineri" autoCapitalize="words" />
-        <Text variant="sectionHeader" tone="tertiary">MARK</Text>
+        <Field
+          label={t('social.crewNameLabel')}
+          value={name}
+          onChangeText={setName}
+          placeholder={t('social.crewNamePlaceholder')}
+          autoCapitalize="words"
+        />
+        <Text variant="sectionHeader" tone="tertiary">{t('social.mark')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           {MARKS.map((m) => (
             <Pressable
@@ -55,14 +63,14 @@ export default function NewCrew() {
           ))}
         </View>
 
-        <Text variant="sectionHeader" tone="tertiary">COLOUR</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('social.colour')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           {color.night.map((c, i) => (
             <Pressable
               key={c}
               onPress={() => setAccentIndex(i)}
               accessibilityRole="button"
-              accessibilityLabel={`Colour ${i + 1}`}
+              accessibilityLabel={t('social.colourIndex', { index: i + 1 })}
               accessibilityState={{ selected: accentIndex === i }}
               style={{
                 flex: 1, height: 44, borderRadius: radius.control, backgroundColor: c,

@@ -39,6 +39,7 @@ import type {
   Visibility,
 } from '@/domain/types';
 import { nightKey } from '@/domain/nightKey';
+import { useI18n } from '@/i18n';
 import { CATALOG, WATER, byId } from '@/domain/catalog';
 import { KEYS, readJson, writeJson, remove } from './storage';
 import { logQueue, type QueueState } from './queue';
@@ -324,6 +325,11 @@ export interface Store extends State {
 const Ctx = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
+  // The active language. Notification copy and the demo tray are rendered
+  // outside a component, so the locale is passed down rather than hooked for.
+  const { locale } = useI18n();
+  const localeRef = useRef(locale);
+  localeRef.current = locale;
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [queue, setQueue] = useState<QueueState>(logQueue.state());
   const undoRef = useRef<Log | null>(null);
@@ -416,11 +422,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         payload: {
           logs, sessions,
           people: DEMO_PEOPLE, crews: DEMO_CREWS,
-          plans: demoPlans(), notifications: demoNotifications(),
+          plans: demoPlans(), notifications: demoNotifications(locale),
         },
       });
     })();
-  }, [state.hydrated, state.logs.length, state.profile?.currency, state.auth.userId]);
+  }, [state.hydrated, state.logs.length, state.profile?.currency, state.auth.userId, locale]);
 
   /**
    * Entitlement is whatever the server says. `settings.subscribed` unlocks the
@@ -470,8 +476,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // The one notification rule, applied in one place rather than remembered by
     // each sender: nothing but safety interrupts a live night.
     push.configureHandler(() => liveRef.current);
-    void push.ensureChannels();
-    void push.registerCategories();
+    void push.ensureChannels(localeRef.current);
+    void push.registerCategories(localeRef.current);
   }, []);
 
   const visibleLogs = useMemo(() => state.logs.filter((l) => !l.deleted), [state.logs]);
@@ -760,7 +766,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // The morning recap is scheduled locally, so it arrives even if the phone
       // spends the night with no signal.
       if (stateRef.current.settings.notifications.morning) {
-        void push.scheduleMorningRecap(9, id);
+        void push.scheduleMorningRecap(9, id, localeRef.current);
       }
     },
     updateSessionVisibility(id, visibility) {
@@ -975,7 +981,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     /* -------------------------------------------------------- safety */
     armSafeArrival(input) {
       analytics.track('check_armed', { hours: Math.round((input.deadlineAt - Date.now()) / 3600000), contacts: input.contactIds.length });
-      void push.scheduleSafetyReminder(input.deadlineAt, input.message);
+      void push.scheduleSafetyReminder(input.deadlineAt, input.message, localeRef.current);
       dispatch({
         type: 'patchSafety',
         payload: {
@@ -1042,7 +1048,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           people: DEMO_PEOPLE,
           crews: DEMO_CREWS,
           plans: demoPlans(),
-          notifications: demoNotifications(),
+          notifications: demoNotifications(localeRef.current),
         },
       });
     },

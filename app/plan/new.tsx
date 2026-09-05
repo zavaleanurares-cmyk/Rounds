@@ -4,11 +4,14 @@ import { useRouter } from 'expo-router';
 import { Sheet, Text, Button, Chip } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT, useFormat } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /** D-07 · Create plan. */
 export default function NewPlan() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { venues, people, createPlan } = useStore();
   const [title, setTitle] = useState('');
   const [dayOffset, setDayOffset] = useState(1);
@@ -23,11 +26,11 @@ export default function NewPlan() {
 
   return (
     <Sheet
-      title="New plan"
+      title={t('plan.newTitle')}
       onClose={() => router.back()}
       footer={
         <Button
-          title="Create it"
+          title={t('plan.createIt')}
           disabled={title.trim().length < 2}
           onPress={() => {
             const plan = createPlan({
@@ -43,9 +46,15 @@ export default function NewPlan() {
       }
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
-        <Field label="What is it" value={title} onChangeText={setTitle} placeholder="Friday, properly" autoCapitalize="sentences" />
+        <Field
+          label={t('plan.whatLabel')}
+          value={title}
+          onChangeText={setTitle}
+          placeholder={t('plan.whatPlaceholder')}
+          autoCapitalize="sentences"
+        />
 
-        <Text variant="sectionHeader" tone="tertiary">WHEN</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('plan.when')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
           {[0, 1, 2, 3, 4, 5, 6].map((d) => {
             const day = new Date();
@@ -53,7 +62,7 @@ export default function NewPlan() {
             return (
               <Chip
                 key={d}
-                label={d === 0 ? 'Tonight' : day.toLocaleDateString(undefined, { weekday: 'short' })}
+                label={d === 0 ? t('plan.tonight') : f.weekdayShort(day.getTime())}
                 compact
                 selected={dayOffset === d}
                 onPress={() => setDayOffset(d)}
@@ -62,12 +71,14 @@ export default function NewPlan() {
           })}
         </View>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
-          {[19, 20, 21, 22, 23].map((h) => (
-            <Chip key={h} label={`${h}:00`} compact selected={hour === h} onPress={() => setHour(h)} />
-          ))}
+          {[19, 20, 21, 22, 23].map((h) => {
+            const at = new Date(start);
+            at.setHours(h, 0, 0, 0);
+            return <Chip key={h} label={f.clock(at.getTime())} compact selected={hour === h} onPress={() => setHour(h)} />;
+          })}
         </View>
 
-        <Text variant="sectionHeader" tone="tertiary">WHERE · OR LET THEM VOTE</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('plan.whereVote')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
           {venues.map((v) => (
             <Chip
@@ -80,19 +91,19 @@ export default function NewPlan() {
           ))}
         </View>
 
-        <Text variant="sectionHeader" tone="tertiary">WHO</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('plan.who')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
-          {friends.map((f) => (
+          {friends.map((friend) => (
             <Chip
-              key={f.id}
-              label={f.displayName}
+              key={friend.id}
+              label={friend.displayName}
               compact
-              selected={inviteeIds.includes(f.id)}
-              onPress={() => setInviteeIds((s) => (s.includes(f.id) ? s.filter((x) => x !== f.id) : [...s, f.id]))}
+              selected={inviteeIds.includes(friend.id)}
+              onPress={() => setInviteeIds((s) => (s.includes(friend.id) ? s.filter((x) => x !== friend.id) : [...s, friend.id]))}
             />
           ))}
           {friends.length === 0 ? (
-            <Text variant="subheadline" tone="tertiary">Add friends first, or share the link once it exists.</Text>
+            <Text variant="subheadline" tone="tertiary">{t('plan.noFriends')}</Text>
           ) : null}
         </View>
       </View>

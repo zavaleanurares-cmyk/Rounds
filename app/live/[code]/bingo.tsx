@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text } from '@/ui';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 const SQUARES = [
-  'Someone loses a jacket', 'Round nobody remembers buying', 'The DJ plays it',
-  'Group photo attempt #3', 'Someone says "one more"', 'Taxi debate',
-  'Kebab decision', 'Phone at 4%', 'Ana finds the smoking area',
-];
+  'live.bingoJacket', 'live.bingoRound', 'live.bingoDj',
+  'live.bingoPhoto', 'live.bingoOneMore', 'live.bingoTaxi',
+  'live.bingoKebab', 'live.bingoBattery', 'live.bingoSmoking',
+] as const;
 
 /**
  * C-07 · Night bingo — P2, and ONLY as an opt-in party mode inside a live shared
@@ -19,9 +20,10 @@ const SQUARES = [
  */
 export default function Bingo() {
   const router = useRouter();
+  const t = useT();
   const [marked, setMarked] = useState<number[]>([]);
   return (
-    <Screen title="Night bingo" subtitle="Nothing here counts drinks." back mood="warm">
+    <Screen title={t('live.bingoTitle')} subtitle={t('live.bingoSubtitle')} back mood="warm">
       <Card aurora>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {SQUARES.map((s, i) => {
@@ -32,7 +34,7 @@ export default function Bingo() {
                 onPress={() => setMarked((m) => (on ? m.filter((x) => x !== i) : [...m, i]))}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: on }}
-                accessibilityLabel={s}
+                accessibilityLabel={t(s)}
                 style={{
                   width: '31%',
                   aspectRatio: 1,
@@ -44,13 +46,15 @@ export default function Bingo() {
                   justifyContent: 'center',
                 }}
               >
-                <Text variant="caption1" tone={on ? 'primary' : 'secondary'} center>{s}</Text>
+                <Text variant="caption1" tone={on ? 'primary' : 'secondary'} center>{t(s)}</Text>
               </Pressable>
             );
           })}
         </View>
       </Card>
-      <Text variant="footnote" tone="quaternary" center>{marked.length} of 9</Text>
+      <Text variant="footnote" tone="quaternary" center>
+        {t('live.bingoProgress', { count: marked.length, total: SQUARES.length })}
+      </Text>
     </Screen>
   );
 }

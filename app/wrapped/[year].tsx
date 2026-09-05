@@ -4,7 +4,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Aurora, Text, Button, Card } from '@/ui';
 import { useStore } from '@/data/store';
-import { summariseNights, formatMoney, plural } from '@/domain/stats';
+import { summariseNights } from '@/domain/stats';
+import { useT, useFormat } from '@/i18n';
 import { color, geometry, space } from '@/design/tokens';
 import { UpgradeSlide } from '@/features/billing/UpgradeSlide';
 
@@ -17,6 +18,8 @@ import { UpgradeSlide } from '@/features/billing/UpgradeSlide';
  */
 export default function Wrapped() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const insets = useSafeAreaInsets();
   const { year } = useLocalSearchParams<{ year: string }>();
   const { logs, sessions, venues, profile, settings , plus } = useStore();
@@ -35,12 +38,35 @@ export default function Wrapped() {
     return top ? venues.find((v) => v.id === top[0])?.name : null;
   }, [scoped, venues]);
 
+  const drinks = nights.reduce((s, n) => s + n.drinks, 0);
   const slides = [
-    { title: plural(nights.length, 'night'), body: `You went out ${plural(nights.length, 'time')} in ${y}.`, tint: color.night[0] },
-    { title: plural(venueCount, 'place'), body: topVenue ? `${topVenue} saw more of you than anywhere else.` : 'You kept it varied.', tint: color.night[1] },
-    { title: formatMoney(spend, profile?.currency ?? 'EUR'), body: 'What the year cost, across every round you logged.', tint: color.night[3] },
-    { title: `${dry} quiet nights`, body: 'The ones you did not go out are part of the picture too.', tint: color.pace.steady, paid: true },
-    { title: plural(nights.reduce((s, n) => s + n.drinks, 0), 'drink'), body: 'Plainly, without a chart and without a comparison to anyone else.', tint: color.brand.tint, paid: true },
+    {
+      title: t('stats.wrappedNights', { count: nights.length }),
+      body: t('stats.wrappedNightsBody', { count: nights.length, year: String(y) }),
+      tint: color.night[0],
+    },
+    {
+      title: t('stats.places', { count: venueCount }),
+      body: topVenue ? t('stats.wrappedTopVenue', { venue: topVenue }) : t('stats.wrappedVaried'),
+      tint: color.night[1],
+    },
+    {
+      title: f.money(spend, profile?.currency ?? 'EUR'),
+      body: t('stats.wrappedSpendBody'),
+      tint: color.night[3],
+    },
+    {
+      title: t('stats.wrappedQuietNights', { count: dry }),
+      body: t('stats.wrappedQuietBody'),
+      tint: color.pace.steady,
+      paid: true,
+    },
+    {
+      title: t('stats.wrappedDrinks', { count: drinks }),
+      body: t('stats.wrappedDrinksBody'),
+      tint: color.brand.tint,
+      paid: true,
+    },
   ];
 
   const slide = slides[index];
@@ -52,7 +78,7 @@ export default function Wrapped() {
     <Pressable
       style={{ flex: 1, backgroundColor: color.bg.canvas }}
       onPress={() => setIndex((i) => Math.min(slides.length - 1, i + 1))}
-      accessibilityLabel="Next slide"
+      accessibilityLabel={t('stats.nextSlide')}
     >
       <Aurora mood={index % 2 ? 'warm' : 'default'} accent={slide.tint} />
       <View
@@ -77,15 +103,15 @@ export default function Wrapped() {
           <UpgradeSlide />
         ) : (
           <View>
-            <Text variant="caption2" tone="tertiary" style={{ letterSpacing: 3 }}>ROUNDS {y}</Text>
+            <Text variant="caption2" tone="tertiary" style={{ letterSpacing: 3 }}>{t('stats.wrappedEyebrow', { year: String(y) })}</Text>
             <Text variant="largeTitle" style={{ fontSize: 44, lineHeight: 50, marginTop: space.m }}>{slide.title}</Text>
             <Text variant="body" tone="secondary" style={{ marginTop: space.m, maxWidth: 300 }}>{slide.body}</Text>
           </View>
         )}
 
         <View style={{ gap: space.m }}>
-          <Text variant="footnote" tone="quaternary" center>Tap to continue</Text>
-          <Button title="Close" kind="glass" onPress={() => router.back()} />
+          <Text variant="footnote" tone="quaternary" center>{t('stats.tapToContinue')}</Text>
+          <Button title={t('ui.close')} kind="glass" onPress={() => router.back()} />
         </View>
       </View>
     </Pressable>

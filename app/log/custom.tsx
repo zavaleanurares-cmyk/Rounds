@@ -7,6 +7,7 @@ import { useStore } from '@/data/store';
 import { ethanolGrams, formatUnits } from '@/domain/units';
 import type { DrinkCategory } from '@/domain/types';
 import { CUSTOM_ART } from '@/domain/art';
+import { useT, useFormat, useI18n } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /**
@@ -17,6 +18,9 @@ import { space } from '@/design/tokens';
  */
 export default function CustomDrink() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
+  const { locale } = useI18n();
   const toast = useToast();
   const store = useStore();
   const [name, setName] = useState('');
@@ -33,11 +37,11 @@ export default function CustomDrink() {
 
   return (
     <Sheet
-      title="Something else"
+      title={t('log.somethingElse')}
       onClose={() => router.back()}
       footer={
         <Button
-          title="Log it"
+          title={t('log.logIt')}
           disabled={!ok}
           onPress={() => {
             store.addLog({
@@ -53,35 +57,52 @@ export default function CustomDrink() {
               priceMinor: price ? Math.round(parseFloat(price.replace(',', '.')) * 100) : null,
             });
             router.back();
-            setTimeout(() => toast.show({ message: `${name} logged`, actionLabel: 'Undo', onAction: () => store.undoLast() }), 120);
+            setTimeout(
+              () =>
+                toast.show({
+                  message: t('log.drinkLogged', { drink: name }),
+                  actionLabel: t('ui.undo'),
+                  onAction: () => store.undoLast(),
+                }),
+              120
+            );
           }}
         />
       }
     >
       <View style={{ gap: space.m, paddingBottom: space.md }}>
-        <Field label="Name" value={name} onChangeText={setName} placeholder="Cider, 0.5" autoCapitalize="sentences" />
+        <Field
+          label={t('log.nameLabel')}
+          value={name}
+          onChangeText={setName}
+          placeholder={t('log.namePlaceholder')}
+          autoCapitalize="sentences"
+        />
         <Segmented
-          label="Category"
+          label={t('log.categoryLabel')}
           value={category}
           onChange={setCategory}
           options={[
-            { value: 'beer', label: 'Beer' },
-            { value: 'wine', label: 'Wine' },
-            { value: 'spirit', label: 'Spirit' },
-            { value: 'cocktail', label: 'Cocktail' },
+            { value: 'beer', label: t('log.categoryBeer') },
+            { value: 'wine', label: t('log.categoryWine') },
+            { value: 'spirit', label: t('log.categorySpirit') },
+            { value: 'cocktail', label: t('log.categoryCocktail') },
           ]}
         />
         <View style={{ flexDirection: 'row', gap: space.m }}>
           <View style={{ flex: 1 }}>
-            <Field label="Volume (ml)" value={volume} onChangeText={setVolume} keyboardType="numeric" />
+            <Field label={t('log.volumeLabel')} value={volume} onChangeText={setVolume} keyboardType="numeric" />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="ABV (%)" value={abv} onChangeText={setAbv} keyboardType="decimal-pad" />
+            <Field label={t('log.abvLabel')} value={abv} onChangeText={setAbv} keyboardType="decimal-pad" />
           </View>
         </View>
-        <Field label="Price (optional)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
+        <Field label={t('log.priceOptional')} value={price} onChangeText={setPrice} keyboardType="decimal-pad" />
         <Text variant="headline" tone="secondary">
-          {formatUnits(grams, store.profile?.unitSystem ?? 'EU')} · {grams.toFixed(1)}g of alcohol
+          {t('log.customUnits', {
+            units: formatUnits(grams, store.profile?.unitSystem ?? 'EU', locale),
+            grams: f.number(grams, 1),
+          })}
         </Text>
       </View>
     </Sheet>

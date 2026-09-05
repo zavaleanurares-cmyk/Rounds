@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Pressable, useWindowDimensions, StyleSheet, Platform } from 'react-native';
 import { Text, Icon } from '@/ui';
 import { capabilities, optional } from '@/services/optional';
+import { useT } from '@/i18n';
 import type { Venue } from '@/domain/types';
 import { color } from '@/design/tokens';
 import { MAP_STYLE } from './mapStyle';
@@ -36,6 +37,7 @@ export function VenueMap(props: VenueMapProps) {
 /* -------------------------------------------------------------- the real one */
 
 function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: VenueMapProps) {
+  const t = useT();
   const Maps = optional(() => require('react-native-maps'));
   const ref = useRef<any>(null);
   const [ready, setReady] = useState(false);
@@ -104,7 +106,7 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
             coordinate={{ latitude: venue.lat, longitude: venue.lng }}
             onPress={() => onSelect(venue)}
             tracksViewChanges={false}
-            accessibilityLabel={`${venue.name}${been ? ', you have been here' : ''}`}
+            accessibilityLabel={been ? t('common.mapPinVisited', { name: venue.name }) : venue.name}
           >
             <Pin name={venue.name} been={been} selected={selected} />
           </Marker>

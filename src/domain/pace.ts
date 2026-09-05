@@ -14,6 +14,8 @@
  * function of local inputs, recomputed on demand.
  */
 import type { PaceState } from '@/design/tokens';
+import { translate } from '@/i18n/translate';
+import type { Locale } from '@/i18n/plurals';
 
 export type Sex = 'male' | 'female' | 'unspecified';
 
@@ -196,13 +198,30 @@ export function weekdayMedian(
   return values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
 }
 
-/** VoiceOver reads the state word, never just the colour. */
-export function paceAccessibilityLabel(result: PaceResult): string {
-  const word = { easy: 'Easy', steady: 'Steady', quick: 'Quick', slow_down: 'Slow down' }[
-    result.state
-  ];
-  const drinks = result.drinks === 1 ? '1 drink' : `${result.drinks} drinks`;
-  const since =
-    result.minutesSinceLast === null ? '' : `, last one ${result.minutesSinceLast} minutes ago`;
-  return `Pace: ${word}. ${drinks} logged${since}.`;
+/**
+ * VoiceOver reads the state word, never just the colour.
+ *
+ * Built from two whole sentences rather than by gluing clauses together: the
+ * "last one N minutes ago" tail is a separate message because in Romanian it
+ * carries its own plural, and a sentence assembled from English fragments
+ * cannot be translated at all.
+ */
+export function paceAccessibilityLabel(result: PaceResult, locale: Locale = 'en'): string {
+  const word = translate(locale, PACE_LABEL_KEY[result.state]);
+  if (result.minutesSinceLast === null) {
+    return translate(locale, 'common.paceLabel', { word, count: result.drinks });
+  }
+  return translate(locale, 'common.paceLabelSince', {
+    word,
+    count: result.drinks,
+    minutes: result.minutesSinceLast,
+  });
 }
+
+/** The spoken form of each state. Distinct from `paceWord`, which is shouted. */
+const PACE_LABEL_KEY = {
+  easy: 'common.paceSpokenEasy',
+  steady: 'common.paceSpokenSteady',
+  quick: 'common.paceSpokenQuick',
+  slow_down: 'common.paceSpokenSlowDown',
+} as const;

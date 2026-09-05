@@ -2,13 +2,14 @@ import React from 'react';
 import { View } from 'react-native';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { TabBar, type TabItem } from '@/ui';
+import { useT, type MessageKey } from '@/i18n';
 import { color } from '@/design/tokens';
 
-const ITEMS: TabItem[] = [
-  { key: 'tonight', label: 'Tonight', icon: 'moon.stars', href: '/(tabs)/tonight' },
-  { key: 'discover', label: 'Discover', icon: 'map', href: '/(tabs)/discover' },
-  { key: 'circle', label: 'Circle', icon: 'person.2', href: '/(tabs)/circle' },
-  { key: 'you', label: 'You', icon: 'person.crop.circle', href: '/(tabs)/you' },
+const ITEMS: Array<Omit<TabItem, 'label'> & { labelKey: MessageKey }> = [
+  { key: 'tonight', labelKey: 'common.tabTonight', icon: 'moon.stars', href: '/(tabs)/tonight' },
+  { key: 'discover', labelKey: 'common.tabDiscover', icon: 'map', href: '/(tabs)/discover' },
+  { key: 'circle', labelKey: 'common.tabCircle', icon: 'person.2', href: '/(tabs)/circle' },
+  { key: 'you', labelKey: 'common.tabYou', icon: 'person.crop.circle', href: '/(tabs)/you' },
 ];
 
 /**
@@ -20,7 +21,12 @@ const ITEMS: TabItem[] = [
 export default function TabsLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const t = useT();
   const activeKey = ITEMS.find((i) => pathname.includes(i.key))?.key ?? 'tonight';
+  const items = React.useMemo<TabItem[]>(
+    () => ITEMS.map(({ labelKey, ...rest }) => ({ ...rest, label: t(labelKey) })),
+    [t]
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg.canvas }}>
@@ -33,7 +39,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="you" />
       </Tabs>
       <TabBar
-        items={ITEMS}
+        items={items}
         activeKey={activeKey}
         onSelect={(item) => router.replace(item.href as never)}
         onLog={() => router.push('/log')}

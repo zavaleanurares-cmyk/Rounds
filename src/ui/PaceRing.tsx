@@ -6,6 +6,7 @@ import { Text } from './Text';
 import { color, paceColor, paceGradient, paceWord, type PaceState } from '@/design/tokens';
 import type { PaceResult } from '@/domain/pace';
 import { paceAccessibilityLabel } from '@/domain/pace';
+import { useI18n, useT, useFormat } from '@/i18n';
 import { useStore } from '@/data/store';
 
 /**
@@ -25,6 +26,7 @@ export interface PaceRingProps {
 }
 
 export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
+  const { t, locale } = useI18n();
   const state: PaceState = result.state;
   const stroke = 10;
   const r = size / 2 - stroke / 2 - 4;
@@ -45,14 +47,15 @@ export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
   // is the word that has to fit — the state word is the primary readout, so it
   // is never allowed to truncate.
   const chord = (size - stroke * 2) * 0.86;
-  const wordSize = Math.min(size * 0.2, chord / (paceWord[state].length * 0.58));
+  const word = t(paceWord[state]);
+  const wordSize = Math.min(size * 0.2, chord / (word.length * 0.58));
 
   return (
     <View
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
       accessible
       accessibilityRole="image"
-      accessibilityLabel={paceAccessibilityLabel(result)}
+      accessibilityLabel={paceAccessibilityLabel(result, locale)}
     >
       <Bloom size={size * 1.35} color={paceColor[state]} opacity={0.35} />
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -93,7 +96,7 @@ export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
           numberOfLines={1}
           style={{ fontSize: wordSize, lineHeight: wordSize * 1.06, letterSpacing: wordSize * 0.02 }}
         >
-          {paceWord[state]}
+          {word}
         </Text>
         {subtitle ? (
           <Text variant="subheadline" tone="secondary" center style={{ marginTop: 2 }}>
@@ -117,6 +120,8 @@ export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
  *    social surface (callers enforce placement; this enforces the rest)
  */
 export function PaceEstimate({ bac, state }: { bac: number; state: PaceState }) {
+  const t = useT();
+  const f = useFormat();
   // Suppressed entirely when the app is telling someone to slow down, and off
   // unless they asked for it at all. Both checks live HERE rather than in the
   // callers, so a new placement cannot forget one.
@@ -125,10 +130,10 @@ export function PaceEstimate({ bac, state }: { bac: number; state: PaceState }) 
   return (
     <View style={{ alignItems: 'center', marginTop: 10 }}>
       <Text variant="subheadline" tone="tertiary">
-        Estimate ≈ {bac.toFixed(2)}‰
+        {t('ui.paceEstimate', { value: f.number(bac, 2) })}
       </Text>
       <Text variant="footnote" tone="quaternary" center style={{ marginTop: 2, maxWidth: 300 }}>
-        Pacing estimate. Never use this to decide whether to drive.
+        {t('ui.paceEstimateNote')}
       </Text>
     </View>
   );

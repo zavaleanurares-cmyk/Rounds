@@ -10,6 +10,8 @@
  * caller gets `null` rather than an exception. The rule: a missing capability
  * must degrade to a stated limitation the user can read, never to a crash.
  */
+import type { Locale } from '@/i18n';
+import { translate } from '@/i18n/translate';
 
 export function optional<T>(loader: () => T): T | null {
   try {
@@ -95,11 +97,16 @@ export function capabilities(): Capabilities {
 /** The modules themselves, for callers that need more than a boolean. */
 export const modules = probe;
 
-/** Human-readable reason a capability is missing. Shown, never swallowed. */
-export function whyMissing(key: keyof Capabilities): string {
-  if (isWeb()) return 'Not available in a browser — open ROUNDS on a phone.';
+/**
+ * Human-readable reason a capability is missing. Shown, never swallowed.
+ *
+ * Takes the locale rather than reading a hook: this is a plain function called
+ * from render bodies and from services alike, and `translate` is pure.
+ */
+export function whyMissing(key: keyof Capabilities, locale: Locale): string {
+  if (isWeb()) return translate(locale, 'common.missingBrowser');
   if (isExpoGo() && (key === 'systemSurfaces' || key === 'purchases' || key === 'remotePush')) {
-    return 'Needs a development build. Expo Go cannot load custom native code.';
+    return translate(locale, 'common.missingDevBuild');
   }
-  return 'Not available on this device.';
+  return translate(locale, 'common.missingDevice');
 }

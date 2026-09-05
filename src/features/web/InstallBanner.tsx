@@ -3,6 +3,7 @@ import { View, Platform, Pressable } from 'react-native';
 import { Card, Text, Button, Icon } from '@/ui';
 import { canPromptInstall, promptInstall, isInstalled, isIosSafari, installPwa } from '@/services/pwa';
 import { readJson, writeJson } from '@/data/storage';
+import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 const DISMISSED = 'rounds.install.dismissed';
@@ -16,6 +17,7 @@ const DISMISSED = 'rounds.install.dismissed';
  * to fire and nobody finds "Add to Home Screen" unprompted.
  */
 export function InstallBanner() {
+  const t = useT();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -43,16 +45,14 @@ export function InstallBanner() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.m }}>
         <Icon name="arrow.up.right" size={20} color={color.brand.tintLight} />
         <View style={{ flex: 1 }}>
-          <Text variant="headline">Put ROUNDS on your home screen</Text>
+          <Text variant="headline">{t('common.installTitle')}</Text>
           <Text variant="subheadline" tone="secondary" style={{ marginTop: space.xs }}>
-            {isIosSafari()
-              ? 'Tap the share button, then "Add to Home Screen". It opens full-screen, keeps your data, and works without a signal.'
-              : 'It opens full-screen, keeps your data, and works without a signal.'}
+            {isIosSafari() ? t('common.installBodyIos') : t('common.installBody')}
           </Text>
           {canPromptInstall() ? (
             <View style={{ marginTop: space.m }}>
               <Button
-                title="Install"
+                title={t('common.install')}
                 compact
                 onPress={async () => {
                   const accepted = await promptInstall();
@@ -62,7 +62,7 @@ export function InstallBanner() {
             </View>
           ) : null}
         </View>
-        <Pressable onPress={dismiss} hitSlop={10} accessibilityLabel="Dismiss">
+        <Pressable onPress={dismiss} hitSlop={10} accessibilityLabel={t('ui.dismiss')}>
           <Icon name="xmark" size={16} color={color.label.tertiary} />
         </Pressable>
       </View>

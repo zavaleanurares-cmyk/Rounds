@@ -13,6 +13,8 @@
  */
 import { Platform } from 'react-native';
 import { capabilities, optional, isExpoGo } from './optional';
+import type { Locale, MessageKey } from '@/i18n';
+import { translate } from '@/i18n/translate';
 import { getClient } from '@/data/remote';
 
 export type Category = 'morning' | 'weekly' | 'plans' | 'social' | 'safety' | 'gamification' | 'live';
@@ -36,13 +38,18 @@ export interface LiveHudPush {
   at: number;
 }
 
-const CHANNELS: Array<{ id: Category; name: string; importance: 'default' | 'high' | 'low' }> = [
-  { id: 'safety', name: 'Safety check-ins', importance: 'high' },
-  { id: 'morning', name: 'Morning recap', importance: 'default' },
-  { id: 'plans', name: 'Plans', importance: 'default' },
-  { id: 'social', name: 'Friends and crews', importance: 'default' },
-  { id: 'weekly', name: 'Weekly recap', importance: 'low' },
-  { id: 'gamification', name: 'Achievements', importance: 'low' },
+/**
+ * The Android channels. `name` is what a person reads in system settings, so it
+ * is a message key resolved when the channel is created — nothing here is a
+ * hook, and this table is built at import time.
+ */
+const CHANNELS: Array<{ id: Category; name: MessageKey; importance: 'default' | 'high' | 'low' }> = [
+  { id: 'safety', name: 'common.channelSafety', importance: 'high' },
+  { id: 'morning', name: 'common.channelMorning', importance: 'default' },
+  { id: 'plans', name: 'common.channelPlans', importance: 'default' },
+  { id: 'social', name: 'common.channelSocial', importance: 'default' },
+  { id: 'weekly', name: 'common.channelWeekly', importance: 'low' },
+  { id: 'gamification', name: 'common.channelGamification', importance: 'low' },
 ];
 
 function mod() {
@@ -111,12 +118,12 @@ export function onLiveHudPush(handler: (payload: LiveHudPush) => void): () => vo
   };
 }
 
-export async function ensureChannels(): Promise<void> {
+export async function ensureChannels(locale: Locale): Promise<void> {
   const N = mod();
   if (!N || Platform.OS !== 'android') return;
   for (const c of CHANNELS) {
     await N.setNotificationChannelAsync(c.id, {
-      name: c.name,
+      name: translate(locale, c.name),
       importance:
         c.importance === 'high'
           ? N.AndroidImportance.HIGH
@@ -149,10 +156,10 @@ export async function permissionStatus(): Promise<PermissionState> {
  * A cold OS dialog costs the permission, and on Android 13+ it is a runtime
  * permission you get exactly one shot at.
  */
-export async function requestPermission(): Promise<PermissionState> {
+export async function requestPermission(locale: Locale): Promise<PermissionState> {
   const N = mod();
   if (!N) return 'unavailable';
-  await ensureChannels();
+  await ensureChannels(locale);
   const { status } = await N.requestPermissionsAsync({
     ios: { allowAlert: true, allowSound: true, allowBadge: false, allowProvisional: false },
   });
@@ -189,7 +196,11 @@ export async function registerForPush(): Promise<string | null> {
  * escalation to trusted contacts is the backstop; this is the primary, and it
  * fires from the device with no signal at all.
  */
-export async function scheduleSafetyReminder(deadlineAt: number, message: string): Promise<string | null> {
+export async function scheduleSafetyReminder(
+  deadlineAt: number,
+  message: string,
+  locale: Locale
+): Promise<string | null> {
   const N = mod();
   if (!N) return null;
   await cancelSafetyReminders();
@@ -197,8 +208,8 @@ export async function scheduleSafetyReminder(deadlineAt: number, message: string
   try {
     return await N.scheduleNotificationAsync({
       content: {
-        title: 'Are you home?',
-        body: "Tap to check in. If you don't, we'll let your trusted contacts know in 15 minutes.",
+        title: translate(locale, 'common.pushSafetyTitle'),
+        body: translate(locale, 'common.pushSafetyBody'),
         data: { category: 'safety' as Category, kind: 'safe_arrival', message },
         sound: 'default',
         categoryIdentifier: 'safe_arrival',
@@ -226,7 +237,11 @@ export async function cancelSafetyReminders(): Promise<void> {
  * before 09:00. Scheduled locally too — it is a better experience than a push
  * that arrives at 06:40 because a server queue drained early.
  */
-export async function scheduleMorningRecap(wakeHour: number, sessionId: string): Promise<string | null> {
+export async function scheduleMorningRecap(
+  wakeHour: number,
+  sessionId: string,
+  locale: Locale
+): Promise<string | null> {
   const N = mod();
   if (!N) return null;
   const hour = Math.max(9, Math.min(13, wakeHour));
@@ -236,8 +251,8 @@ export async function scheduleMorningRecap(wakeHour: number, sessionId: string):
   try {
     return await N.scheduleNotificationAsync({
       content: {
-        title: 'Your night is ready',
-        body: 'Where you went, what it cost, and the gaps worth filling.',
+        title: translate(locale, 'common.pushMorningTitle'),
+        body: translate(locale, 'common.pushMorningBody'),
         data: { category: 'morning' as Category, href: `/morning/${sessionId}` },
       },
       trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: when },
@@ -248,19 +263,25 @@ export async function scheduleMorningRecap(wakeHour: number, sessionId: string):
 }
 
 /** Sets up the actionable buttons so a check-in is answerable from the banner. */
-export async function registerCategories(): Promise<void> {
+export async function registerCategories(locale: Locale): Promise<void> {
   const N = mod();
   if (!N) return;
   await N.setNotificationCategoryAsync('safe_arrival', [
-    { identifier: 'home_safe', buttonTitle: "I'm home safe", options: { opensAppToForeground: false } },
-    { identifier: 'need_more_time', buttonTitle: 'Give me an hour', options: { opensAppToForeground: false } },
+    {
+      identifier: 'home_safe',
+      buttonTitle: translate(locale, 'common.pushActionHomeSafe'),
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: 'need_more_time',
+      buttonTitle: translate(locale, 'common.pushActionMoreTime'),
+      options: { opensAppToForeground: false },
+    },
   ]).catch(() => {});
 }
 
-export const pushDiagnostics = () => ({
+export const pushDiagnostics = (locale: Locale) => ({
   local: capabilities().notifications,
   remote: capabilities().remotePush,
-  note: isExpoGo()
-    ? 'Expo Go has no remote push on Android. Local notifications — including the safety check-in — work.'
-    : null,
+  note: isExpoGo() ? translate(locale, 'common.pushExpoGoNote') : null,
 });

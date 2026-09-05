@@ -143,8 +143,9 @@ describe('achievements', () => {
     expect(ids.size).toBe(ACHIEVEMENTS.length);
     for (const a of ACHIEVEMENTS) {
       expect(a.xp).toBeGreaterThan(0);
-      expect(a.name.length).toBeGreaterThan(0);
-      expect(a.hint.length).toBeGreaterThan(0);
+      // The copy is a catalogue key now, resolved at the render site.
+      expect(a.nameKey.length).toBeGreaterThan(0);
+      expect(a.hintKey.length).toBeGreaterThan(0);
     }
   });
 

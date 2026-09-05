@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Text, Card, Button, Segmented, Icon, InlineLink } from '@/ui';
 import { useStore } from '@/data/store';
 import { BODY_FALLBACK, type Sex } from '@/domain/pace';
+import { useT, useFormat } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 /**
@@ -12,6 +13,8 @@ import { color, radius, space } from '@/design/tokens';
  */
 export default function Body() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { profile, updateProfile } = useStore();
   const [sex, setSex] = useState<Sex>(profile?.sex ?? 'unspecified');
   const [weight, setWeight] = useState(profile?.weightKg ?? BODY_FALLBACK.weightKg);
@@ -20,13 +23,13 @@ export default function Body() {
 
   return (
     <Screen
-      title="Body basics"
-      subtitle="Only used on this phone, only for the pace estimate."
+      title={t('onboarding.bodyTitle')}
+      subtitle={t('onboarding.bodySubtitle')}
       mood="calm"
       footer={
         <View style={{ gap: space.m }}>
           <Button
-            title="Continue"
+            title={t('onboarding.continue')}
             onPress={() => {
               updateProfile({ sex, weightKg: weight });
               router.push('/(onboarding)/intent');
@@ -34,7 +37,7 @@ export default function Body() {
           />
           <View style={{ alignItems: 'center' }}>
             <InlineLink
-              title="Skip this"
+              title={t('onboarding.skipThis')}
               onPress={() => {
                 updateProfile({ sex: null, weightKg: null });
                 router.push('/(onboarding)/intent');
@@ -45,33 +48,35 @@ export default function Body() {
       }
     >
       <Card aurora>
-        <Text variant="sectionHeader" tone="tertiary">Sex</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('onboarding.sex')}</Text>
         <View style={{ marginTop: space.m }}>
           <Segmented
-            label="Sex"
+            label={t('onboarding.sex')}
             value={sex}
             onChange={setSex}
             options={[
-              { value: 'female', label: 'Female' },
-              { value: 'male', label: 'Male' },
-              { value: 'unspecified', label: 'Prefer not to' },
+              { value: 'female', label: t('onboarding.sexFemale') },
+              { value: 'male', label: t('onboarding.sexMale') },
+              { value: 'unspecified', label: t('onboarding.sexUnspecified') },
             ]}
           />
         </View>
 
-        <Text variant="sectionHeader" tone="tertiary" style={{ marginTop: space.lg }}>Weight</Text>
+        <Text variant="sectionHeader" tone="tertiary" style={{ marginTop: space.lg }}>{t('onboarding.weight')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.m }}>
-          <Stepper icon="minus" onPress={() => setWeight((w) => Math.max(35, w - 1))} label="Decrease weight" />
+          <Stepper icon="minus" onPress={() => setWeight((w) => Math.max(35, w - 1))} label={t('onboarding.decreaseWeight')} />
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text variant="numericLarge">{shown}</Text>
-            <Text variant="footnote" tone="tertiary">{imperial ? 'lb' : 'kg'}</Text>
+            <Text variant="numericLarge">{f.number(shown)}</Text>
+            <Text variant="footnote" tone="tertiary">
+              {imperial ? t('onboarding.weightUnitLb') : t('onboarding.weightUnitKg')}
+            </Text>
           </View>
-          <Stepper icon="plus" onPress={() => setWeight((w) => Math.min(220, w + 1))} label="Increase weight" />
+          <Stepper icon="plus" onPress={() => setWeight((w) => Math.min(220, w + 1))} label={t('onboarding.increaseWeight')} />
         </View>
       </Card>
 
       <Text variant="footnote" tone="tertiary" center style={{ paddingHorizontal: space.md }}>
-        Your pace ring gets a lot more accurate with this. You can add it any time.
+        {t('onboarding.bodyNote')}
       </Text>
     </Screen>
   );

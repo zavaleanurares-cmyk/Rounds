@@ -3,8 +3,8 @@ import { View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, Avatar, NavRow, Group, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
-import { plural } from '@/domain/stats';
 
 /**
  * C-09 · Crew detail.
@@ -19,41 +19,46 @@ import { plural } from '@/domain/stats';
  */
 export default function CrewDetail() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { crews, people, plans, sessions } = useStore();
   const crew = crews.find((c) => c.slug === slug);
 
-  if (!crew) return <Screen title="Crew" back><EmptyState title="Not found" body="No crew with that name." icon="person.2" /></Screen>;
+  if (!crew) return <Screen title={t('social.crewTitle')} back><EmptyState title={t('social.crewNotFoundTitle')} body={t('social.crewNotFoundBody')} icon="person.2" /></Screen>;
 
   const members = people.filter((p) => crew.memberIds.includes(p.id));
   const crewPlans = plans.filter((p) => p.crewId === crew.id);
 
   const board = [
-    { name: 'You', nights: sessions.length, venues: 6, quests: 3 },
+    { name: t('social.you'), nights: sessions.length, venues: 6, quests: 3 },
     ...members.map((m, i) => ({ name: m.displayName, nights: m.sharedNights, venues: 4 - i, quests: 2 })),
   ].sort((a, b) => b.nights - a.nights);
 
   return (
     <Screen
       title={crew.name}
-      subtitle={plural(crew.memberIds.length, 'person', 'people')}
+      subtitle={t('ui.people', { count: crew.memberIds.length })}
       back
       mood="calm"
       accent={color.night[crew.accentIndex % 4]}
-      footer={<Button title="Plan something" onPress={() => router.push('/plan/new')} />}
+      footer={<Button title={t('social.planSomething')} onPress={() => router.push('/plan/new')} />}
     >
       <Card aurora accent={color.night[crew.accentIndex % 4]}>
-        <Text variant="sectionHeader" tone="tertiary">PLANS</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('social.plans')}</Text>
         {crewPlans.length === 0 ? (
           <Text variant="subheadline" tone="secondary" style={{ marginTop: space.sm }}>
-            Nothing in the calendar. A crew without a plan in it is just a group chat.
+            {t('social.crewNoPlans')}
           </Text>
         ) : (
           crewPlans.map((p) => (
             <NavRow
               key={p.id}
               title={p.title}
-              subtitle={new Date(p.startsAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+              subtitle={t('social.crewPlanWhen', {
+                day: f.weekdayShort(p.startsAt),
+                time: f.clock(p.startsAt),
+              })}
               onPress={() => router.push(`/plan/${p.id}` as never)}
               last
             />
@@ -62,9 +67,9 @@ export default function CrewDetail() {
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">TOGETHER</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('social.together')}</Text>
         <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>
-          Nights out together, places explored, quests done. Never drinks.
+          {t('social.togetherNote')}
         </Text>
         <View style={{ marginTop: space.m, gap: space.m }}>
           {board.map((row, i) => (
@@ -72,15 +77,20 @@ export default function CrewDetail() {
               <Text variant="numericSmall" tone="tertiary" style={{ width: 22 }}>{i + 1}</Text>
               <Avatar name={row.name} size={30} />
               <Text variant="body" style={{ flex: 1 }}>{row.name}</Text>
-              <Text variant="footnote" tone="secondary">{plural(row.nights, 'night')} · {plural(row.venues, 'place')}</Text>
+              <Text variant="footnote" tone="secondary">
+                {t('social.boardRow', {
+                  count: row.nights,
+                  places: t('social.boardPlaces', { count: row.venues }),
+                })}
+              </Text>
             </View>
           ))}
         </View>
       </Card>
 
-      <Group title="MEMBERS">
+      <Group title={t('social.members')}>
         {members.map((m, i) => (
-          <NavRow key={m.id} title={m.displayName} subtitle={`@${m.username}`} onPress={() => router.push(`/people/${m.id}` as never)} last={i === members.length - 1} />
+          <NavRow key={m.id} title={m.displayName} subtitle={t('social.handle', { username: m.username })} onPress={() => router.push(`/people/${m.id}` as never)} last={i === members.length - 1} />
         ))}
       </Group>
     </Screen>

@@ -23,7 +23,6 @@ export const ui = {
   'ui.settings': 'Ajustes',
   'ui.share': 'Compartir',
   'ui.more': 'Más',
-  'ui.selected': 'seleccionado',
   'ui.nice': 'Bien',
   'ui.achievement': 'Logro',
   'ui.level': 'Nivel {level}',

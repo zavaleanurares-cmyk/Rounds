@@ -257,18 +257,3 @@ export function formatClock(at: number): string {
   const d = new Date(at);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
-
-/**
- * "1 person", not "1 people".
- *
- * A tiny thing that, unfixed, appears on the crew screen, the circle tab, the
- * passport, Wrapped and every night summary — and every one of those is a
- * moment where the app is showing somebody their own life back to them. Getting
- * the grammar wrong there reads as carelessness far out of proportion to the
- * bug.
- *
- * `plural(1, 'night')` → "1 night"; `plural(3, 'person', 'people')` → "3 people".
- */
-export function plural(n: number, one: string, many?: string): string {
-  return `${n} ${n === 1 ? one : (many ?? `${one}s`)}`;
-}

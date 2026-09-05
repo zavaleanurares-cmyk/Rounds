@@ -12,6 +12,7 @@
  *            the screen background, (2) smaller blooms clipped INSIDE cards, (3) a Card
  *            Sheen overlay giving every card one top-left highlight.
  */
+import type { MessageKey } from '@/i18n';
 
 /* ------------------------------------------------------------------ colour */
 
@@ -252,10 +253,17 @@ export const paceGradient: Record<PaceState, readonly [string, string]> = {
   slow_down: gradient.paceSlowDown,
 };
 
-/** The state word is the primary readout. Never lead with the ‰ number. */
-export const paceWord: Record<PaceState, string> = {
-  easy: 'EASY',
-  steady: 'STEADY',
-  quick: 'QUICK',
-  slow_down: 'SLOW DOWN',
+/**
+ * The state word is the primary readout. Never lead with the ‰ number.
+ *
+ * A message KEY rather than the word itself: this table is a module-level
+ * constant, so it cannot call a hook, and every surface that shows the word —
+ * the ring, the live room, the Live Activity, the widget — translates it at the
+ * point it renders.
+ */
+export const paceWord: Record<PaceState, MessageKey> = {
+  easy: 'common.paceEasy',
+  steady: 'common.paceSteady',
+  quick: 'common.paceQuick',
+  slow_down: 'common.paceSlowDown',
 };

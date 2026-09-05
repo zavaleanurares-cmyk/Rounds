@@ -3,22 +3,33 @@ import { View, Pressable } from 'react-native';
 import { Screen, Card, Text, ToggleRow, Group, Icon } from '@/ui';
 import { useStore } from '@/data/store';
 import { previewCue } from '@/services/feedback';
+import { useT, type MessageKey } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
+
+const CUES = [
+  ['log', 'settings.cueLog'],
+  ['round', 'settings.cueRound'],
+  ['start', 'settings.cueStart'],
+  ['end', 'settings.cueEnd'],
+  ['unlock', 'ui.achievement'],
+  ['levelup', 'settings.cueLevelUp'],
+] as const satisfies ReadonlyArray<readonly [string, MessageKey]>;
 
 /** S-02 · Appearance, motion and sound. */
 export default function Appearance() {
+  const t = useT();
   const { settings, updateSettings } = useStore();
   return (
-    <Screen title="Appearance" back mood="night">
+    <Screen title={t('settings.appearance')} back mood="night">
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">NIGHT ACCENT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('settings.nightAccent')}</Text>
         <View style={{ flexDirection: 'row', gap: space.m, marginTop: space.m }}>
           {color.night.map((c, i) => (
             <View
               key={c}
               accessible
               accessibilityRole="button"
-              accessibilityLabel={`Accent ${i + 1}`}
+              accessibilityLabel={t('settings.accentLabel', { index: i + 1 })}
               accessibilityState={{ selected: settings.accentIndex === i }}
               style={{
                 flex: 1,
@@ -34,37 +45,36 @@ export default function Appearance() {
           ))}
         </View>
         <Text variant="footnote" tone="tertiary" style={{ marginTop: space.m }}>
-          Each night gets its own accent so your history has colour. This picks the one ROUNDS starts
-          from.
+          {t('settings.accentNote')}
         </Text>
       </Card>
 
       <Group>
         <ToggleRow
-          title="Dim after 1am"
-          subtitle="Lowers the aurora and raises contrast during a late night"
+          title={t('settings.dimAfter1am')}
+          subtitle={t('settings.dimAfter1amSubtitle')}
           value={settings.nightDimming}
           onValueChange={(v) => updateSettings({ nightDimming: v })}
         />
         <ToggleRow
-          title="Reduce motion"
-          subtitle="Also follows your system setting"
+          title={t('settings.reduceMotion')}
+          subtitle={t('settings.reduceMotionSubtitle')}
           value={settings.reduceMotion}
           onValueChange={(v) => updateSettings({ reduceMotion: v })}
           last
         />
       </Group>
 
-      <Group title="FEEDBACK">
+      <Group title={t('settings.groupFeedback')}>
         <ToggleRow
-          title="Haptics"
-          subtitle="A small tap when something lands"
+          title={t('settings.haptics')}
+          subtitle={t('settings.hapticsSubtitle')}
           value={settings.haptics}
           onValueChange={(v) => updateSettings({ haptics: v })}
         />
         <ToggleRow
-          title="Sound"
-          subtitle="Off by default. Never plays when your phone is on silent."
+          title={t('settings.sound')}
+          subtitle={t('settings.soundSubtitle')}
           value={settings.sound}
           onValueChange={(v) => {
             updateSettings({ sound: v });
@@ -76,21 +86,14 @@ export default function Appearance() {
 
       {settings.sound ? (
         <Card>
-          <Text variant="sectionHeader" tone="tertiary">HEAR THEM</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('settings.hearThem')}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.m }}>
-            {([
-              ['log', 'A drink'],
-              ['round', 'A round'],
-              ['start', 'Night starts'],
-              ['end', 'Night ends'],
-              ['unlock', 'Achievement'],
-              ['levelup', 'Level up'],
-            ] as const).map(([cue, label]) => (
+            {CUES.map(([cue, labelKey]) => (
               <Pressable
                 key={cue}
                 onPress={() => previewCue(cue)}
                 accessibilityRole="button"
-                accessibilityLabel={`Play ${label}`}
+                accessibilityLabel={t('settings.playCue', { label: t(labelKey) })}
                 style={({ pressed }) => ({
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -105,7 +108,7 @@ export default function Appearance() {
                 })}
               >
                 <Icon name="bolt" size={14} color={color.label.secondary} />
-                <Text variant="footnote">{label}</Text>
+                <Text variant="footnote">{t(labelKey)}</Text>
               </Pressable>
             ))}
           </View>

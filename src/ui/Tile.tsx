@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 export function StatTile({
@@ -19,6 +20,7 @@ export function StatTile({
   icon?: IconName;
   onPress?: () => void;
 }) {
+  const t = useT();
   const body = (
     <View
       style={{
@@ -46,7 +48,7 @@ export function StatTile({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, ${value}`}
+      accessibilityLabel={t('ui.tileLabel', { label, value })}
       style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.8 : 1 })}
     >
       {body}

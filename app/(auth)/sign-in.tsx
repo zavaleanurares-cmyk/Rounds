@@ -7,6 +7,7 @@ import {
   appleAvailable, signInWithApple, signInWithGoogle, useGoogleAuthRequest,
 } from '@/services/auth';
 import { track } from '@/services/analytics';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 /**
@@ -24,6 +25,7 @@ import { color, radius, space } from '@/design/tokens';
 export default function SignIn() {
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { signInWithEmail, signInWithProvider } = useStore();
   const google = useGoogleAuthRequest();
@@ -36,7 +38,7 @@ export default function SignIn() {
 
   const submit = async () => {
     if (!valid) {
-      setError("That doesn't look like an email address.");
+      setError(t('auth.invalidEmail'));
       return;
     }
     setBusy('email');
@@ -46,7 +48,7 @@ export default function SignIn() {
       router.push('/(auth)/verify');
     } catch {
       // Rate limits are shown in plain language, never as the raw error.
-      setError('Too many attempts. Try again in a minute.');
+      setError(t('auth.rateLimited'));
     } finally {
       setBusy(null);
     }
@@ -62,20 +64,20 @@ export default function SignIn() {
     // A dismissed sheet is not an error. Say nothing.
     if (result.cancelled) return;
     if (!result.ok) {
-      toast.show({ message: result.reason ?? "That didn't go through." });
+      toast.show({ message: result.reason ? t(result.reason) : t('auth.providerFailed') });
       return;
     }
     await signInWithProvider(result);
   };
 
   return (
-    <Screen title={mode === 'signin' ? 'Welcome back' : 'Sign in'} back mood="calm">
+    <Screen title={mode === 'signin' ? t('auth.welcomeBack') : t('auth.signIn')} back mood="calm">
       {appleAvailable() || google.ready ? (
         <Card aurora>
           <View style={{ gap: space.m }}>
             {appleAvailable() ? (
               <Button
-                title="Continue with Apple"
+                title={t('auth.continueWithApple')}
                 kind="glass"
                 icon="person.crop.circle"
                 loading={busy === 'apple'}
@@ -84,7 +86,7 @@ export default function SignIn() {
             ) : null}
             {google.ready ? (
               <Button
-                title="Continue with Google"
+                title={t('auth.continueWithGoogle')}
                 kind="glass"
                 icon="person.crop.circle"
                 loading={busy === 'google'}
@@ -98,13 +100,13 @@ export default function SignIn() {
       {appleAvailable() || google.ready ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, marginVertical: space.sm }}>
           <View style={{ flex: 1, height: 1, backgroundColor: color.separator }} />
-          <Text variant="footnote" tone="tertiary">or</Text>
+          <Text variant="footnote" tone="tertiary">{t('auth.or')}</Text>
           <View style={{ flex: 1, height: 1, backgroundColor: color.separator }} />
         </View>
       ) : null}
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">Email</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('auth.email')}</Text>
         <TextInput
           value={email}
           onChangeText={(t) => {
@@ -117,7 +119,7 @@ export default function SignIn() {
           autoComplete="email"
           keyboardType="email-address"
           inputMode="email"
-          accessibilityLabel="Email address"
+          accessibilityLabel={t('auth.emailLabel')}
           style={{
             marginTop: space.sm,
             height: 50,
@@ -136,19 +138,18 @@ export default function SignIn() {
           <Text variant="footnote" color={color.safety} style={{ marginTop: space.sm }}>{error}</Text>
         ) : null}
         <View style={{ marginTop: space.md }}>
-          <Button title="Send me a code" onPress={submit} loading={busy === 'email'} disabled={!valid} />
+          <Button title={t('auth.sendMeACode')} onPress={submit} loading={busy === 'email'} disabled={!valid} />
         </View>
       </Card>
 
       {!appleAvailable() && !google.ready && Platform.OS !== 'web' ? (
         <Text variant="footnote" tone="quaternary" center>
-          Apple and Google sign-in appear once their client IDs are configured. Email works either
-          way.
+          {t('auth.providersUnconfigured')}
         </Text>
       ) : null}
 
       <Text variant="footnote" tone="quaternary" center>
-        By continuing you agree to the Terms and Privacy Policy.
+        {t('auth.terms')}
       </Text>
     </Screen>
   );

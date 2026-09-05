@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Sheet, Button, Text, useToast } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /**
@@ -15,6 +16,7 @@ import { space } from '@/design/tokens';
  */
 export default function JoinCrew() {
   const router = useRouter();
+  const t = useT();
   const toast = useToast();
   const { joinCrew } = useStore();
   const [code, setCode] = useState('');
@@ -25,32 +27,32 @@ export default function JoinCrew() {
     const cleaned = code.trim().replace(/^.*\/crew\//, '').replace(/[?#].*$/, '');
     const crew = joinCrew(cleaned);
     if (!crew) {
-      setError('No crew with that code. Check it with whoever sent it.');
+      setError(t('social.joinCrewUnknown'));
       return;
     }
     router.replace(`/crew/${crew.slug}` as never);
-    setTimeout(() => toast.show({ message: `You're in ${crew.name}` }), 160);
+    setTimeout(() => toast.show({ message: t('social.joinedCrew', { name: crew.name }) }), 160);
   };
 
   return (
     <Sheet
-      title="Join a crew"
+      title={t('social.joinCrewTitle')}
       onClose={() => router.back()}
-      footer={<Button title="Join" disabled={code.trim().length < 3} onPress={join} />}
+      footer={<Button title={t('social.join')} disabled={code.trim().length < 3} onPress={join} />}
     >
       <View style={{ paddingBottom: space.md, gap: space.sm }}>
         <Field
-          label="Crew code or link"
+          label={t('social.crewCodeLabel')}
           value={code}
-          onChangeText={(t) => {
-            setCode(t);
+          onChangeText={(v) => {
+            setCode(v);
             setError(null);
           }}
           autoCapitalize="none"
           error={error ?? undefined}
         />
         <Text variant="footnote" tone="quaternary">
-          Whoever runs the crew can send you one from the crew screen.
+          {t('social.crewCodeHint')}
         </Text>
       </View>
     </Sheet>

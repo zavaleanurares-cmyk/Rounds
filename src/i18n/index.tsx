@@ -73,6 +73,8 @@ interface BoundFormatters {
   clock(at: number): string;
   monthYear(at: number): string;
   weekday(at: number): string;
+  weekdayShort(at: number): string;
+  dayFull(at: number): string;
   money(minor: number, currency: string): string;
   number(n: number, digits?: number): string;
   duration(ms: number): string;
@@ -120,6 +122,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         clock: (at) => fmt.formatClock(locale, at),
         monthYear: (at) => fmt.formatMonthYear(locale, at),
         weekday: (at) => fmt.formatWeekday(locale, at),
+        weekdayShort: (at) => fmt.formatWeekdayShort(locale, at),
+        dayFull: (at) => fmt.formatDayFull(locale, at),
         money: (minor, currency) => fmt.formatMoney(locale, minor, currency),
         number: (n, digits) => fmt.formatNumber(locale, n, digits),
         duration: (ms) => fmt.formatDuration(locale, ms),

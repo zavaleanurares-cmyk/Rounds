@@ -3,12 +3,14 @@ import { View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, StatTile, EmptyState, Avatar } from '@/ui';
 import { useStore } from '@/data/store';
-import { formatMoney, formatClock, plural } from '@/domain/stats';
+import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /** D-02 · Venue detail — dominated by YOUR history here, not by their photos. */
 export default function VenueDetail() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { venues, logs, sessions, profile, people } = useStore();
   const venue = venues.find((v) => v.id === id);
@@ -23,7 +25,7 @@ export default function VenueDetail() {
   }, [mine]);
   const lastVisit = mine.length ? Math.max(...mine.map((l) => l.at)) : null;
 
-  if (!venue) return <Screen title="Venue" back><EmptyState title="Not found" body="No such venue." /></Screen>;
+  if (!venue) return <Screen title={t('discover.venueFallbackTitle')} back><EmptyState title={t('discover.venueNotFound')} body={t('discover.venueNotFoundBody')} /></Screen>;
 
   return (
     <Screen
@@ -31,39 +33,39 @@ export default function VenueDetail() {
       subtitle={`${venue.category} · ${venue.area}`}
       back
       mood="calm"
-      footer={<Button title="Start a night here" onPress={() => router.push('/session/start')} />}
+      footer={<Button title={t('discover.startNightHere')} onPress={() => router.push('/session/start')} />}
     >
       {visits === 0 ? (
         <EmptyState
           icon="location"
-          title="You haven't been here"
-          body="Once you log a night here, this fills in with what you drink, what it costs you, and when you last came."
+          title={t('discover.notVisitedTitle')}
+          body={t('discover.notVisitedBody')}
         />
       ) : (
         <>
           <View style={{ flexDirection: 'row', gap: space.m }}>
-            <StatTile label="Visits" value={String(visits)} icon="calendar" />
+            <StatTile label={t('discover.visits')} value={String(visits)} icon="calendar" />
             <StatTile
-              label="Typical spend"
-              value={formatMoney(Math.round(spend / Math.max(1, visits)), profile?.currency ?? 'EUR')}
+              label={t('discover.typicalSpend')}
+              value={f.money(Math.round(spend / Math.max(1, visits)), profile?.currency ?? 'EUR')}
               tint={color.pace.quick}
               icon="creditcard"
             />
           </View>
           <Card>
-            <Text variant="sectionHeader" tone="tertiary">YOUR HISTORY HERE</Text>
+            <Text variant="sectionHeader" tone="tertiary">{t('discover.yourHistoryHere')}</Text>
             <View style={{ marginTop: space.m, gap: space.sm }}>
               <Text variant="subheadline" tone="secondary">
-                Usual: <Text variant="subheadline">{usual ?? '—'}</Text>
+                {t('discover.usualLabel')} <Text variant="subheadline">{usual ?? '—'}</Text>
               </Text>
               <Text variant="subheadline" tone="secondary">
-                Last visit:{' '}
+                {t('discover.lastVisitLabel')}{' '}
                 <Text variant="subheadline">
-                  {lastVisit ? new Date(lastVisit).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ', ' + formatClock(lastVisit) : '—'}
+                  {lastVisit ? t('discover.dateAtTime', { date: f.dayCompact(lastVisit), time: f.clock(lastVisit) }) : '—'}
                 </Text>
               </Text>
               <Text variant="subheadline" tone="secondary">
-                Total here: <Text variant="subheadline">{formatMoney(spend, profile?.currency ?? 'EUR')}</Text>
+                {t('discover.totalHereLabel')} <Text variant="subheadline">{f.money(spend, profile?.currency ?? 'EUR')}</Text>
               </Text>
             </View>
           </Card>
@@ -71,8 +73,8 @@ export default function VenueDetail() {
       )}
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">WHO'S BEEN</Text>
-        <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>Friends only. Never strangers.</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('discover.whosBeen')}</Text>
+        <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>{t('discover.friendsOnly')}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.m }}>
           {people.filter((p) => p.status === 'friend').slice(0, 5).map((p) => (
             <Avatar key={p.id} name={p.displayName} size={34} />
@@ -81,7 +83,7 @@ export default function VenueDetail() {
       </Card>
 
       <Text variant="footnote" tone="quaternary" center>
-        {plural(sessions.filter((s) => s.venueId === id).length, 'night')} recorded here.
+        {t('discover.nightsRecorded', { count: sessions.filter((s) => s.venueId === id).length })}
       </Text>
     </Screen>
   );

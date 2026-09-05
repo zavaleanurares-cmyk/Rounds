@@ -5,6 +5,7 @@ import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
 import { Glow } from './Glow';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
+import { useT } from '@/i18n';
 import { color, motion, radius, space } from '@/design/tokens';
 
 /**
@@ -121,6 +122,7 @@ export function Celebration({
   content: CelebrationContent | null;
   onDismiss: () => void;
 }) {
+  const t = useT();
   const reduce = useReduceMotion();
   const burst = useRef(new Animated.Value(0)).current;
   const card = useRef(new Animated.Value(0)).current;
@@ -158,7 +160,7 @@ export function Celebration({
       <Pressable
         onPress={onDismiss}
         accessibilityRole="button"
-        accessibilityLabel="Dismiss"
+        accessibilityLabel={t('ui.dismiss')}
         style={{ flex: 1, backgroundColor: 'rgba(6,7,11,0.86)', alignItems: 'center', justifyContent: 'center', padding: space.lg }}
       >
         <Animated.View
@@ -210,7 +212,7 @@ export function Celebration({
               borderColor: color.separator,
             }}
           >
-            <Text variant="headline">Nice</Text>
+            <Text variant="headline">{t('ui.nice')}</Text>
           </View>
         </Animated.View>
       </Pressable>
@@ -230,6 +232,7 @@ export function LevelBar({
   intoLevel: number;
   levelSpan: number;
 }) {
+  const t = useT();
   const reduce = useReduceMotion();
   const v = useRef(new Animated.Value(reduce ? fraction : 0)).current;
 
@@ -251,9 +254,9 @@ export function LevelBar({
   }, [fraction, reduce, v]);
 
   return (
-    <View accessibilityLabel={`Level ${level}, ${intoLevel} of ${levelSpan} to the next`}>
+    <View accessibilityLabel={t('ui.levelProgress', { level, into: intoLevel, span: levelSpan })}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text variant="footnote" tone="secondary">Level {level}</Text>
+        <Text variant="footnote" tone="secondary">{t('ui.level', { level })}</Text>
         <Text variant="footnote" tone="tertiary">
           {intoLevel} / {levelSpan}
         </Text>

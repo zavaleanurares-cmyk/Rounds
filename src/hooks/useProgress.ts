@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { evaluate, ACHIEVEMENT_BY_ID, type Progress } from '@/domain/progress';
 import { KEYS, readJson, writeJson } from '@/data/storage';
 import { feedback } from '@/services/feedback';
@@ -35,6 +36,7 @@ const ICON_FOR: Record<string, IconName> = {
  * visible on the You tab — it just never interrupts.
  */
 export function useProgress() {
+  const t = useT();
   const { logs, sessions, people, crews, plans, goals, safety, settings } = useStore();
 
   const progress: Progress = useMemo(
@@ -107,8 +109,8 @@ export function useProgress() {
         {
           kind: 'achievement' as const,
           eyebrow: 'Achievement',
-          title: def.name,
-          body: def.hint,
+          title: t(def.nameKey),
+          body: t(def.hintKey),
           icon: ICON_FOR[def.group] ?? 'star',
         },
       ];
@@ -125,7 +127,7 @@ export function useProgress() {
     }
 
     if (items.length) setQueue((q) => [...q, ...items]);
-  }, [progress, settings.notifications.gamification]);
+  }, [progress, settings.notifications.gamification, t]);
 
   // The cue fires when a celebration becomes visible, not when it is queued, so
   // three unlocks at once make three sounds in sequence rather than a chord.

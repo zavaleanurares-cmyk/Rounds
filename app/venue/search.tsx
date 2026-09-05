@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Sheet, Text, Icon, Button } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { useT, useI18n } from '@/i18n';
 import { useLocation } from '@/hooks/useLocation';
 import { findVenues, distanceM, formatDistance } from '@/services/venues';
 import type { Venue } from '@/domain/types';
@@ -18,6 +19,8 @@ import { color, space } from '@/design/tokens';
  */
 export default function VenueSearch() {
   const router = useRouter();
+  const t = useT();
+  const { locale } = useI18n();
   const { venues: known, mergeVenues } = useStore();
   const { coords } = useLocation();
   const [q, setQ] = useState('');
@@ -56,9 +59,9 @@ export default function VenueSearch() {
   }, [known, remote, q]);
 
   return (
-    <Sheet title="Find a place" onClose={() => router.back()}>
+    <Sheet title={t('discover.findAPlace')} onClose={() => router.back()}>
       <View style={{ gap: space.m, paddingBottom: space.md }}>
-        <Field label="Search" value={q} onChangeText={setQ} placeholder="Enigma, Roots…" autoCapitalize="words" />
+        <Field label={t('discover.searchLabel')} value={q} onChangeText={setQ} placeholder={t('discover.searchExamples')} autoCapitalize="words" />
 
         {loading ? (
           <View style={{ paddingVertical: space.m, alignItems: 'center' }}>
@@ -81,8 +84,12 @@ export default function VenueSearch() {
             <View style={{ flex: 1 }}>
               <Text variant="body">{v.name}</Text>
               <Text variant="footnote" tone="tertiary">
-                {[v.category, v.area].filter(Boolean).join(' · ')}
-                {v.lat != null ? ` · ${formatDistance(distanceM(coords, { lat: v.lat, lng: v.lng! }))}` : ''}
+                {v.lat != null
+                  ? t('discover.peekMetaDistance', {
+                      meta: rowMeta(v),
+                      distance: formatDistance(distanceM(coords, { lat: v.lat, lng: v.lng! }), locale),
+                    })
+                  : rowMeta(v)}
               </Text>
             </View>
             <Icon name="chevron.right" size={15} color={color.label.quaternary} />
@@ -91,11 +98,16 @@ export default function VenueSearch() {
 
         {q.trim().length > 1 && !loading && results.length === 0 ? (
           <View style={{ gap: space.m, paddingTop: space.m }}>
-            <Text variant="subheadline" tone="tertiary">Nothing called "{q}" near you.</Text>
-            <Button title="Add it yourself" kind="glass" compact onPress={() => router.replace('/venue/new')} />
+            <Text variant="subheadline" tone="tertiary">{t('discover.noResults', { q })}</Text>
+            <Button title={t('discover.addItYourself')} kind="glass" compact onPress={() => router.replace('/venue/new')} />
           </View>
         ) : null}
       </View>
     </Sheet>
   );
+}
+
+/** Category and area — venue data, joined, never translated. */
+function rowMeta(venue: Venue): string {
+  return [venue.category, venue.area].filter(Boolean).join(' · ');
 }

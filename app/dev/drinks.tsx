@@ -5,6 +5,7 @@ import { CATALOG, CATEGORY_LABEL, CATEGORY_ORDER } from '@/domain/catalog';
 import { IBA_FAMILY_LABEL } from '@/domain/cocktails';
 import { formatUnits } from '@/domain/units';
 import { useStore } from '@/data/store';
+import { useT, useFormat, useI18n } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /**
@@ -15,6 +16,9 @@ import { color, space } from '@/design/tokens';
  * catch a glass that renders wrong before it ships inside a chip somewhere.
  */
 export default function DrinkSheet() {
+  const t = useT();
+  const f = useFormat();
+  const { locale } = useI18n();
   const { profile } = useStore();
   const system = profile?.unitSystem ?? 'EU';
   const [size, setSize] = useState<'small' | 'large'>('small');
@@ -22,19 +26,19 @@ export default function DrinkSheet() {
 
   const groups = CATEGORY_ORDER.map((cat) => ({
     key: cat,
-    label: CATEGORY_LABEL[cat],
+    label: t(CATEGORY_LABEL[cat]),
     items: CATALOG.filter((x) => x.category === cat),
   })).filter((g) => g.items.length > 0);
 
   return (
-    <Screen title="Every drink" subtitle={`${CATALOG.length} drawn, none of them an emoji`} back mood="night">
+    <Screen title={t('stats.everyDrink')} subtitle={t('stats.everyDrinkSubtitle', { count: CATALOG.length })} back mood="night">
       <Segmented
-        label="Size"
+        label={t('stats.size')}
         value={size}
         onChange={setSize}
         options={[
-          { value: 'small', label: 'As shown in chips' },
-          { value: 'large', label: 'Large' },
+          { value: 'small', label: t('stats.sizeChips') },
+          { value: 'large', label: t('stats.sizeLarge') },
         ]}
       />
 
@@ -43,17 +47,17 @@ export default function DrinkSheet() {
           group.key === 'cocktail'
             ? [
                 ...(['unforgettable', 'contemporary', 'newera'] as const).map((f) => ({
-                  label: IBA_FAMILY_LABEL[f] as string,
+                  label: t(IBA_FAMILY_LABEL[f]),
                   items: group.items.filter((x) => x.family === f),
                 })),
-                { label: 'Everyday', items: group.items.filter((x) => !x.family) },
+                { label: t('stats.familyEveryday'), items: group.items.filter((x) => !x.family) },
               ]
             : [{ label: '', items: group.items }];
 
         return (
           <View key={group.key} style={{ gap: space.m }}>
             <Text variant="sectionHeader" tone="tertiary">
-              {group.label.toUpperCase()} · {group.items.length}
+              {t('stats.drinkGroupHeader', { label: group.label.toUpperCase(), count: f.number(group.items.length, 0) })}
             </Text>
             {families.filter((f) => f.items.length > 0).map((fam) => (
               <Card key={fam.label || group.key}>
@@ -68,12 +72,16 @@ export default function DrinkSheet() {
                       key={drink.id}
                       style={{ width: px + 44, alignItems: 'center', gap: 4 }}
                       accessible
-                      accessibilityLabel={`${drink.name}, ${drink.volumeMl} millilitres at ${drink.abv} percent`}
+                      accessibilityLabel={t('stats.drinkSpec', {
+                        name: drink.name,
+                        volume: f.number(drink.volumeMl, 0),
+                        abv: f.number(drink.abv, drink.abv % 1 === 0 ? 0 : 1),
+                      })}
                     >
                       <DrinkGlyph drink={drink} size={px} />
                       <Text variant="caption2" tone="secondary" center numberOfLines={2}>{drink.name}</Text>
                       <Text variant="caption2" tone="quaternary" center>
-                        {formatUnits(drink.ethanolG, system).replace('≈ ', '')}
+                        {formatUnits(drink.ethanolG, system, locale).replace('≈ ', '')}
                       </Text>
                     </View>
                   ))}

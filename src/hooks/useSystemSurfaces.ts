@@ -6,6 +6,7 @@ import { NightHud, QuickLog, WidgetData, QuickTile, VoiceIntents, WatchBridge, t
 import { registerActivityToken, releaseActivityTokens } from '@/services/liveActivity';
 import { onLiveHudPush } from '@/services/push';
 import { paceState, weekdayMedian } from '@/domain/pace';
+import { useT } from '@/i18n';
 import { summariseNights, heatmap, goalProgress } from '@/domain/stats';
 import { byId } from '@/domain/catalog';
 import { color, paceWord } from '@/design/tokens';
@@ -24,6 +25,7 @@ import { color, paceWord } from '@/design/tokens';
  * layer is alive to do it.
  */
 export function useSystemSurfaces() {
+  const t = useT();
   const store = useStore();
   const night = useNightState();
   const { logs, profile, venues, goals, people, settings } = store;
@@ -84,13 +86,13 @@ export function useSystemSurfaces() {
       startedAt: session.startedAt,
       drinks: pace.drinks,
       paceState: pace.state,
-      paceWord: paceWord[pace.state],
+      paceWord: t(paceWord[pace.state]),
       lastDrinkId: last?.drinkId ?? null,
       lastDrinkName: last?.drinkName ?? null,
       spendMinor: mine.reduce((s, l) => s + (l.priceMinor ?? 0), 0),
       currency: profile?.currency ?? 'EUR',
     };
-  }, [session, logs, venues, profile?.currency]);
+  }, [session, logs, venues, profile?.currency, t]);
 
   // The HUD starts on session start and ends on session end — or at a 12-hour
   // ceiling, because a Live Activity that outlives the night is a bug the user

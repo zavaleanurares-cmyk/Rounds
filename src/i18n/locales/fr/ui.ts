@@ -24,7 +24,6 @@ export const ui = {
   'ui.settings': 'Réglages',
   'ui.share': 'Partager',
   'ui.more': 'Plus',
-  'ui.selected': 'sélectionné',
   'ui.nice': 'Bien joué',
   'ui.achievement': 'Réussite',
   'ui.level': 'Niveau {level}',

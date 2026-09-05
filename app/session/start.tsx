@@ -5,11 +5,13 @@ import { Sheet, Text, Button, Chip, Segmented, ToggleRow } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
 import type { Visibility } from '@/domain/types';
+import { useT } from '@/i18n';
 import { space } from '@/design/tokens';
 
 /** T-06 · Start night sheet. */
 export default function StartNight() {
   const router = useRouter();
+  const t = useT();
   const { startSession, venues, profile, crews } = useStore();
   const [title, setTitle] = useState('');
   const [venueId, setVenueId] = useState<string | null>(null);
@@ -18,11 +20,11 @@ export default function StartNight() {
 
   return (
     <Sheet
-      title="Start the night"
+      title={t('session.startTitle')}
       onClose={() => router.back()}
       footer={
         <Button
-          title="Start"
+          title={t('session.start')}
           onPress={() => {
             startSession({ title: title.trim() || null, venueId, visibility });
             router.replace('/(tabs)/tonight');
@@ -31,38 +33,48 @@ export default function StartNight() {
       }
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
-        <Field label="Name it (optional)" value={title} onChangeText={setTitle} placeholder="Friday, properly" autoCapitalize="sentences" />
+        <Field
+          label={t('session.nameLabel')}
+          value={title}
+          onChangeText={setTitle}
+          placeholder={t('session.namePlaceholder')}
+          autoCapitalize="sentences"
+        />
 
-        <Text variant="sectionHeader" tone="tertiary">STARTING AT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('session.startingAt')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {venues.slice(0, 6).map((v) => (
             <Chip key={v.id} label={v.name} compact selected={venueId === v.id} onPress={() => setVenueId(v.id)} />
           ))}
-          <Chip label="Search…" compact onPress={() => router.push('/venue/search')} />
+          <Chip label={t('session.searchVenue')} compact onPress={() => router.push('/venue/search')} />
         </View>
 
-        <Text variant="sectionHeader" tone="tertiary">WHO CAN SEE IT</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('session.whoCanSeeIt')}</Text>
         <Segmented
-          label="Visibility"
+          label={t('session.visibilityLabel')}
           value={visibility}
           onChange={setVisibility}
           options={[
-            { value: 'private', label: 'Private' },
-            { value: 'friends', label: 'Friends' },
-            { value: 'crew', label: 'Crew' },
-            { value: 'link', label: 'Link' },
+            { value: 'private', label: t('session.visibilityPrivate') },
+            { value: 'friends', label: t('session.visibilityFriends') },
+            { value: 'crew', label: t('session.visibilityCrew') },
+            { value: 'link', label: t('session.visibilityLink') },
           ]}
         />
         <Text variant="footnote" tone="tertiary">
           {visibility === 'private'
-            ? 'Nobody sees this night, and no join code is created.'
-            : 'A join code is created so people can scan in. It expires when the night ends.'}
+            ? t('session.visibilityPrivateNote')
+            : t('session.visibilitySharedNote')}
         </Text>
 
         {visibility !== 'private' ? (
           <ToggleRow
-            title="Tell the crew"
-            subtitle={crews[0] ? `${crews[0].name} gets a notification` : 'Your crews get a notification'}
+            title={t('session.tellTheCrew')}
+            subtitle={
+              crews[0]
+                ? t('session.crewNotified', { crew: crews[0].name })
+                : t('session.crewsNotified')
+            }
             value={invite}
             onValueChange={setInvite}
             last

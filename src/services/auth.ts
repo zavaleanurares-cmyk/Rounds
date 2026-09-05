@@ -13,6 +13,7 @@
  */
 import { Platform } from 'react-native';
 import { optional } from './optional';
+import type { MessageKey } from '@/i18n';
 import * as remote from '@/data/remote';
 
 export type Provider = 'apple' | 'google';
@@ -24,8 +25,12 @@ export interface SignInResult {
   userId?: string;
   email?: string | null;
   displayName?: string | null;
-  /** Why it could not run here, when it could not. */
-  reason?: string;
+  /**
+   * Why it could not run here, when it could not — a message key, not a
+   * sentence. This module has no locale and no hook; the sign-in screen has
+   * both, and translates it there.
+   */
+  reason?: MessageKey;
 }
 
 const CANCELLED = { ok: false, cancelled: true } as const;
@@ -44,11 +49,11 @@ export function appleAvailable(): boolean {
  */
 export async function signInWithApple(): Promise<SignInResult> {
   const AppleAuth = optional(() => require('expo-apple-authentication'));
-  if (!AppleAuth) return { ok: false, reason: 'Sign in with Apple needs an iOS build.' };
+  if (!AppleAuth) return { ok: false, reason: 'common.authAppleNeedsIosBuild' };
 
   try {
     const available = await AppleAuth.isAvailableAsync();
-    if (!available) return { ok: false, reason: 'Sign in with Apple is not available on this device.' };
+    if (!available) return { ok: false, reason: 'common.authAppleUnavailable' };
 
     const credential = await AppleAuth.signInAsync({
       requestedScopes: [
@@ -58,7 +63,7 @@ export async function signInWithApple(): Promise<SignInResult> {
     });
 
     if (!credential.identityToken) {
-      return { ok: false, reason: 'Apple did not return an identity token.' };
+      return { ok: false, reason: 'common.authAppleNoToken' };
     }
 
     const displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
@@ -79,7 +84,7 @@ export async function signInWithApple(): Promise<SignInResult> {
     };
   } catch (err: unknown) {
     if ((err as { code?: string })?.code === 'ERR_REQUEST_CANCELED') return CANCELLED;
-    return { ok: false, reason: 'That did not go through. Nothing was changed.' };
+    return { ok: false, reason: 'common.authDidNotGoThrough' };
   }
 }
 
@@ -99,14 +104,14 @@ export async function signInWithGoogle(
   promptAsync?: () => Promise<{ type: string; params?: Record<string, string> }>
 ): Promise<SignInResult> {
   if (!promptAsync) {
-    return { ok: false, reason: 'Google sign-in is not configured in this build.' };
+    return { ok: false, reason: 'common.authGoogleNotConfigured' };
   }
   try {
     const result = await promptAsync();
     if (result.type === 'dismiss' || result.type === 'cancel') return CANCELLED;
     const idToken = result.params?.id_token;
     if (result.type !== 'success' || !idToken) {
-      return { ok: false, reason: 'Google did not return an identity token.' };
+      return { ok: false, reason: 'common.authGoogleNoToken' };
     }
     const session = await remote.signInWithIdToken('google', idToken);
     // No backend configured — the token was real, there is just nothing to
@@ -119,7 +124,7 @@ export async function signInWithGoogle(
       displayName: (session.user.user_metadata?.full_name as string) ?? null,
     };
   } catch {
-    return { ok: false, reason: 'That did not go through. Nothing was changed.' };
+    return { ok: false, reason: 'common.authDidNotGoThrough' };
   }
 }
 

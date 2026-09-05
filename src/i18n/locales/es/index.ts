@@ -25,6 +25,7 @@ import { settings } from './settings';
 import { profile } from './profile';
 import { notifications } from './notifications';
 import { drinks } from './drinks';
+import { billing } from './billing';
 
 /**
  * Typed against the English catalogue: every key it defines must exist here,
@@ -50,4 +51,5 @@ export const es: Record<MessageKey, Message> = {
   ...profile,
   ...notifications,
   ...drinks,
+  ...billing,
 };

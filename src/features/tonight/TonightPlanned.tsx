@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Avatar, AvatarStack } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT, useFormat } from '@/i18n';
 import { useTick } from '@/hooks/useTick';
 import type { Plan, Session } from '@/domain/types';
 import { color, space } from '@/design/tokens';
@@ -17,11 +18,11 @@ import { color, space } from '@/design/tokens';
  */
 export function TonightPlanned({ plan, lastSession }: { plan: Plan; lastSession: Session | null }) {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { startSession, profile } = useStore();
   const now = useTick(30_000);
   const ms = plan.startsAt - now;
-  const hours = Math.floor(ms / 3600000);
-  const minutes = Math.floor((ms % 3600000) / 60000);
 
   const leading = [...plan.venueCandidates].sort((a, b) => b.votes.length - a.votes.length)[0];
   const going = plan.invitees.filter((i) => i.rsvp === 'yes');
@@ -30,13 +31,13 @@ export function TonightPlanned({ plan, lastSession }: { plan: Plan; lastSession:
 
   return (
     <Screen
-      title={`Tonight${firstName ? `, ${firstName}` : ''}`}
+      title={firstName ? t('tonight.plannedTitleNamed', { name: firstName }) : t('tonight.plannedTitle')}
       mood="default"
       tabBarSpace
-      right={{ icon: 'gearshape', label: 'Settings', onPress: () => router.push('/settings') }}
+      right={{ icon: 'gearshape', label: t('ui.settings'), onPress: () => router.push('/settings') }}
       footer={
         <Button
-          title="Start the night"
+          title={t('tonight.startTheNight')}
           onPress={() => {
             const s = startSession({
               planId: plan.id,
@@ -51,19 +52,20 @@ export function TonightPlanned({ plan, lastSession }: { plan: Plan; lastSession:
       }
     >
       <Card aurora accent={color.night[1]} onPress={() => router.push(`/plan/${plan.id}` as never)}>
-        <Text variant="sectionHeader" tone="tertiary">STARTS IN</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('tonight.startsIn')}</Text>
         <Text variant="numericLarge" style={{ marginTop: space.xs }}>
-          {ms <= 0 ? 'now' : hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`}
+          {ms <= 0 ? t('tonight.startsNow') : f.duration(ms)}
         </Text>
         <Text variant="title3" style={{ marginTop: space.m }}>{plan.title}</Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>
-          {new Date(plan.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} ·{' '}
-          {leading && leading.votes.length > 0 ? leading.name : 'still voting'}
+          {leading && leading.votes.length > 0
+            ? t('tonight.plannedWhenVenue', { time: f.clock(plan.startsAt), venue: leading.name })
+            : t('tonight.plannedWhenVoting', { time: f.clock(plan.startsAt) })}
         </Text>
         <View style={{ marginTop: space.md, flexDirection: 'row', alignItems: 'center', gap: space.m }}>
           <AvatarStack names={going.map((g) => g.displayName)} />
           <Text variant="caption2" tone="tertiary">
-            {going.length} in · {maybe.length} maybe
+            {t('tonight.rsvpSummary', { going: going.length, maybe: maybe.length })}
           </Text>
         </View>
       </Card>
@@ -75,7 +77,7 @@ export function TonightPlanned({ plan, lastSession }: { plan: Plan; lastSession:
       ) : null}
 
       <Card onPress={() => router.push(`/plan/${plan.id}` as never)}>
-        <Text variant="sectionHeader" tone="tertiary">WHERE</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('tonight.where')}</Text>
         <View style={{ marginTop: space.sm, gap: space.sm }}>
           {plan.venueCandidates.map((c) => (
             <View key={c.venueId} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
@@ -83,7 +85,7 @@ export function TonightPlanned({ plan, lastSession }: { plan: Plan; lastSession:
               <View style={{ flexDirection: 'row' }}>
                 {c.votes.slice(0, 3).map((v, i) => (
                   <View key={v} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-                    <Avatar name={v === 'me' ? 'You' : v} size={22} />
+                    <Avatar name={v === 'me' ? t('tonight.you') : v} size={22} />
                   </View>
                 ))}
               </View>
@@ -97,7 +99,7 @@ export function TonightPlanned({ plan, lastSession }: { plan: Plan; lastSession:
 
       {lastSession ? (
         <Text variant="footnote" tone="quaternary" center>
-          Starting the night adds everyone who said yes, and puts a live HUD on your lock screen.
+          {t('tonight.startNightNote')}
         </Text>
       ) : null}
     </Screen>

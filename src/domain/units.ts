@@ -2,6 +2,9 @@
  * Standard-drink definitions differ by region, so ROUNDS stores every log in
  * canonical grams of ethanol and converts only at the display edge.
  */
+import type { MessageKey, Locale } from '@/i18n';
+import { translate } from '@/i18n/translate';
+import { formatNumber } from '@/i18n/format';
 
 export type UnitSystem = 'UK' | 'US' | 'EU';
 
@@ -16,10 +19,14 @@ export const STANDARD_DRINK_G: Record<UnitSystem, number> = {
   EU: 10, // 1 EU standard drink = 10 g
 };
 
-export const UNIT_LABEL: Record<UnitSystem, string> = {
-  UK: 'units',
-  US: 'drinks',
-  EU: 'units',
+/**
+ * The word for a standard drink, as a message KEY — this is a module-level
+ * table, so it cannot translate itself. Callers render it with `t(...)`.
+ */
+export const UNIT_LABEL: Record<UnitSystem, MessageKey> = {
+  UK: 'common.unitUnits',
+  US: 'common.unitDrinks',
+  EU: 'common.unitUnits',
 };
 
 const ETHANOL_DENSITY = 0.789; // g/ml at 20 °C
@@ -38,8 +45,16 @@ export function unitsToGrams(units: number, system: UnitSystem): number {
   return units * STANDARD_DRINK_G[system];
 }
 
-/** "≈ 1.4 units" — shown on the custom-drink screen so the user can sanity-check. */
-export function formatUnits(grams: number, system: UnitSystem): string {
+/**
+ * "≈ 1.4 units" — shown on the custom-drink screen so the user can sanity-check.
+ *
+ * Takes the locale rather than a hook, so it can be called from a plain
+ * function or a script; `translate` is pure and imports no React.
+ */
+export function formatUnits(grams: number, system: UnitSystem, locale: Locale): string {
   const u = gramsToUnits(grams, system);
-  return `≈ ${u.toFixed(1)} ${UNIT_LABEL[system]}`;
+  return translate(locale, 'common.approxUnits', {
+    value: formatNumber(locale, u, 1),
+    unit: translate(locale, UNIT_LABEL[system]),
+  });
 }

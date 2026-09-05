@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, StatTile, Avatar, EmptyState, Icon } from '@/ui';
 import { useStore } from '@/data/store';
-import { computeStreaks, summariseNights, goalProgress, formatMoney, formatDuration, plural } from '@/domain/stats';
+import { useT, useFormat, type MessageKey } from '@/i18n';
+import { computeStreaks, summariseNights, goalProgress } from '@/domain/stats';
 import { gramsToUnits, UNIT_LABEL } from '@/domain/units';
 import type { Plan, Session } from '@/domain/types';
 import { color, space } from '@/design/tokens';
@@ -19,6 +20,8 @@ import { InstallBanner } from '@/features/web/InstallBanner';
  */
 export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; lastSession: Session | null }) {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { profile, logs, goals, venues, hydrated } = useStore();
 
   const streaks = useMemo(() => computeStreaks(logs), [logs]);
@@ -34,27 +37,28 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
   }, [logs, lastSession]);
 
   const hour = new Date().getHours();
-  const greeting = hour < 5 ? 'Still up' : hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
   const firstName = profile?.displayName?.split(' ')[0] ?? '';
+  const greeting = greetingKey(hour, firstName.length > 0);
   const nightOne = logs.length === 0 && !nextPlan && !lastSession;
+  const planVenue = nextPlan ? leadingVenue(nextPlan) : null;
 
   return (
     <Screen
-      title={`${greeting}${firstName ? `, ${firstName}` : ''}`}
-      subtitle={nightOne ? 'Nothing logged yet.' : undefined}
+      title={t(greeting, { name: firstName })}
+      subtitle={nightOne ? t('tonight.nothingLoggedYet') : undefined}
       mood="default"
       tabBarSpace
-      right={{ icon: 'gearshape', label: 'Settings', onPress: () => router.push('/settings') }}
-      footer={<Button title="Start a night" onPress={() => router.push('/session/start')} />}
+      right={{ icon: 'gearshape', label: t('ui.settings'), onPress: () => router.push('/settings') }}
+      footer={<Button title={t('tonight.startNight')} onPress={() => router.push('/session/start')} />}
     >
       <InstallBanner />
 
       {!hydrated ? null : nightOne ? (
         <EmptyState
           icon="moon.stars"
-          title="Your first night"
-          body="Start a night when you head out. Log what you drink with one tap, and tomorrow morning ROUNDS shows you where you went, what it cost, and how it went."
-          actionLabel="Start a night"
+          title={t('tonight.firstNightTitle')}
+          body={t('tonight.firstNightBody')}
+          actionLabel={t('tonight.startNight')}
           onAction={() => router.push('/session/start')}
         />
       ) : (
@@ -64,14 +68,26 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
               aurora
               accent={color.night[1]}
               onPress={() => router.push(`/plan/${nextPlan.id}` as never)}
-              accessibilityLabel={`Next plan: ${nextPlan.title}`}
+              accessibilityLabel={t('tonight.nextPlanLabel', { title: nextPlan.title })}
             >
-              <Text variant="sectionHeader" tone="tertiary">NEXT UP</Text>
+              <Text variant="sectionHeader" tone="tertiary">{t('tonight.nextUp')}</Text>
               <Text variant="title2" style={{ marginTop: space.xs }}>{nextPlan.title}</Text>
               <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>
-                {new Date(nextPlan.startsAt).toLocaleDateString(undefined, { weekday: 'long' })} ·{' '}
-                {new Date(nextPlan.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                {nextPlan.venueCandidates.length ? ` · ${leadingVenue(nextPlan)}` : ''}
+                {nextPlan.venueCandidates.length === 0
+                  ? t('tonight.planWhen', {
+                      day: f.weekday(nextPlan.startsAt),
+                      time: f.clock(nextPlan.startsAt),
+                    })
+                  : planVenue
+                    ? t('tonight.planWhenVenue', {
+                        day: f.weekday(nextPlan.startsAt),
+                        time: f.clock(nextPlan.startsAt),
+                        venue: planVenue,
+                      })
+                    : t('tonight.planWhenVoting', {
+                        day: f.weekday(nextPlan.startsAt),
+                        time: f.clock(nextPlan.startsAt),
+                      })}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.m }}>
                 {nextPlan.invitees
@@ -81,19 +97,21 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
                     <Avatar key={i.userId} name={i.displayName} size={28} />
                   ))}
                 <Text variant="caption2" tone="tertiary" style={{ marginLeft: 4 }}>
-                  {nextPlan.invitees.filter((i) => i.rsvp === 'yes').length} in ·{' '}
-                  {nextPlan.invitees.filter((i) => i.rsvp === 'maybe').length} maybe
+                  {t('tonight.rsvpSummary', {
+                    going: nextPlan.invitees.filter((i) => i.rsvp === 'yes').length,
+                    maybe: nextPlan.invitees.filter((i) => i.rsvp === 'maybe').length,
+                  })}
                 </Text>
               </View>
             </Card>
           ) : (
-            <Card onPress={() => router.push('/plan/new')} accessibilityLabel="Plan something">
+            <Card onPress={() => router.push('/plan/new')} accessibilityLabel={t('tonight.planSomething')}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
                 <Icon name="calendar" size={20} color={color.label.tertiary} />
                 <View style={{ flex: 1 }}>
-                  <Text variant="headline">Nothing planned</Text>
+                  <Text variant="headline">{t('tonight.nothingPlanned')}</Text>
                   <Text variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
-                    Put something in the calendar and your crew can vote on where.
+                    {t('tonight.nothingPlannedBody')}
                   </Text>
                 </View>
                 <Icon name="chevron.right" size={16} color={color.label.quaternary} />
@@ -103,22 +121,25 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
 
           <View style={{ flexDirection: 'row', gap: space.m }}>
             <StatTile
-              label="Dry streak"
-              value={`${streaks.dryStreak}`}
-              caption={streaks.dryStreak === 1 ? 'night' : 'nights'}
+              label={t('tonight.dryStreak')}
+              value={f.number(streaks.dryStreak)}
+              caption={t('tonight.dryStreakUnit', { count: streaks.dryStreak })}
               tint={color.pace.steady}
               icon="flame"
             />
             <StatTile
-              label="This week"
+              label={t('tonight.thisWeek')}
               value={
                 weeklyProgress
-                  ? `${gramsToUnits(weeklyProgress.value, profile?.unitSystem ?? 'EU').toFixed(1)}`
+                  ? f.number(gramsToUnits(weeklyProgress.value, profile?.unitSystem ?? 'EU'), 1)
                   : '—'
               }
               caption={
                 weekly && weeklyProgress
-                  ? `of ${gramsToUnits(weekly.target, profile?.unitSystem ?? 'EU').toFixed(0)} ${UNIT_LABEL[profile?.unitSystem ?? 'EU']}`
+                  ? t('tonight.thisWeekOf', {
+                      amount: f.number(gramsToUnits(weekly.target, profile?.unitSystem ?? 'EU')),
+                      unit: t(UNIT_LABEL[profile?.unitSystem ?? 'EU']),
+                    })
                   : undefined
               }
               icon="chart.bar"
@@ -130,30 +151,33 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
             <ProgressBar
               value={weeklyProgress.pct}
               tint={weeklyProgress.pct > 1 ? color.pace.quick : color.brand.tint}
-              label="Weekly goal"
+              label={t('tonight.weeklyGoal')}
             />
           ) : null}
 
           {lastSession && lastNight ? (
             <Card
               onPress={() => router.push(`/session/${lastSession.id}` as never)}
-              accessibilityLabel="Your last night"
+              accessibilityLabel={t('tonight.lastNightLabel')}
               accent={color.night[lastSession.accentIndex % 4]}
             >
               <Text variant="sectionHeader" tone="tertiary">
                 {Date.now() - (lastSession.endedAt ?? 0) < 36 * 3600000
-                  ? 'LAST NIGHT'
-                  : new Date(lastSession.startedAt)
-                      .toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
-                      .toUpperCase()}
+                  ? t('tonight.lastNight')
+                  : t('tonight.lastNightDate', {
+                      weekday: f.weekday(lastSession.startedAt),
+                      date: f.dayLong(lastSession.startedAt),
+                    }).toUpperCase()}
               </Text>
               <Text variant="headline" style={{ marginTop: space.xs }}>
-                {venues.find((v) => v.id === lastSession.venueId)?.name ?? 'A night out'}
+                {venues.find((v) => v.id === lastSession.venueId)?.name ?? t('tonight.aNightOut')}
               </Text>
               <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>
-                {formatDuration((lastSession.endedAt ?? 0) - lastSession.startedAt)} ·{' '}
-                {plural(lastNight.drinks, 'drink')} ·{' '}
-                {formatMoney(lastNight.spendMinor, profile?.currency ?? 'EUR')}
+                {t('tonight.lastNightSummary', {
+                  duration: f.duration((lastSession.endedAt ?? 0) - lastSession.startedAt),
+                  count: lastNight.drinks,
+                  money: f.money(lastNight.spendMinor, profile?.currency ?? 'EUR'),
+                })}
               </Text>
             </Card>
           ) : null}
@@ -163,9 +187,18 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
   );
 }
 
-function leadingVenue(plan: Plan): string {
+/** The venue in the lead, or null while nobody has voted. */
+function leadingVenue(plan: Plan): string | null {
   const sorted = [...plan.venueCandidates].sort((a, b) => b.votes.length - a.votes.length);
-  if (sorted.length === 0) return 'no venue yet';
-  if (sorted[0].votes.length === 0) return 'still voting';
+  if (sorted.length === 0) return null;
+  if (sorted[0].votes.length === 0) return null;
   return sorted[0].name;
+}
+
+/** The greeting depends on the hour, and on whether ROUNDS knows your name. */
+function greetingKey(hour: number, named: boolean): MessageKey {
+  if (hour < 5) return named ? 'tonight.greetingStillUpNamed' : 'tonight.greetingStillUp';
+  if (hour < 12) return named ? 'tonight.greetingMorningNamed' : 'tonight.greetingMorning';
+  if (hour < 18) return named ? 'tonight.greetingAfternoonNamed' : 'tonight.greetingAfternoon';
+  return named ? 'tonight.greetingEveningNamed' : 'tonight.greetingEvening';
 }

@@ -3,9 +3,14 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Text, Card, Button } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_KEYS = [
+  'onboarding.monthJan', 'onboarding.monthFeb', 'onboarding.monthMar', 'onboarding.monthApr',
+  'onboarding.monthMay', 'onboarding.monthJun', 'onboarding.monthJul', 'onboarding.monthAug',
+  'onboarding.monthSep', 'onboarding.monthOct', 'onboarding.monthNov', 'onboarding.monthDec',
+] as const;
 
 /**
  * A-04 · Age gate.
@@ -15,6 +20,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
  */
 export default function AgeGate() {
   const router = useRouter();
+  const t = useT();
   const { submitDob } = useStore();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear() - 22);
@@ -35,32 +41,32 @@ export default function AgeGate() {
 
   return (
     <Screen
-      title="When were you born?"
-      subtitle="ROUNDS is for people of legal drinking age. We check once and keep the answer."
+      title={t('onboarding.ageTitle')}
+      subtitle={t('onboarding.ageSubtitle')}
       mood="night"
-      footer={<Button title="Continue" onPress={submit} />}
+      footer={<Button title={t('onboarding.continue')} onPress={submit} />}
     >
       <Card aurora>
         <View style={{ flexDirection: 'row', gap: space.m, height: 210 }}>
           <Wheel
-            label="Day"
+            label={t('onboarding.day')}
             values={Array.from({ length: daysInMonth }, (_, i) => i + 1)}
             value={Math.min(day, daysInMonth)}
             onChange={setDay}
             render={(v) => String(v)}
           />
           <Wheel
-            label="Month"
-            values={MONTHS.map((_, i) => i)}
+            label={t('onboarding.month')}
+            values={MONTH_KEYS.map((_, i) => i)}
             value={month}
             onChange={setMonth}
-            render={(v) => MONTHS[v]}
+            render={(v) => t(MONTH_KEYS[v])}
           />
-          <Wheel label="Year" values={years} value={year} onChange={setYear} render={(v) => String(v)} />
+          <Wheel label={t('onboarding.year')} values={years} value={year} onChange={setYear} render={(v) => String(v)} />
         </View>
       </Card>
       <Text variant="footnote" tone="quaternary" center>
-        18+ in the EU, UK and Romania · 21+ in the United States.
+        {t('onboarding.ageNote')}
       </Text>
     </Screen>
   );

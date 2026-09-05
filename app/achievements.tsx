@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Screen, Card, Text, Icon, LevelBar, Stagger } from '@/ui';
 import { useStore } from '@/data/store';
 import { ACHIEVEMENTS, evaluate } from '@/domain/progress';
+import { useT, useFormat, type MessageKey } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 /**
@@ -18,6 +19,8 @@ import { color, radius, space } from '@/design/tokens';
  * never will be.
  */
 export default function Achievements() {
+  const t = useT();
+  const f = useFormat();
   const { logs, sessions, people, crews, plans, goals, safety } = useStore();
 
   const progress = useMemo(
@@ -37,10 +40,20 @@ export default function Achievements() {
   const earned = progress.earned;
 
   const groups = ['exploration', 'consistency', 'moderation', 'social'] as const;
-  const label = { exploration: 'Exploration', consistency: 'Consistency', moderation: 'Moderation', social: 'Together' };
+  const label: Record<(typeof groups)[number], MessageKey> = {
+    exploration: 'stats.groupExploration',
+    consistency: 'stats.groupConsistency',
+    moderation: 'stats.groupModeration',
+    social: 'stats.groupTogether',
+  };
 
   return (
-    <Screen title="Achievements" subtitle={`${earned.size} of ${ACHIEVEMENTS.length}`} back mood="calm">
+    <Screen
+      title={t('stats.achievements')}
+      subtitle={t('stats.achievementsCount', { earned: f.number(earned.size, 0), total: f.number(ACHIEVEMENTS.length, 0) })}
+      back
+      mood="calm"
+    >
       <Card>
         <LevelBar
           level={progress.level}
@@ -49,15 +62,14 @@ export default function Achievements() {
           levelSpan={progress.levelSpan}
         />
         <Text variant="footnote" tone="tertiary" style={{ marginTop: space.m }}>
-          Levels come from recording nights, answering the morning question, taking nights off and
-          going somewhere new. Not one point of this comes from how much you drank.
+          {t('stats.levelsNote')}
         </Text>
       </Card>
 
       <Stagger>
         {groups.map((g) => (
           <Card key={g}>
-            <Text variant="sectionHeader" tone="tertiary">{label[g].toUpperCase()}</Text>
+            <Text variant="sectionHeader" tone="tertiary">{t(label[g])}</Text>
             <View style={{ marginTop: space.m, gap: space.m }}>
               {ACHIEVEMENTS.filter((d) => d.group === g).map((d) => {
                 const has = earned.has(d.id);
@@ -78,10 +90,10 @@ export default function Achievements() {
                       <Icon name={has ? 'star' : 'lock'} size={17} color={has ? color.brand.tintLight : color.label.quaternary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text variant="body" tone={has ? 'primary' : 'tertiary'}>{d.name}</Text>
-                      <Text variant="footnote" tone="quaternary">{d.hint}</Text>
+                      <Text variant="body" tone={has ? 'primary' : 'tertiary'}>{t(d.nameKey)}</Text>
+                      <Text variant="footnote" tone="quaternary">{t(d.hintKey)}</Text>
                     </View>
-                    <Text variant="caption2" tone={has ? 'secondary' : 'quaternary'}>+{d.xp}</Text>
+                    <Text variant="caption2" tone={has ? 'secondary' : 'quaternary'}>{t('stats.xp', { xp: f.number(d.xp, 0) })}</Text>
                   </View>
                 );
               })}
@@ -91,7 +103,7 @@ export default function Achievements() {
       </Stagger>
 
       <Text variant="footnote" tone="quaternary" center>
-        Nothing here rewards drinking more. That's on purpose.
+        {t('stats.noVolumeNote')}
       </Text>
     </Screen>
   );

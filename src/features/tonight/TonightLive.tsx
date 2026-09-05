@@ -6,11 +6,12 @@ import {
   Screen, Card, Text, PaceRing, PaceEstimate, Icon, Avatar, Glass, useToast, Button, DrinkGlyph,
 } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT, useFormat } from '@/i18n';
 import { byId } from '@/domain/catalog';
 import { CUSTOM_ART } from '@/domain/art';
 import { useTick } from '@/hooks/useTick';
 import { paceState, bacAt, weekdayMedian, shouldPromptWater } from '@/domain/pace';
-import { summariseNights, formatDuration, formatMoney, formatClock } from '@/domain/stats';
+import { summariseNights } from '@/domain/stats';
 import type { Session } from '@/domain/types';
 import { color, paceColor, space, radius } from '@/design/tokens';
 
@@ -24,6 +25,8 @@ import { color, paceColor, space, radius } from '@/design/tokens';
  */
 export function TonightLive({ session }: { session: Session }) {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const toast = useToast();
   const store = useStore();
   const { logs, profile, venues, people } = store;
@@ -73,10 +76,14 @@ export function TonightLive({ session }: { session: Session }) {
     feedback('log');
     const log = kind === 'water' ? store.logWater() : store.repeatLast();
     if (!log) {
-      toast.show({ message: 'Nothing to repeat yet — log one first.' });
+      toast.show({ message: t('tonight.nothingToRepeat') });
       return;
     }
-    toast.show({ message: `${log.drinkName} logged`, actionLabel: 'Undo', onAction: () => store.undoLast() });
+    toast.show({
+      message: t('tonight.drinkLogged', { drink: log.drinkName }),
+      actionLabel: t('ui.undo'),
+      onAction: () => store.undoLast(),
+    });
   };
 
   return (
@@ -92,20 +99,23 @@ export function TonightLive({ session }: { session: Session }) {
       {/* venue · elapsed · end */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
         <View style={{ flex: 1 }}>
-          <Text variant="headline" numberOfLines={1}>{venue?.name ?? session.title ?? 'Out'}</Text>
+          <Text variant="headline" numberOfLines={1}>{venue?.name ?? session.title ?? t('tonight.out')}</Text>
           <Text variant="subheadline" tone="secondary">
-            out {formatDuration(now - session.startedAt)} · started {formatClock(session.startedAt)}
+            {t('tonight.elapsed', {
+              duration: f.duration(now - session.startedAt),
+              time: f.clock(session.startedAt),
+            })}
           </Text>
         </View>
         <Pressable
           onPress={() => router.push(`/session/${session.id}/end` as never)}
           accessibilityRole="button"
-          accessibilityLabel="End the night"
+          accessibilityLabel={t('tonight.endNight')}
           hitSlop={8}
         >
           <Glass radius={radius.control}>
             <View style={{ paddingHorizontal: space.md, height: 38, justifyContent: 'center' }}>
-              <Text variant="subheadline">End</Text>
+              <Text variant="subheadline">{t('tonight.end')}</Text>
             </View>
           </Glass>
         </Pressable>
@@ -117,10 +127,13 @@ export function TonightLive({ session }: { session: Session }) {
           result={pace}
           subtitle={
             pace.drinks === 0
-              ? 'nothing logged yet'
-              : `${pace.drinks} ${pace.drinks === 1 ? 'drink' : 'drinks'}${
-                  pace.minutesSinceLast !== null ? ` · last ${pace.minutesSinceLast}m ago` : ''
-                }`
+              ? t('tonight.paceNothingYet')
+              : pace.minutesSinceLast !== null
+                ? t('tonight.paceDrinksLast', {
+                    count: pace.drinks,
+                    minutes: pace.minutesSinceLast,
+                  })
+                : t('tonight.paceDrinks', { count: pace.drinks })
           }
         />
         <PaceEstimate bac={bac} state={pace.state} />
@@ -131,28 +144,28 @@ export function TonightLive({ session }: { session: Session }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
             <Icon name="drop" size={22} color={color.brand.tintLight} />
             <View style={{ flex: 1 }}>
-              <Text variant="headline">Two in the last hour, no water</Text>
+              <Text variant="headline">{t('tonight.waterTitle')}</Text>
               <Text variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
-                One glass now is the difference tomorrow.
+                {t('tonight.waterBody')}
               </Text>
             </View>
-            <Pressable onPress={() => setWaterDismissed(true)} hitSlop={10} accessibilityLabel="Dismiss">
+            <Pressable onPress={() => setWaterDismissed(true)} hitSlop={10} accessibilityLabel={t('ui.dismiss')}>
               <Icon name="xmark" size={16} color={color.label.quaternary} />
             </Pressable>
           </View>
           <View style={{ marginTop: space.m }}>
-            <Button title="Log water" kind="glass" compact onPress={() => quickLog('water')} />
+            <Button title={t('tonight.logWater')} kind="glass" compact onPress={() => quickLog('water')} />
           </View>
         </Card>
       ) : null}
 
       {/* three quick actions */}
       <View style={{ flexDirection: 'row', gap: space.m }}>
-        <Quick icon="drop" label="Water" onPress={() => quickLog('water')} />
-        <Quick icon="arrow.clockwise" label="Same again" onPress={() => quickLog('again')} />
+        <Quick icon="drop" label={t('tonight.quickWater')} onPress={() => quickLog('water')} />
+        <Quick icon="arrow.clockwise" label={t('tonight.quickSameAgain')} onPress={() => quickLog('again')} />
         <Quick
           icon="car"
-          label="Ride home"
+          label={t('tonight.quickRideHome')}
           tint={lateNight ? color.safety : undefined}
           onPress={() => router.push('/safety')}
         />
@@ -162,8 +175,8 @@ export function TonightLive({ session }: { session: Session }) {
         <Card accent={color.safety}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
             <Icon name="checkmark.shield" size={20} color={color.safety} />
-            <Text variant="subheadline" style={{ flex: 1 }}>It's late. Get home safe is one tap away.</Text>
-            <Pressable onPress={() => router.push('/safety')} accessibilityLabel="Open Get home safe" hitSlop={8}>
+            <Text variant="subheadline" style={{ flex: 1 }}>{t('tonight.lateNight')}</Text>
+            <Pressable onPress={() => router.push('/safety')} accessibilityLabel={t('tonight.openSafety')} hitSlop={8}>
               <Icon name="chevron.right" size={16} color={color.label.tertiary} />
             </Pressable>
           </View>
@@ -173,15 +186,15 @@ export function TonightLive({ session }: { session: Session }) {
       {session.visibility !== 'private' && liveWith.length > 0 ? (
         <Card
           onPress={() => session.joinCode && router.push(`/live/${session.joinCode}` as never)}
-          accessibilityLabel="Live with"
+          accessibilityLabel={t('tonight.liveWithLabel')}
         >
-          <Text variant="sectionHeader" tone="tertiary">LIVE WITH</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('tonight.liveWith')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
             {liveWith.map((p) => (
               <Avatar key={p.id} name={p.displayName} size={34} live />
             ))}
             <Text variant="footnote" tone="tertiary" style={{ marginLeft: space.xs }}>
-              code {session.joinCode}
+              {t('tonight.joinCode', { code: session.joinCode ?? '' })}
             </Text>
           </View>
         </Card>
@@ -190,16 +203,16 @@ export function TonightLive({ session }: { session: Session }) {
       {/* tonight strip */}
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>TONIGHT</Text>
+          <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>{t('tonight.tonight')}</Text>
           {spend > 0 ? (
             <Text variant="footnote" tone="secondary">
-              {formatMoney(spend, profile?.currency ?? 'EUR')}
+              {f.money(spend, profile?.currency ?? 'EUR')}
             </Text>
           ) : null}
         </View>
         {sessionLogs.length === 0 ? (
           <Text variant="subheadline" tone="tertiary" style={{ marginTop: space.m }}>
-            Nothing yet. The + button, or "Same again" above.
+            {t('tonight.nothingYet')}
           </Text>
         ) : (
           <View style={{ marginTop: space.sm }}>
@@ -208,17 +221,17 @@ export function TonightLive({ session }: { session: Session }) {
                 key={l.id}
                 onPress={() => router.push(`/log/edit/${l.id}` as never)}
                 accessibilityRole="button"
-                accessibilityLabel={`${l.drinkName} at ${formatClock(l.at)}. Edit.`}
+                accessibilityLabel={t('tonight.logRowLabel', { drink: l.drinkName, time: f.clock(l.at) })}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: space.sm }}
               >
                 <DrinkGlyph drink={byId(l.drinkId) ?? { art: CUSTOM_ART[l.category] }} size={20} />
                 <Text variant="subheadline" style={{ flex: 1 }} numberOfLines={1}>{l.drinkName}</Text>
                 {l.priceMinor ? (
                   <Text variant="footnote" tone="tertiary">
-                    {formatMoney(l.priceMinor, l.currency)}
+                    {f.money(l.priceMinor, l.currency)}
                   </Text>
                 ) : null}
-                <Text variant="footnote" tone="tertiary">{formatClock(l.at)}</Text>
+                <Text variant="footnote" tone="tertiary">{f.clock(l.at)}</Text>
               </Pressable>
             ))}
           </View>

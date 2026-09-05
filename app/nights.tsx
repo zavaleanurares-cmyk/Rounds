@@ -3,13 +3,16 @@ import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Segmented, NavRow, Group, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
-import { summariseNights, formatDuration, formatMoney, plural } from '@/domain/stats';
+import { summariseNights } from '@/domain/stats';
 import { nightKey } from '@/domain/nightKey';
+import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /** Y-03 · Nights history. List and calendar heatmap. */
 export default function Nights() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { sessions, logs, venues, profile } = useStore();
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const nights = useMemo(() => summariseNights(logs), [logs]);
@@ -20,21 +23,21 @@ export default function Nights() {
 
   if (ended.length === 0) {
     return (
-      <Screen title="Nights" back mood="night">
-        <EmptyState icon="moon.stars" title="No nights yet" body="Every night you record shows up here — where you went, who with, and what it cost." actionLabel="Start a night" onAction={() => router.push('/session/start')} />
+      <Screen title={t('stats.nightsTitle')} back mood="night">
+        <EmptyState icon="moon.stars" title={t('stats.nightsEmptyTitle')} body={t('stats.nightsEmptyBody')} actionLabel={t('stats.startNight')} onAction={() => router.push('/session/start')} />
       </Screen>
     );
   }
 
   return (
-    <Screen title="Nights" subtitle={`${ended.length} recorded`} back mood="night">
+    <Screen title={t('stats.nightsTitle')} subtitle={t('stats.nightsRecorded', { count: ended.length })} back mood="night">
       <Segmented
-        label="View"
+        label={t('stats.view')}
         value={view}
         onChange={setView}
         options={[
-          { value: 'list', label: 'List' },
-          { value: 'calendar', label: 'Calendar' },
+          { value: 'list', label: t('stats.viewList') },
+          { value: 'calendar', label: t('stats.viewCalendar') },
         ]}
       />
 
@@ -45,8 +48,13 @@ export default function Nights() {
             return (
               <NavRow
                 key={s.id}
-                title={venues.find((v) => v.id === s.venueId)?.name ?? s.title ?? 'A night out'}
-                subtitle={`${new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${formatDuration((s.endedAt ?? 0) - s.startedAt)} · ${plural(n?.drinks ?? 0, 'drink')} · ${formatMoney(n?.spendMinor ?? 0, profile?.currency ?? 'EUR')}`}
+                title={venues.find((v) => v.id === s.venueId)?.name ?? s.title ?? t('stats.aNightOut')}
+                subtitle={t('stats.nightRowFull', {
+                  date: f.dayShort(s.startedAt),
+                  duration: f.duration((s.endedAt ?? 0) - s.startedAt),
+                  count: n?.drinks ?? 0,
+                  money: f.money(n?.spendMinor ?? 0, profile?.currency ?? 'EUR'),
+                })}
                 onPress={() => router.push(`/session/${s.id}` as never)}
                 last={i === ended.length - 1}
               />
@@ -55,7 +63,7 @@ export default function Nights() {
         </Group>
       ) : (
         <Card>
-          <Text variant="sectionHeader" tone="tertiary">LAST 12 WEEKS</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('stats.last12Weeks')}</Text>
           <View style={{ flexDirection: 'row', gap: 4, marginTop: space.m }}>
             {Array.from({ length: 12 }).map((_, w) => (
               <View key={w} style={{ flex: 1, gap: 4 }}>
@@ -87,7 +95,7 @@ export default function Nights() {
             ))}
           </View>
           <Text variant="footnote" tone="quaternary" style={{ marginTop: space.m }}>
-            Empty squares are dry nights. Tap a filled one to open it.
+            {t('stats.heatmapNote')}
           </Text>
         </Card>
       )}

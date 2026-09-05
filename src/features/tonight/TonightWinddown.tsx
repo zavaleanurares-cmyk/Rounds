@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Aurora, Text, MoodFace, MOODS, MOOD_LABEL } from '@/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import type { Mood, Session } from '@/domain/types';
 import { color, geometry, radius, space } from '@/design/tokens';
 
@@ -16,6 +17,7 @@ import { color, geometry, radius, space } from '@/design/tokens';
  */
 export function TonightWinddown({ session }: { session: Session }) {
   const router = useRouter();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { endSession, sessions } = useStore();
   const live = sessions.find((s) => s.endedAt === null);
@@ -37,14 +39,14 @@ export function TonightWinddown({ session }: { session: Session }) {
         }}
       >
         <View>
-          <Text variant="title1" style={{ fontSize: 32, lineHeight: 38 }}>How was it?</Text>
+          <Text variant="title1" style={{ fontSize: 32, lineHeight: 38 }}>{t('tonight.howWasIt')}</Text>
           <View style={{ flexDirection: 'row', gap: space.m, marginTop: space.xl }}>
             {MOODS.map((m) => (
               <Pressable
                 key={m}
                 onPress={() => setMood(m)}
                 accessibilityRole="button"
-                accessibilityLabel={MOOD_LABEL[m]}
+                accessibilityLabel={t(MOOD_LABEL[m])}
                 style={({ pressed }) => ({
                   flex: 1,
                   minHeight: 88,
@@ -59,7 +61,7 @@ export function TonightWinddown({ session }: { session: Session }) {
                 })}
               >
                 <MoodFace mood={m} size={34} active />
-                <Text variant="footnote" tone="secondary">{MOOD_LABEL[m]}</Text>
+                <Text variant="footnote" tone="secondary">{t(MOOD_LABEL[m])}</Text>
               </Pressable>
             ))}
           </View>
@@ -67,7 +69,7 @@ export function TonightWinddown({ session }: { session: Session }) {
 
         <View style={{ gap: space.md }}>
           <BigTarget
-            label="I'm home safe"
+            label={t('tonight.homeSafe')}
             tint={color.pace.steady}
             onPress={() => {
               endSession(session.id, { mood: session.mood, safeHome: true });
@@ -75,7 +77,7 @@ export function TonightWinddown({ session }: { session: Session }) {
             }}
           />
           <BigTarget
-            label={live ? 'End the night' : 'See the night'}
+            label={live ? t('tonight.endNight') : t('tonight.seeTheNight')}
             tint={color.label.secondary}
             onPress={() =>
               live

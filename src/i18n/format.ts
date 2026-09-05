@@ -89,6 +89,24 @@ export function formatWeekday(locale: Locale, at: number): string {
   return safe(() => new Date(at).toLocaleDateString(TAG[locale], { weekday: 'long' }), '');
 }
 
+/** "Fri", "ven.", "vin.", "vie" — for a chip or a column header. */
+export function formatWeekdayShort(locale: Locale, at: number): string {
+  return safe(() => new Date(at).toLocaleDateString(TAG[locale], { weekday: 'short' }), '');
+}
+
+/** "Saturday 5 September" — a night's own heading. */
+export function formatDayFull(locale: Locale, at: number): string {
+  return safe(
+    () =>
+      new Date(at).toLocaleDateString(TAG[locale], {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }),
+    new Date(at).toDateString()
+  );
+}
+
 /**
  * Money.
  *
@@ -143,5 +161,6 @@ export function formatDuration(locale: Locale, ms: number): string {
   const minute = locale === 'en' ? 'm' : 'min';
   if (h === 0) return `${m}${minute}`;
   if (m === 0) return `${h}h`;
-  return `${h}h ${String(m).padStart(2, '0')}${minute}`;
+  // Not zero-padded: "2h 5m", the way a person says it, not "2h 05m".
+  return `${h}h ${m}${minute}`;
 }

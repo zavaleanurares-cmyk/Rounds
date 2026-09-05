@@ -3,11 +3,14 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, EmptyState, Icon } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /** C-13 · Notification inbox, grouped by day. */
 export default function Notifications() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { notifications, markNotificationsRead } = useStore();
 
   // Runs once, on mount. Keying this on `markNotificationsRead` was an infinite
@@ -27,18 +30,18 @@ export default function Notifications() {
 
   if (notifications.length === 0) {
     return (
-      <Screen title="Notifications" back mood="calm">
-        <EmptyState icon="bell" title="Nothing here" body="Plans, friend requests and your morning recap land here. We cap it at three a week by default." />
+      <Screen title={t('notifications.title')} back mood="calm">
+        <EmptyState icon="bell" title={t('notifications.emptyTitle')} body={t('notifications.emptyBody')} />
       </Screen>
     );
   }
 
   return (
-    <Screen title="Notifications" back mood="calm">
+    <Screen title={t('notifications.title')} back mood="calm">
       {Object.entries(groups).map(([day, items]) => (
         <View key={day} style={{ gap: space.sm }}>
           <Text variant="sectionHeader" tone="tertiary">
-            {day === new Date().toDateString() ? 'TODAY' : day.toUpperCase()}
+            {day === new Date().toDateString() ? t('notifications.today') : f.dayShort(items[0].at).toUpperCase()}
           </Text>
           <Card>
             {items.map((n, i) => (

@@ -6,9 +6,10 @@ import {
   LevelBar, Enter, DrinkGlyph,
 } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT, useFormat } from '@/i18n';
 import { useProgress } from '@/hooks/useProgress';
 import { CATALOG } from '@/domain/catalog';
-import { spendTotals, weekTotals, heatmap, summariseNights, formatMoney, formatDuration, plural } from '@/domain/stats';
+import { spendTotals, weekTotals, heatmap, summariseNights } from '@/domain/stats';
 import { color, space, radius } from '@/design/tokens';
 
 /**
@@ -23,6 +24,8 @@ import { color, space, radius } from '@/design/tokens';
  */
 export default function You() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { profile, logs, sessions, settings, venues , plus } = useStore();
 
   const spend = useMemo(() => spendTotals(logs), [logs]);
@@ -40,25 +43,26 @@ export default function You() {
     () => CATALOG.find((d) => d.id === profile?.signatureDrinkId) ?? null,
     [profile?.signatureDrinkId]
   );
+  const handle = profile?.username || t('stats.usernameFallback');
 
   return (
     <Screen
-      title="You"
+      title={t('stats.title')}
       mood="calm"
       tabBarSpace
-      right={{ icon: 'gearshape', label: 'Settings', onPress: () => router.push('/settings') }}
+      right={{ icon: 'gearshape', label: t('ui.settings'), onPress: () => router.push('/settings') }}
     >
       <Enter from="fade">
         <Pressable
           onPress={() => router.push('/profile/edit')}
           accessibilityRole="button"
-          accessibilityLabel="Edit your profile"
-          accessibilityHint="Name, handle, photo, colour and the line about you"
+          accessibilityLabel={t('stats.editProfile')}
+          accessibilityHint={t('stats.editProfileHint')}
           style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, gap: space.md })}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <Avatar
-              name={profile?.displayName || 'You'}
+              name={profile?.displayName || t('stats.you')}
               url={profile?.avatarUrl}
               tint={profile?.avatarTint}
               size={56}
@@ -66,13 +70,14 @@ export default function You() {
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
                 <Text variant="title3" numberOfLines={1} style={{ flexShrink: 1 }}>
-                  {profile?.displayName || 'You'}
+                  {profile?.displayName || t('stats.you')}
                 </Text>
                 {signature ? <DrinkGlyph drink={signature} size={22} simple /> : null}
               </View>
               <Text variant="footnote" tone="tertiary" numberOfLines={1}>
-                @{profile?.username || 'you'}
-                {profile?.homeCity ? ` · ${profile.homeCity}` : ''}
+                {profile?.homeCity
+                  ? t('stats.handleCity', { username: handle, city: profile.homeCity })
+                  : t('stats.handle', { username: handle })}
               </Text>
               {profile?.bio ? (
                 <Text variant="footnote" tone="secondary" numberOfLines={2} style={{ marginTop: 2 }}>
@@ -95,16 +100,16 @@ export default function You() {
       {nightOne ? (
         <EmptyState
           icon="chart.bar"
-          title="Nothing to show yet"
-          body="After your first night this fills with what you spent, where you went and how the weeks compare. Nothing here is shared with anyone."
-          actionLabel="Start a night"
+          title={t('stats.emptyTitle')}
+          body={t('stats.emptyBody')}
+          actionLabel={t('stats.startNight')}
           onAction={() => router.push('/session/start')}
         />
       ) : (
         <Card aurora accent={color.pace.quick}>
-          <Text variant="sectionHeader" tone="tertiary">SPENT THIS YEAR</Text>
+          <Text variant="sectionHeader" tone="tertiary">{t('stats.spentThisYear')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, marginTop: space.xs }}>
-            <Text variant="numericLarge">{formatMoney(spend.year, profile?.currency ?? 'EUR')}</Text>
+            <Text variant="numericLarge">{f.money(spend.year, profile?.currency ?? 'EUR')}</Text>
             {spend.trendPct !== null ? (
               <View
                 style={{
@@ -116,13 +121,15 @@ export default function You() {
                 }}
               >
                 <Text variant="caption1" color={spend.trendPct > 0 ? color.pace.quick : color.pace.steady}>
-                  {spend.trendPct > 0 ? '+' : ''}{spend.trendPct}% vs last month
+                  {spend.trendPct > 0
+                    ? t('stats.trendUp', { pct: f.number(spend.trendPct) })
+                    : t('stats.trendDown', { pct: f.number(spend.trendPct) })}
                 </Text>
               </View>
             ) : null}
           </View>
           <Text variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
-            {formatMoney(spend.perNight, profile?.currency ?? 'EUR')} a night on average
+            {t('stats.perNight', { amount: f.money(spend.perNight, profile?.currency ?? 'EUR') })}
           </Text>
           <View style={{ marginTop: space.md }}>
             <Sparkline values={weeks.map((w) => w.spendMinor)} />
@@ -131,17 +138,17 @@ export default function You() {
       )}
 
       <View style={{ flexDirection: 'row', gap: space.m }}>
-        <QuickAction label="Insights" icon="chart.bar" onPress={() => router.push('/insights')} />
-        <QuickAction label="Goals" icon="checkmark.shield" onPress={() => router.push('/wellbeing')} />
-        <QuickAction label="Wrapped" icon="sparkles" onPress={() => router.push(`/wrapped/${new Date().getFullYear()}` as never)} />
-        <QuickAction label="Passport" icon="location" onPress={() => router.push('/passport')} />
+        <QuickAction label={t('stats.insights')} icon="chart.bar" onPress={() => router.push('/insights')} />
+        <QuickAction label={t('stats.goals')} icon="checkmark.shield" onPress={() => router.push('/wellbeing')} />
+        <QuickAction label={t('stats.wrapped')} icon="sparkles" onPress={() => router.push(`/wrapped/${new Date().getFullYear()}` as never)} />
+        <QuickAction label={t('stats.passport')} icon="location" onPress={() => router.push('/passport')} />
       </View>
 
       {!nightOne ? (
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text variant="sectionHeader" tone="tertiary" style={{ flex: 1 }}>
-              {plus ? 'LAST 400 NIGHTS' : 'LAST 90 NIGHTS'}
+              {t('stats.lastNights', { count: days })}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: space.m }}>
@@ -165,14 +172,18 @@ export default function You() {
       ) : null}
 
       {recent.length > 0 ? (
-        <Group title="RECENT NIGHTS">
+        <Group title={t('stats.recentNights')}>
           {recent.map((s, i) => {
             const n = nights.find((x) => x.key === s.nightKey);
             return (
               <NavRow
                 key={s.id}
-                title={venues.find((v) => v.id === s.venueId)?.name ?? 'A night out'}
-                subtitle={`${new Date(s.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${formatDuration((s.endedAt ?? 0) - s.startedAt)} · ${plural(n?.drinks ?? 0, 'drink')}`}
+                title={venues.find((v) => v.id === s.venueId)?.name ?? t('stats.aNightOut')}
+                subtitle={t('stats.nightRow', {
+                  date: f.dayCompact(s.startedAt),
+                  duration: f.duration((s.endedAt ?? 0) - s.startedAt),
+                  count: n?.drinks ?? 0,
+                })}
                 onPress={() => router.push(`/session/${s.id}` as never)}
                 last={i === recent.length - 1}
               />
@@ -181,8 +192,8 @@ export default function You() {
         </Group>
       ) : null}
 
-      <NavRowCard onPress={() => router.push('/nights')} label="All nights" icon="calendar" />
-      <NavRowCard onPress={() => router.push('/achievements')} label="Achievements" icon="star" />
+      <NavRowCard onPress={() => router.push('/nights')} label={t('stats.allNights')} icon="calendar" />
+      <NavRowCard onPress={() => router.push('/achievements')} label={t('stats.achievements')} icon="star" />
     </Screen>
   );
 }

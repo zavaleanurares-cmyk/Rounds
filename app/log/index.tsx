@@ -5,16 +5,22 @@ import { feedback } from '@/services/feedback';
 import { Sheet, Text, Button, Chip, Segmented, Icon, useToast, DrinkGlyph } from '@/ui';
 import { useStore } from '@/data/store';
 import { CATALOG, WATER, byId, searchDrinks, CATEGORY_LABEL, CATEGORY_ORDER } from '@/domain/catalog';
-import { formatClock } from '@/domain/stats';
 import { formatUnits } from '@/domain/units';
 import type { Drink, DrinkCategory } from '@/domain/types';
+import { useT, useFormat, useI18n } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 const SIZES = [
-  { value: 'small', label: 'Small', factor: 0.6 },
-  { value: 'regular', label: 'Regular', factor: 1 },
-  { value: 'large', label: 'Large', factor: 1.4 },
+  { value: 'small', factor: 0.6 },
+  { value: 'regular', factor: 1 },
+  { value: 'large', factor: 1.4 },
 ] as const;
+
+const SIZE_LABEL = {
+  small: 'log.sizeSmall',
+  regular: 'log.sizeRegular',
+  large: 'log.sizeLarge',
+} as const;
 
 /**
  * L-01 · Log sheet. The most-used screen in the app.
@@ -28,6 +34,9 @@ const SIZES = [
  */
 export default function LogSheet() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
+  const { locale } = useI18n();
   const toast = useToast();
   const store = useStore();
   const { lastLog, favourites, profile, venues, activeSession } = store;
@@ -62,7 +71,12 @@ export default function LogSheet() {
     router.back();
     // The undo toast is what makes closing optimistically safe.
     setTimeout(
-      () => toast.show({ message: `${scaled.name} logged`, actionLabel: 'Undo', onAction: () => store.undoLast() }),
+      () =>
+        toast.show({
+          message: t('log.drinkLogged', { drink: scaled.name }),
+          actionLabel: t('ui.undo'),
+          onAction: () => store.undoLast(),
+        }),
       120
     );
   };
@@ -74,26 +88,30 @@ export default function LogSheet() {
       compact={compact}
       glyph={<DrinkGlyph drink={drink} size={compact ? 18 : 22} />}
       onPress={() => commit(drink)}
-      accessibilityHint={`${drink.volumeMl}ml at ${drink.abv}%, ${formatUnits(drink.ethanolG, system)}`}
+      accessibilityHint={t('log.drinkHint', {
+        volume: drink.volumeMl,
+        abv: drink.abv,
+        units: formatUnits(drink.ethanolG, system, locale),
+      })}
     />
   );
 
   return (
-    <Sheet title="Log a drink" onClose={() => router.back()}>
+    <Sheet title={t('log.title')} onClose={() => router.back()}>
       <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 540 }} keyboardShouldPersistTaps="handled">
         {/* the one-tap path */}
         {lastLog ? (
           <Button
-            title={`Same again · ${lastLog.drinkName}`}
+            title={t('log.sameAgain', { drink: lastLog.drinkName })}
             icon="arrow.clockwise"
             onPress={() => {
               const d = byId(lastLog.drinkId);
               if (d) commit(d, false);
             }}
-            accessibilityHint="Logs the same drink as last time, immediately"
+            accessibilityHint={t('log.sameAgainHint')}
           />
         ) : (
-          <Button title="Log water" icon="drop" onPress={() => commit(WATER, false)} />
+          <Button title={t('log.logWater')} icon="drop" onPress={() => commit(WATER, false)} />
         )}
 
         {/* search across all 165 */}
@@ -109,14 +127,14 @@ export default function LogSheet() {
             <TextInput
               value={query}
               onChangeText={(t) => { setQuery(t); setBrowse(null); }}
-              placeholder="Negroni, IPA, pălincă…"
+              placeholder={t('log.searchPlaceholder')}
               placeholderTextColor={color.label.quaternary}
               autoCapitalize="none"
-              accessibilityLabel="Search drinks"
+              accessibilityLabel={t('log.searchLabel')}
               style={{ flex: 1, color: color.label.primary, fontSize: 17 }}
             />
             {query ? (
-              <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
+              <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel={t('log.clearSearch')}>
                 <Icon name="xmark" size={15} color={color.label.tertiary} />
               </Pressable>
             ) : null}
@@ -127,8 +145,8 @@ export default function LogSheet() {
           <View style={{ marginTop: space.md }}>
             {results.length === 0 ? (
               <View style={{ gap: space.m, paddingVertical: space.m }}>
-                <Text variant="subheadline" tone="tertiary">Nothing called "{query}".</Text>
-                <Button title="Add it as a custom drink" kind="glass" compact onPress={() => router.replace('/log/custom')} />
+                <Text variant="subheadline" tone="tertiary">{t('log.noResults', { query })}</Text>
+                <Button title={t('log.addCustom')} kind="glass" compact onPress={() => router.replace('/log/custom')} />
               </View>
             ) : (
               results.map((drink) => (
@@ -146,7 +164,11 @@ export default function LogSheet() {
                   <View style={{ flex: 1 }}>
                     <Text variant="body">{drink.name}</Text>
                     <Text variant="footnote" tone="tertiary">
-                      {drink.volumeMl}ml · {drink.abv}% · {formatUnits(drink.ethanolG, system)}
+                      {t('log.drinkMeta', {
+                        volume: drink.volumeMl,
+                        abv: drink.abv,
+                        units: formatUnits(drink.ethanolG, system, locale),
+                      })}
                     </Text>
                   </View>
                 </Pressable>
@@ -155,33 +177,33 @@ export default function LogSheet() {
           </View>
         ) : (
           <>
-            <Section title="YOUR USUAL" />
+            <Section title={t('log.yourUsual')} />
             <Row>{favourites.map((d) => drinkChip(d))}</Row>
 
             {venue ? (
               <>
-                <Section title={`POPULAR AT ${venue.name.toUpperCase()}`} />
+                <Section title={t('log.popularAt', { venue: venue.name.toUpperCase() })} />
                 <Row>{popular.map((d) => drinkChip(d))}</Row>
               </>
             ) : null}
 
-            <Section title="SIZE & PRICE" />
+            <Section title={t('log.sizeAndPrice')} />
             <Segmented
-              label="Size"
+              label={t('log.sizeLabel')}
               value={size}
               onChange={setSize}
-              options={SIZES.map((x) => ({ value: x.value, label: x.label }))}
+              options={SIZES.map((x) => ({ value: x.value, label: t(SIZE_LABEL[x.value]) }))}
             />
             <View style={{ flexDirection: 'row', gap: space.m, marginTop: space.m, alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <TextInput
                   value={price}
                   onChangeText={setPrice}
-                  placeholder="Price (optional)"
+                  placeholder={t('log.priceOptional')}
                   placeholderTextColor={color.label.quaternary}
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  accessibilityLabel="Price"
+                  accessibilityLabel={t('log.priceLabel')}
                   style={{
                     height: 48, borderRadius: radius.control, backgroundColor: color.surface.secondary,
                     borderWidth: 1, borderColor: color.separator, paddingHorizontal: space.md,
@@ -192,7 +214,7 @@ export default function LogSheet() {
               <Pressable
                 onPress={() => setAt((v) => (Date.now() - v > 60000 ? Date.now() : Date.now() - 30 * 60000))}
                 accessibilityRole="button"
-                accessibilityLabel={`Time: ${formatClock(at)}. Tap to move back half an hour.`}
+                accessibilityLabel={t('log.timeLabel', { time: f.clock(at) })}
                 style={{
                   height: 48, paddingHorizontal: space.md, borderRadius: radius.control,
                   backgroundColor: color.surface.secondary, borderWidth: 1, borderColor: color.separator,
@@ -200,16 +222,16 @@ export default function LogSheet() {
                 }}
               >
                 <Icon name="clock" size={16} color={color.label.secondary} />
-                <Text variant="subheadline" tone="secondary">{formatClock(at)}</Text>
+                <Text variant="subheadline" tone="secondary">{f.clock(at)}</Text>
               </Pressable>
             </View>
 
-            <Section title="BROWSE" />
+            <Section title={t('log.browse')} />
             <Row>
               {CATEGORY_ORDER.map((cat) => (
                 <Chip
                   key={cat}
-                  label={CATEGORY_LABEL[cat]}
+                  label={t(CATEGORY_LABEL[cat])}
                   compact
                   selected={browse === cat}
                   onPress={() => setBrowse((b) => (b === cat ? null : cat))}
@@ -224,14 +246,14 @@ export default function LogSheet() {
             ) : null}
 
             <View style={{ gap: space.m, marginTop: space.lg, marginBottom: space.md }}>
-              <Button title="Something else" kind="plain" icon="plus" onPress={() => router.replace('/log/custom')} />
-              <Button title="Buying a round" kind="plain" icon="person.2" onPress={() => router.replace('/log/round')} />
+              <Button title={t('log.somethingElse')} kind="plain" icon="plus" onPress={() => router.replace('/log/custom')} />
+              <Button title={t('log.buyingARound')} kind="plain" icon="person.2" onPress={() => router.replace('/log/round')} />
             </View>
           </>
         )}
 
         <Text variant="footnote" tone="quaternary" center style={{ marginBottom: space.lg, marginTop: space.m }}>
-          Saved on this phone first. Nothing here waits for a network.
+          {t('log.savedLocally')}
         </Text>
       </ScrollView>
     </Sheet>

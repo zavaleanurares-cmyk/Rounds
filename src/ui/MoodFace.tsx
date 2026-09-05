@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Path, Defs, RadialGradient, Stop } from 'react-native-svg';
 import type { Mood } from '@/domain/types';
+import type { MessageKey } from '@/i18n';
 import { color } from '@/design/tokens';
 
 /**
@@ -23,11 +24,12 @@ export const MOOD_TINT: Record<Mood, string> = {
   bad: color.safety,
 };
 
-export const MOOD_LABEL: Record<Mood, string> = {
-  great: 'Great',
-  good: 'Good',
-  rough: 'Rough',
-  bad: 'Bad',
+/** Message keys — a module constant cannot hold a hook. Callers use `t(...)`. */
+export const MOOD_LABEL: Record<Mood, MessageKey> = {
+  great: 'ui.moodGreat',
+  good: 'ui.moodGood',
+  rough: 'ui.moodRough',
+  bad: 'ui.moodBad',
 };
 
 export function MoodFace({

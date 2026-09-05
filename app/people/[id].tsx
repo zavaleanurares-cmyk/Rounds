@@ -3,6 +3,7 @@ import { View, Pressable, Alert, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Avatar, StatTile, Button, Icon, Glass, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 /**
@@ -16,6 +17,7 @@ import { color, radius, space } from '@/design/tokens';
  */
 export default function PersonProfile() {
   const router = useRouter();
+  const t = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useStore();
   const person = store.people.find((p) => p.id === id);
@@ -23,8 +25,12 @@ export default function PersonProfile() {
 
   if (!person) {
     return (
-      <Screen title="Profile" back>
-        <EmptyState title="Not available" body="This person isn't visible to you." icon="person.crop.circle" />
+      <Screen title={t('social.profileTitle')} back>
+        <EmptyState
+          title={t('social.personUnavailableTitle')}
+          body={t('social.personUnavailableBody')}
+          icon="person.crop.circle"
+        />
       </Screen>
     );
   }
@@ -40,11 +46,11 @@ export default function PersonProfile() {
     if (Platform.OS === 'web') doBlock();
     else
       Alert.alert(
-        `Block ${person.displayName}?`,
-        "They won't be able to find you, see your nights, or appear anywhere in your app. They aren't told.",
+        t('social.blockConfirmTitle', { name: person.displayName }),
+        t('social.blockConfirmBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Block', style: 'destructive', onPress: doBlock },
+          { text: t('ui.cancel'), style: 'cancel' },
+          { text: t('social.block'), style: 'destructive', onPress: doBlock },
         ]
       );
   };
@@ -54,14 +60,16 @@ export default function PersonProfile() {
       title={person.displayName}
       back
       mood="calm"
-      right={{ icon: 'ellipsis', label: 'More', onPress: () => setMenu((m) => !m) }}
+      right={{ icon: 'ellipsis', label: t('ui.more'), onPress: () => setMenu((m) => !m) }}
     >
       <Card aurora>
         <View style={{ alignItems: 'center', gap: space.m, paddingVertical: space.sm }}>
           <Avatar name={person.displayName} size={72} live={person.liveNow} />
           <View style={{ alignItems: 'center' }}>
             <Text variant="title2">{person.displayName}</Text>
-            <Text variant="subheadline" tone="tertiary">@{person.username} · level {person.level}</Text>
+            <Text variant="subheadline" tone="tertiary">
+              {t('social.handleLevel', { username: person.username, level: person.level })}
+            </Text>
           </View>
         </View>
       </Card>
@@ -70,16 +78,16 @@ export default function PersonProfile() {
         <Glass radius={radius.card}>
           <View style={{ padding: space.sm }}>
             <MenuItem
-              label={person.status === 'friend' ? 'Remove friend' : 'Add friend'}
+              label={person.status === 'friend' ? t('social.removeFriend') : t('social.addFriend')}
               icon="person.2"
               onPress={() => {
                 if (person.status !== 'friend') store.addFriend(person.id);
                 setMenu(false);
               }}
             />
-            <MenuItem label={isBlocked ? 'Unblock' : 'Block'} icon="hand.raised" destructive onPress={isBlocked ? () => { store.unblockUser(person.id); setMenu(false); } : confirmBlock} />
+            <MenuItem label={isBlocked ? t('social.unblock') : t('social.block')} icon="hand.raised" destructive onPress={isBlocked ? () => { store.unblockUser(person.id); setMenu(false); } : confirmBlock} />
             <MenuItem
-              label="Report"
+              label={t('social.report')}
               icon="flag"
               destructive
               onPress={() => {
@@ -92,9 +100,9 @@ export default function PersonProfile() {
       ) : null}
 
       <View style={{ flexDirection: 'row', gap: space.m }}>
-        <StatTile label="Nights together" value={String(person.sharedNights)} icon="moon.stars" />
+        <StatTile label={t('social.nightsTogetherLabel')} value={String(person.sharedNights)} icon="moon.stars" />
         <StatTile
-          label="Mutual crews"
+          label={t('social.mutualCrews')}
           value={String(person.mutualCrews.length)}
           caption={person.mutualCrews.join(', ') || undefined}
           icon="person.2"
@@ -102,15 +110,14 @@ export default function PersonProfile() {
       </View>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">WHAT YOU DON'T SEE HERE</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('social.whatYouDontSee')}</Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.sm }}>
-          How much they drink, their streaks, or any comparison with you. ROUNDS never ranks people
-          on anything countable about alcohol.
+          {t('social.whatYouDontSeeBody')}
         </Text>
       </Card>
 
       {person.status !== 'friend' && !isBlocked ? (
-        <Button title="Add friend" onPress={() => store.addFriend(person.id)} />
+        <Button title={t('social.addFriend')} onPress={() => store.addFriend(person.id)} />
       ) : null}
     </Screen>
   );

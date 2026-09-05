@@ -3,11 +3,36 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Sparkline, EmptyState, StatTile } from '@/ui';
 import { useStore } from '@/data/store';
-import { weekTotals, spendTotals, summariseNights, formatMoney, hangoverForecast } from '@/domain/stats';
+import { weekTotals, spendTotals, summariseNights, hangoverForecast } from '@/domain/stats';
 import { gramsToUnits, UNIT_LABEL } from '@/domain/units';
+import { useT, useFormat, type MessageKey, type TranslateFn } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_INITIALS: MessageKey[] = [
+  'stats.dayInitialSun',
+  'stats.dayInitialMon',
+  'stats.dayInitialTue',
+  'stats.dayInitialWed',
+  'stats.dayInitialThu',
+  'stats.dayInitialFri',
+  'stats.dayInitialSat',
+];
+
+const DAY_SHORT: MessageKey[] = [
+  'stats.dayShortSun',
+  'stats.dayShortMon',
+  'stats.dayShortTue',
+  'stats.dayShortWed',
+  'stats.dayShortThu',
+  'stats.dayShortFri',
+  'stats.dayShortSat',
+];
+
+const BAND: Record<'fine' | 'tender' | 'rough', MessageKey> = {
+  fine: 'stats.bandFine',
+  tender: 'stats.bandTender',
+  rough: 'stats.bandRough',
+};
 
 /**
  * Y-05 · Insights.
@@ -20,6 +45,8 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  */
 export default function Insights() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { logs, profile, settings, venues, plus } = useStore();
   const system = profile?.unitSystem ?? 'EU';
 
@@ -61,58 +88,64 @@ export default function Insights() {
 
   if (nights.length === 0) {
     return (
-      <Screen title="Insights" back mood="calm">
-        <EmptyState icon="chart.bar" title="Not enough nights yet" body="After three or four nights the patterns start being real rather than noise. Come back then." />
+      <Screen title={t('stats.insights')} back mood="calm">
+        <EmptyState icon="chart.bar" title={t('stats.insightsEmptyTitle')} body={t('stats.insightsEmptyBody')} />
       </Screen>
     );
   }
 
   return (
-    <Screen title="Insights" subtitle={plus ? 'All time' : 'Last 90 days'} back mood="calm">
+    <Screen title={t('stats.insights')} subtitle={plus ? t('stats.insightsAllTime') : t('stats.insightsLast90')} back mood="calm">
       <View style={{ flexDirection: 'row', gap: space.m }}>
         <StatTile
-          label="Last 30 days"
-          value={gramsToUnits(g30, system).toFixed(0)}
-          caption={UNIT_LABEL[system]}
+          label={t('stats.last30Days')}
+          value={f.number(gramsToUnits(g30, system), 0)}
+          caption={t(UNIT_LABEL[system])}
           icon="wineglass"
         />
         <StatTile
-          label="vs previous 30"
-          value={delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta}%`}
+          label={t('stats.vsPrevious30')}
+          value={
+            delta === null
+              ? '—'
+              : delta > 0
+                ? t('stats.deltaUp', { pct: f.number(delta, 0) })
+                : t('stats.deltaDown', { pct: f.number(delta, 0) })
+          }
           tint={delta === null ? color.label.tertiary : delta > 0 ? color.pace.quick : color.pace.steady}
           icon="chart.bar"
         />
       </View>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">EIGHT WEEKS</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('stats.eightWeeks')}</Text>
         <View style={{ marginTop: space.m }}>
           <Sparkline values={weeks.map((w) => w.totalG)} height={52} />
         </View>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.m }}>
-          {readWeeks(weeks.map((w) => w.totalG))}
+          {readWeeks(weeks.map((w) => w.totalG), t, f.number)}
         </Text>
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">SPEND</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('stats.spendHeader')}</Text>
         <Text variant="numericMedium" style={{ marginTop: space.xs }}>
-          {formatMoney(spend.month, profile?.currency ?? 'EUR')} this month
+          {t('stats.spendThisMonth', { amount: f.money(spend.month, profile?.currency ?? 'EUR') })}
         </Text>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.sm }}>
-          {formatMoney(spend.perNight, profile?.currency ?? 'EUR')} a night on average.{' '}
+          {t('stats.spendPerNight', { amount: f.money(spend.perNight, profile?.currency ?? 'EUR') })}{' '}
           {new Date().getDate() < 7
-            ? `Too early in the month to call it — last month was ${formatMoney(spend.prevMonth, profile?.currency ?? 'EUR')}.`
-            : `At this rate that's ${formatMoney(spend.projectedYear, profile?.currency ?? 'EUR')} over a year.`}
+            ? t('stats.spendTooEarly', { amount: f.money(spend.prevMonth, profile?.currency ?? 'EUR') })
+            : t('stats.spendProjected', { amount: f.money(spend.projectedYear, profile?.currency ?? 'EUR') })}
         </Text>
         {topVenues.length > 0 ? (
           <View style={{ marginTop: space.md, gap: space.sm }}>
             {topVenues.map(([venueId, amount]) => (
               <View key={venueId} style={{ flexDirection: 'row' }}>
                 <Text variant="subheadline" tone="secondary" style={{ flex: 1 }}>
-                  {venues.find((v) => v.id === venueId)?.name ?? 'Somewhere'}
+                  {venues.find((v) => v.id === venueId)?.name ?? t('stats.somewhere')}
                 </Text>
-                <Text variant="subheadline">{formatMoney(amount, profile?.currency ?? 'EUR')}</Text>
+                <Text variant="subheadline">{f.money(amount, profile?.currency ?? 'EUR')}</Text>
               </View>
             ))}
           </View>
@@ -120,7 +153,7 @@ export default function Insights() {
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">BY DAY</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('stats.byDay')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, height: 80, marginTop: space.m }}>
           {byDay.map((v, i) => {
             const max = Math.max(1, ...byDay);
@@ -134,35 +167,35 @@ export default function Insights() {
                     backgroundColor: v === max ? color.brand.tint : 'rgba(124,179,255,0.3)',
                   }}
                 />
-                <Text variant="caption2" tone="tertiary">{DAYS[i][0]}</Text>
+                <Text variant="caption2" tone="tertiary">{t(DAY_INITIALS[i])}</Text>
               </View>
             );
           })}
         </View>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.m }}>
-          {DAYS[byDay.indexOf(Math.max(...byDay))]} is consistently your biggest night.
+          {t('stats.biggestNight', { day: t(DAY_SHORT[byDay.indexOf(Math.max(...byDay))]) })}
         </Text>
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">PREDICTED VS ACTUAL</Text>
+        <Text variant="sectionHeader" tone="tertiary">{t('stats.predictedVsActual')}</Text>
         <View style={{ marginTop: space.m, gap: space.sm }}>
           {nights.slice(0, 5).map((n) => {
-            const f = hangoverForecast(n);
+            const forecast = hangoverForecast(n);
             return (
               <View key={n.key} style={{ flexDirection: 'row' }}>
                 <Text variant="subheadline" tone="secondary" style={{ flex: 1 }}>
-                  {new Date(n.key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                  {f.dayCompact(new Date(n.key).getTime())}
                 </Text>
-                <Text variant="subheadline" color={f.band === 'rough' ? color.pace.quick : color.label.primary}>
-                  {f.band}
+                <Text variant="subheadline" color={forecast.band === 'rough' ? color.pace.quick : color.label.primary}>
+                  {t(BAND[forecast.band])}
                 </Text>
               </View>
             );
           })}
         </View>
         <Text variant="subheadline" tone="secondary" style={{ marginTop: space.m }}>
-          Answering "how do you feel" each morning is what tunes this to you rather than to averages.
+          {t('stats.morningTuneNote')}
         </Text>
       </Card>
 
@@ -170,14 +203,14 @@ export default function Insights() {
   );
 }
 
-function readWeeks(values: number[]): string {
-  if (values.length < 3) return 'Not enough weeks yet to call a trend.';
+function readWeeks(values: number[], t: TranslateFn, num: (n: number, digits?: number) => string): string {
+  if (values.length < 3) return t('stats.weeksNotEnough');
   const recent = values.slice(-3).reduce((a, b) => a + b, 0) / 3;
   const before = values.slice(0, -3).reduce((a, b) => a + b, 0) / Math.max(1, values.length - 3);
-  if (before === 0) return 'Your first weeks of data.';
+  if (before === 0) return t('stats.weeksFirst');
   const pct = Math.round(((recent - before) / before) * 100);
-  if (Math.abs(pct) < 10) return 'Steady — the last three weeks look like the ones before them.';
+  if (Math.abs(pct) < 10) return t('stats.weeksSteady');
   return pct > 0
-    ? `The last three weeks are about ${pct}% heavier than the ones before.`
-    : `The last three weeks are about ${Math.abs(pct)}% lighter than the ones before.`;
+    ? t('stats.weeksHeavier', { pct: num(pct, 0) })
+    : t('stats.weeksLighter', { pct: num(Math.abs(pct), 0) });
 }

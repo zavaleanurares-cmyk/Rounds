@@ -26,7 +26,6 @@ export const ui = {
   'ui.settings': 'Setări',
   'ui.share': 'Trimite',
   'ui.more': 'Mai mult',
-  'ui.selected': 'selectat',
   'ui.nice': 'Bravo',
   'ui.achievement': 'Realizare',
   'ui.level': 'Nivelul {level}',

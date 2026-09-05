@@ -243,7 +243,11 @@ describe('billing is hidden', () => {
       f === 'src/services/purchases.ts' ||
       f === 'src/config/flags.ts' ||
       f === 'src/content/legal.ts' ||   // the terms have to describe the thing
-      f === 'src/services/analytics.ts' // event names, never rendered
+      f === 'src/services/analytics.ts' || // event names, never rendered
+      // The billing copy has to live in a catalogue like all other copy, and a
+      // catalogue file is not a screen — nothing renders it while the routes
+      // that would redirect. The assertions below still prove that.
+      /^src\/i18n\/locales\/\w+\/billing\.ts$/.test(f)
     );
   };
 

@@ -5,8 +5,16 @@ import { Sheet, Text, Button, ToggleRow, Icon } from '@/ui';
 import { useStore } from '@/data/store';
 import type { Goal } from '@/domain/types';
 import { gramsToUnits, unitsToGrams, UNIT_LABEL } from '@/domain/units';
-import { formatMoney } from '@/domain/stats';
+import { useT, useFormat, type MessageKey } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
+
+const LABEL: Record<string, MessageKey> = {
+  nightly_cap: 'stats.goalNightlyCap',
+  weekly_cap: 'stats.goalWeeklyCap',
+  dry_days: 'stats.goalDryDays',
+  spend_cap: 'stats.goalSpendCap',
+  nicotine_free: 'stats.goalNicotineFree',
+};
 
 /**
  * Y-07 · Goal editor.
@@ -16,6 +24,8 @@ import { color, radius, space } from '@/design/tokens';
  */
 export default function GoalEditor() {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
   const { type } = useLocalSearchParams<{ type: string }>();
   const { goals, setGoal, profile } = useStore();
   const goal = goals.find((g) => g.type === type) ?? { type: type as Goal['type'], target: 0, enabled: false };
@@ -30,10 +40,7 @@ export default function GoalEditor() {
   const [enabled, setEnabled] = useState(goal.enabled);
   const step = isSpend ? 10 : 1;
 
-  const label =
-    { nightly_cap: 'Nightly cap', weekly_cap: 'Weekly cap', dry_days: 'Dry days a month', spend_cap: 'Spend cap', nicotine_free: 'Nicotine-free days' }[
-      goal.type
-    ] ?? 'Goal';
+  const label = t(LABEL[goal.type] ?? 'stats.goalFallback');
 
   return (
     <Sheet
@@ -41,7 +48,7 @@ export default function GoalEditor() {
       onClose={() => router.back()}
       footer={
         <Button
-          title="Save"
+          title={t('ui.save')}
           onPress={() => {
             setGoal({ type: goal.type, target: toStored(value), enabled });
             router.back();
@@ -51,22 +58,22 @@ export default function GoalEditor() {
     >
       <View style={{ gap: space.md, paddingBottom: space.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-          <Step icon="minus" onPress={() => setValue((v) => Math.max(0, v - step))} label="Less" />
+          <Step icon="minus" onPress={() => setValue((v) => Math.max(0, v - step))} label={t('stats.less')} />
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text variant="numericLarge">
-              {isSpend ? formatMoney(Math.round(value * 100), profile?.currency ?? 'EUR') : value.toFixed(isDays ? 0 : 1)}
+              {isSpend ? f.money(Math.round(value * 100), profile?.currency ?? 'EUR') : f.number(value, isDays ? 0 : 1)}
             </Text>
             <Text variant="footnote" tone="tertiary">
-              {isSpend ? 'per week' : isDays ? 'days' : UNIT_LABEL[system]}
+              {isSpend ? t('stats.perWeek') : isDays ? t('stats.days') : t(UNIT_LABEL[system])}
             </Text>
           </View>
-          <Step icon="plus" onPress={() => setValue((v) => v + step)} label="More" />
+          <Step icon="plus" onPress={() => setValue((v) => v + step)} label={t('stats.more')} />
         </View>
 
-        <ToggleRow title="Track this goal" value={enabled} onValueChange={setEnabled} last />
+        <ToggleRow title={t('stats.trackThisGoal')} value={enabled} onValueChange={setEnabled} last />
 
         <Text variant="footnote" tone="quaternary">
-          Goals are yours. Nothing here is shared, ranked, or shown to anyone else.
+          {t('stats.goalsPrivate')}
         </Text>
       </View>
     </Sheet>

@@ -18,15 +18,23 @@
  */
 import { optional, capabilities } from './optional';
 import { getClient } from '@/data/remote';
+import type { MessageKey } from '@/i18n';
 
 export type ProductId = 'plus.monthly' | 'plus.annual' | 'plus.lifetime' | 'crew.pass';
 
 export interface Product {
   id: ProductId;
-  title: string;
+  /**
+   * The store's own localised title, when the store answered. `titleKey` is the
+   * fallback used when it did not — a catalogue key rather than a string, so
+   * the offline path is not the one place the app reverts to English.
+   */
+  title?: string;
+  titleKey?: MessageKey;
   priceLabel: string;
   period: 'month' | 'year' | 'lifetime';
   note?: string;
+  noteKey?: MessageKey;
 }
 
 export interface Entitlement {
@@ -41,9 +49,12 @@ export const NO_ENTITLEMENT: Entitlement = { active: false, productId: null, ren
 
 /** Shown when the store is unreachable, so the paywall is never a blank screen. */
 export const FALLBACK_PRODUCTS: Product[] = [
-  { id: 'plus.monthly', title: 'Monthly', priceLabel: '€4.99', period: 'month' },
-  { id: 'plus.annual', title: 'Annual', priceLabel: '€34.99', period: 'year', note: 'save 40%' },
-  { id: 'plus.lifetime', title: 'Lifetime', priceLabel: '€79.99', period: 'lifetime' },
+  // `titleKey` rather than a title: the real store returns localised titles, so
+  // this fallback is the only path that would otherwise show English to a
+  // French user, and it is the path that runs when the store is unreachable.
+  { id: 'plus.monthly', titleKey: 'billing.productMonthly', priceLabel: '€4.99', period: 'month' },
+  { id: 'plus.annual', titleKey: 'billing.productAnnual', priceLabel: '€34.99', period: 'year', noteKey: 'billing.productSave' },
+  { id: 'plus.lifetime', titleKey: 'billing.productLifetime', priceLabel: '€79.99', period: 'lifetime' },
 ];
 
 function sdk() {

@@ -1,4 +1,5 @@
 import type { Drink, DrinkCategory } from './types';
+import type { MessageKey } from '@/i18n';
 import { LIQUID } from './art';
 import { makeDrink as d } from './makeDrink';
 import { COCKTAILS } from './cocktails';
@@ -205,14 +206,15 @@ export const CATALOG: Drink[] = [
 const INDEX = new Map(CATALOG.map((x) => [x.id, x]));
 export const byId = (id: string): Drink | undefined => INDEX.get(id);
 
-export const CATEGORY_LABEL: Record<DrinkCategory, string> = {
-  beer: 'Beer & cider',
-  wine: 'Wine',
-  spirit: 'Spirits',
-  cocktail: 'Cocktails',
-  shot: 'Shots',
-  soft: 'Soft',
-  water: 'Water',
+/** Section headings, as message keys — a module constant cannot call a hook. */
+export const CATEGORY_LABEL: Record<DrinkCategory, MessageKey> = {
+  beer: 'common.categoryBeer',
+  wine: 'common.categoryWine',
+  spirit: 'common.categorySpirit',
+  cocktail: 'common.categoryCocktail',
+  shot: 'common.categoryShot',
+  soft: 'common.categorySoft',
+  water: 'common.categoryWater',
 };
 
 export const CATEGORY_ORDER: DrinkCategory[] = [

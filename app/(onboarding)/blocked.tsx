@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Linking } from 'react-native';
 import { Aurora, Text, InlineLink } from '@/ui';
+import { useT } from '@/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, geometry, space } from '@/design/tokens';
 
@@ -9,6 +10,7 @@ import { color, geometry, space } from '@/design/tokens';
  * to edit the date. If it were retryable it would not be an age gate.
  */
 export default function Blocked() {
+  const t = useT();
   const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: color.bg.canvas }}>
@@ -21,14 +23,13 @@ export default function Blocked() {
           gap: space.md,
         }}
       >
-        <Text variant="title1">ROUNDS isn't for you yet</Text>
+        <Text variant="title1">{t('onboarding.blockedTitle')}</Text>
         <Text variant="body" tone="secondary">
-          You need to be of legal drinking age in your region to use ROUNDS. We're keeping this
-          answer, so there's nothing to try again here.
+          {t('onboarding.blockedBody')}
         </Text>
         <View style={{ marginTop: space.lg }}>
           <InlineLink
-            title="Information about alcohol and young people"
+            title={t('onboarding.blockedLink')}
             onPress={() => void Linking.openURL('https://www.who.int/health-topics/alcohol')}
           />
         </View>

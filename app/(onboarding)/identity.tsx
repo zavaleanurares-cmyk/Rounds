@@ -3,6 +3,7 @@ import { View, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Text, Card, Button, Avatar, Icon } from '@/ui';
 import { useStore } from '@/data/store';
+import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
 const TAKEN = ['ana', 'admin', 'rounds', 'tudor'];
@@ -10,6 +11,7 @@ const TAKEN = ['ana', 'admin', 'rounds', 'tudor'];
 /** A-05 · Identity. Live username availability, 400ms debounce. */
 export default function Identity() {
   const router = useRouter();
+  const t = useT();
   const { profile, updateProfile } = useStore();
   const [name, setName] = useState(profile?.displayName ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
@@ -27,12 +29,12 @@ export default function Identity() {
 
   return (
     <Screen
-      title="Who are you?"
-      subtitle="Your friends will see this. Nothing else is public."
+      title={t('onboarding.identityTitle')}
+      subtitle={t('onboarding.identitySubtitle')}
       mood="calm"
       footer={
         <Button
-          title="Continue"
+          title={t('onboarding.continue')}
           disabled={!ok}
           onPress={() => {
             updateProfile({ displayName: name.trim(), username });
@@ -45,25 +47,25 @@ export default function Identity() {
         <View style={{ alignItems: 'center', gap: space.m, paddingVertical: space.sm }}>
           <Avatar name={name || '?'} size={72} />
           <Text variant="footnote" tone="tertiary">
-            Skip the photo and you get a coloured monogram.
+            {t('onboarding.monogramNote')}
           </Text>
         </View>
       </Card>
 
       <Card>
-        <Text variant="sectionHeader" tone="tertiary">Display name</Text>
-        <Field value={name} onChangeText={setName} placeholder="Rareș" autoCapitalize="words" label="Display name" />
+        <Text variant="sectionHeader" tone="tertiary">{t('onboarding.displayName')}</Text>
+        <Field value={name} onChangeText={setName} placeholder={t('onboarding.displayNamePlaceholder')} autoCapitalize="words" label={t('onboarding.displayName')} />
 
-        <Text variant="sectionHeader" tone="tertiary" style={{ marginTop: space.md }}>Username</Text>
+        <Text variant="sectionHeader" tone="tertiary" style={{ marginTop: space.md }}>{t('onboarding.username')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <Text variant="body" tone="tertiary">@</Text>
           <View style={{ flex: 1 }}>
             <Field
               value={username}
               onChangeText={(t) => setUsername(t.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-              placeholder="rares"
+              placeholder={t('onboarding.usernamePlaceholder')}
               autoCapitalize="none"
-              label="Username"
+              label={t('onboarding.username')}
               tint={status === 'taken' || status === 'invalid' ? color.safety : status === 'free' ? color.success : undefined}
             />
           </View>
@@ -75,14 +77,14 @@ export default function Identity() {
           style={{ marginTop: space.sm }}
         >
           {status === 'checking'
-            ? 'Checking…'
+            ? t('onboarding.usernameChecking')
             : status === 'taken'
-              ? 'Someone already has that one.'
+              ? t('onboarding.usernameTaken')
               : status === 'invalid'
-                ? '3–20 characters, letters, numbers and underscores.'
+                ? t('onboarding.usernameInvalid')
                 : status === 'free'
-                  ? 'Yours.'
-                  : 'How friends find you.'}
+                  ? t('onboarding.usernameFree')
+                  : t('onboarding.usernameHint')}
         </Text>
       </Card>
     </Screen>

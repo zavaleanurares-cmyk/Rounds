@@ -1,7 +1,7 @@
 import { nightKey, nightWeekday, NIGHT_BOUNDARY_HOUR } from '@/domain/nightKey';
 import {
   summariseNights, computeStreaks, spendTotals, heatmap, goalProgress, estimateMissedDrinks,
-  hangoverForecast, formatMoney, formatDuration, plural,
+  hangoverForecast, formatMoney, formatDuration,
 } from '@/domain/stats';
 import type { Log, Session } from '@/domain/types';
 
@@ -161,22 +161,5 @@ describe('heatmap', () => {
     const cells = heatmap([], 30);
     expect(cells).toHaveLength(30);
     expect(cells[0].level).toBe(0);
-  });
-});
-
-describe('plural', () => {
-  it('says "1 person", not "1 people"', () => {
-    expect(plural(1, 'person', 'people')).toBe('1 person');
-    expect(plural(3, 'person', 'people')).toBe('3 people');
-  });
-
-  it('adds an s when no irregular form is given', () => {
-    expect(plural(1, 'night')).toBe('1 night');
-    expect(plural(2, 'night')).toBe('2 nights');
-  });
-
-  it('treats zero as plural, the way English does', () => {
-    expect(plural(0, 'night')).toBe('0 nights');
-    expect(plural(0, 'person', 'people')).toBe('0 people');
   });
 });
