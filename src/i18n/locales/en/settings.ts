@@ -267,4 +267,10 @@ export const settings = {
   'settings.sendDiagnostics': 'Send diagnostics',
   'settings.sendDiagnosticsSubtitle':
     'Counts and categories only — never a drink, a venue or a person',
+  'settings.language': 'Language',
+  'settings.languageGroup': 'LANGUAGE',
+  'settings.languageFollowPhone': 'Follow my phone',
+  'settings.languageCurrently': 'Currently {name}',
+  'settings.languageNote':
+    'Changing this changes ROUNDS only. It takes effect straight away — nothing to download and nothing to restart.',
 } satisfies Record<string, Message>;

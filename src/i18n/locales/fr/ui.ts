@@ -32,4 +32,22 @@ export const ui = {
     one: '{count} personne',
     other: '{count} personnes',
   },
+  'ui.avatarPhoto': 'Photo de {name}',
+  'ui.outRightNow': 'de sortie en ce moment',
+  'ui.tileLabel': '{label}, {value}',
+  'ui.logDrink': 'Noter un verre',
+  'ui.logDrinkHint': 'Ouvre la feuille. Un appui note le même verre qu’avant.',
+  'ui.paceEstimate': 'Estimation ≈ {value} ‰',
+  // Aucun adoucissement ici. Le texte anglais est brutal exprès.
+  'ui.paceEstimateNote':
+    'Estimation de rythme. Ne t’en sers jamais pour décider si tu peux conduire.',
+  'ui.moodGreat': 'Ça va',
+  'ui.moodGood': 'Bof',
+  'ui.moodRough': 'Vaseux',
+  'ui.moodBad': 'Rude',
+  'ui.reactionCheers': 'Santé',
+  'ui.reactionFire': 'Ça part',
+  'ui.reactionLaugh': 'Ça me tue',
+  'ui.reactionHeart': 'J’adore',
+  'ui.reactionEyes': 'Je regarde',
 } satisfies Record<string, Message>;

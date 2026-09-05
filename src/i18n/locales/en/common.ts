@@ -149,8 +149,11 @@ export const common = {
     one: 'Pace: {word}. {count} drink logged.',
     other: 'Pace: {word}. {count} drinks logged.',
   },
-  'common.paceLabelSince': {
-    one: 'Pace: {word}. {count} drink logged, last one {minutes} minutes ago.',
-    other: 'Pace: {word}. {count} drinks logged, last one {minutes} minutes ago.',
+  'common.paceSince': {
+    one: 'Last one {count} minute ago.',
+    other: 'Last one {count} minutes ago.',
   },
+  'common.demoPlanTitle': 'Friday, properly',
+  'common.demoPlanNote': 'Starting at Roots, deciding the rest there.',
+  'common.you': 'You',
 } satisfies Record<string, Message>;

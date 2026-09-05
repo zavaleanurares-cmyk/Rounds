@@ -422,7 +422,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         payload: {
           logs, sessions,
           people: DEMO_PEOPLE, crews: DEMO_CREWS,
-          plans: demoPlans(), notifications: demoNotifications(locale),
+          plans: demoPlans(locale), notifications: demoNotifications(locale),
         },
       });
     })();
@@ -1047,7 +1047,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           sessions,
           people: DEMO_PEOPLE,
           crews: DEMO_CREWS,
-          plans: demoPlans(),
+          plans: demoPlans(localeRef.current),
           notifications: demoNotifications(localeRef.current),
         },
       });

@@ -35,4 +35,22 @@ export const ui = {
     few: '{count} persoane',
     other: '{count} de persoane',
   },
+  'ui.avatarPhoto': 'Poza lui {name}',
+  'ui.outRightNow': 'e în oraș acum',
+  'ui.tileLabel': '{label}, {value}',
+  'ui.logDrink': 'Notează o băutură',
+  'ui.logDrinkHint': 'Deschide lista. O apăsare notează aceeași băutură ca data trecută.',
+  'ui.paceEstimate': 'Estimare ≈ {value}‰',
+  // Fără nicio îndulcire. Textul englezesc e dur intenționat.
+  'ui.paceEstimateNote':
+    'Estimare de ritm. Nu o folosi niciodată ca să decizi dacă poți conduce.',
+  'ui.moodGreat': 'Bine',
+  'ui.moodGood': 'Merge',
+  'ui.moodRough': 'Fragil',
+  'ui.moodBad': 'Greu',
+  'ui.reactionCheers': 'Noroc',
+  'ui.reactionFire': 'Se rupe',
+  'ui.reactionLaugh': 'Mor de râs',
+  'ui.reactionHeart': 'Îmi place',
+  'ui.reactionEyes': 'Mă uit',
 } satisfies Record<string, Message>;

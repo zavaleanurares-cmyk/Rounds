@@ -4,6 +4,7 @@ import { Screen, Group, NavRow, Text, Button } from '@/ui';
 import { useStore } from '@/data/store';
 import { useT, type MessageKey } from '@/i18n';
 import { space } from '@/design/tokens';
+import { LOCALES, useI18n } from '@/i18n';
 
 const UNIT_SYSTEM_LABEL = {
   EU: 'settings.unitSystemEU',
@@ -14,12 +15,17 @@ const UNIT_SYSTEM_LABEL = {
 /** S-01 · Settings home. */
 export default function Settings() {
   const router = useRouter();
-  const t = useT();
+  const { t, locale } = useI18n();
   const { profile, signOut, settings, safety } = useStore();
 
   return (
     <Screen title={t('ui.settings')} back mood="night">
       <Group title={t('settings.groupYou')}>
+        <NavRow
+          title={t('settings.language')}
+          value={LOCALES.find((l) => l.code === locale)?.label}
+          onPress={() => router.push('/settings/language')}
+        />
         <NavRow title={t('settings.unitsRegion')} value={t(UNIT_SYSTEM_LABEL[profile?.unitSystem ?? 'EU'])} onPress={() => router.push('/settings/units')} />
         <NavRow title={t('settings.appearance')} onPress={() => router.push('/settings/appearance')} />
         <NavRow title={t('settings.modules')} value={profile?.modules.nicotine ? t('settings.modulesNicotineOn') : t('settings.modulesDefault')} onPress={() => router.push('/settings/modules')} last />

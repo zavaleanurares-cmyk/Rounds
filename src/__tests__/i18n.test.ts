@@ -137,11 +137,22 @@ describe('the catalogues', () => {
     expect(bad).toEqual([]);
   });
 
+  /**
+   * Product names Apple and Google ship untranslated in every locale. Naming
+   * them here rather than loosening the heuristic: the list is short, it is
+   * reviewable, and anything not on it that stays English is a bug.
+   */
+  const UNTRANSLATABLE = new Set([
+    'settings.surfaceHudIos',       // Live Activity + Dynamic Island
+    'settings.surfaceVoiceIos',     // App Intents / Siri
+  ]);
+
   it('no message is empty or accidentally left in English', () => {
     const suspicious: string[] = [];
     for (const locale of LOCALES) {
       if (locale === 'en') continue;
       for (const key of Object.keys(en)) {
+        if (UNTRANSLATABLE.has(key)) continue;
         const source = EN[key];
         const target = CATALOGUES[locale][key];
         const flatten = (m: Message) => (typeof m === 'string' ? m : Object.values(m).join('|'));
@@ -209,6 +220,52 @@ describe('formatting', () => {
       expect(() => fmt.formatDayShort(l, NaN)).not.toThrow();
       expect(() => fmt.formatMoney(l, 0, 'XYZ')).not.toThrow();
       expect(() => fmt.formatDuration(l, -1)).not.toThrow();
+    }
+  });
+});
+
+describe('a sentence that counts two things', () => {
+  /**
+   * Plural selection reads ONE number. A message that counts two — drinks and
+   * minutes — cannot inflect both, and in Romanian that is the difference
+   * between "acum 5 minute" and "acum 25 de minute".
+   *
+   * The pace accessibility label used to be one such message. It is now two,
+   * and this asserts that both halves inflect independently.
+   */
+  const { paceAccessibilityLabel } = require('@/domain/pace') as typeof import('@/domain/pace');
+  const result = (drinks: number, minutes: number | null) => ({
+    state: 'steady' as const,
+    drinks,
+    totalG: 0,
+    gramsPerHour: 0,
+    ratioToNormal: 1,
+    minutesSinceLast: minutes,
+    filled: drinks,
+    segments: 6,
+  });
+
+  it('inflects each count on its own, in Romanian', () => {
+    // 2 drinks (few, no "de") and 25 minutes (other, takes "de")
+    expect(paceAccessibilityLabel(result(2, 25), 'ro')).toContain('2 băuturi');
+    expect(paceAccessibilityLabel(result(2, 25), 'ro')).toContain('25 de minute');
+    // 25 drinks (other, takes "de") and 5 minutes (few, no "de")
+    expect(paceAccessibilityLabel(result(25, 5), 'ro')).toContain('25 de băuturi');
+    expect(paceAccessibilityLabel(result(25, 5), 'ro')).toContain('5 minute');
+    expect(paceAccessibilityLabel(result(25, 5), 'ro')).not.toContain('5 de minute');
+  });
+
+  it('drops the tail entirely when there is nothing to say', () => {
+    for (const l of LOCALES) {
+      expect(paceAccessibilityLabel(result(3, null), l)).not.toMatch(/\{/);
+    }
+  });
+
+  it('says something in every language', () => {
+    for (const l of LOCALES) {
+      const label = paceAccessibilityLabel(result(3, 12), l);
+      expect(label.length).toBeGreaterThan(20);
+      expect(label).not.toMatch(/\{|undefined/);
     }
   });
 });

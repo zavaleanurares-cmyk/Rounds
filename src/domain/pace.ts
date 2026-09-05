@@ -201,21 +201,20 @@ export function weekdayMedian(
 /**
  * VoiceOver reads the state word, never just the colour.
  *
- * Built from two whole sentences rather than by gluing clauses together: the
- * "last one N minutes ago" tail is a separate message because in Romanian it
- * carries its own plural, and a sentence assembled from English fragments
- * cannot be translated at all.
+ * Built from two whole sentences rather than by gluing clauses together. The
+ * "last one N minutes ago" tail is its OWN message, keyed on its own count:
+ * plural selection reads a single number, and this sentence counts two.
  */
 export function paceAccessibilityLabel(result: PaceResult, locale: Locale = 'en'): string {
   const word = translate(locale, PACE_LABEL_KEY[result.state]);
-  if (result.minutesSinceLast === null) {
-    return translate(locale, 'common.paceLabel', { word, count: result.drinks });
-  }
-  return translate(locale, 'common.paceLabelSince', {
-    word,
-    count: result.drinks,
-    minutes: result.minutesSinceLast,
-  });
+  const head = translate(locale, 'common.paceLabel', { word, count: result.drinks });
+  if (result.minutesSinceLast === null) return head;
+  // Two sentences, not one. A message can only pluralise on a single number,
+  // and this sentence counts two — drinks AND minutes. In Romanian that is the
+  // difference between "acum 5 minute" and "acum 25 de minute", so the tail has
+  // to be its own message keyed on its own count.
+  const tail = translate(locale, 'common.paceSince', { count: result.minutesSinceLast });
+  return `${head} ${tail}`;
 }
 
 /** The spoken form of each state. Distinct from `paceWord`, which is shouted. */

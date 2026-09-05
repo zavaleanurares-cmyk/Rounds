@@ -9,7 +9,7 @@ export const auth = {
   'auth.getStarted': 'Get started',
   'auth.haveAccount': 'I already have an account',
   'auth.ageAndPaceNote':
-    '18+ in the EU, UK and Romania · 21+ in the United States. ROUNDS estimates pace — it is never a measure of whether you are fit to drive.',
+    '18+ in the EU and the UK · 21+ in the United States. ROUNDS estimates pace — it is never a measure of whether you are fit to drive.',
   'auth.supportResources': 'Drinking support resources',
 
   // A-02 · Sign in

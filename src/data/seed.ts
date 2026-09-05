@@ -36,20 +36,20 @@ export const DEMO_CREWS: Crew[] = [
   { id: 'c1', slug: 'vineri', name: 'Vineri', accentIndex: 1, icon: 'moon.stars', memberIds: ['me', 'p1', 'p2', 'p4'] },
 ];
 
-export function demoPlans(): Plan[] {
+export function demoPlans(locale: Locale = 'en'): Plan[] {
   const friday = new Date();
   friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7 || 7));
   friday.setHours(21, 30, 0, 0);
   return [
     {
       id: 'plan1',
-      title: 'Friday, properly',
+      title: translate(locale, 'common.demoPlanTitle'),
       startsAt: friday.getTime(),
       crewId: 'c1',
-      note: 'Starting at Roots, deciding the rest there.',
+      note: translate(locale, 'common.demoPlanNote'),
       createdBy: 'p1',
       invitees: [
-        { userId: 'me', displayName: 'You', avatarUrl: null, rsvp: 'yes' },
+        { userId: 'me', displayName: translate(locale, 'common.you'), avatarUrl: null, rsvp: 'yes' },
         { userId: 'p1', displayName: 'Ana Marin', avatarUrl: null, rsvp: 'yes' },
         { userId: 'p2', displayName: 'Tudor', avatarUrl: null, rsvp: 'yes' },
         { userId: 'p4', displayName: 'Mihai P.', avatarUrl: null, rsvp: 'maybe' },

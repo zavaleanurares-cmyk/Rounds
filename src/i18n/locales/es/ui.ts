@@ -31,4 +31,22 @@ export const ui = {
     one: '{count} persona',
     other: '{count} personas',
   },
+  'ui.avatarPhoto': 'Foto de {name}',
+  'ui.outRightNow': 'ha salido ahora mismo',
+  'ui.tileLabel': '{label}, {value}',
+  'ui.logDrink': 'Apuntar una copa',
+  'ui.logDrinkHint': 'Abre la hoja. Un toque apunta lo mismo otra vez.',
+  'ui.paceEstimate': 'Estimación ≈ {value} ‰',
+  // Sin suavizar nada. El inglés es tajante a propósito.
+  'ui.paceEstimateNote':
+    'Estimación de ritmo. No la uses nunca para decidir si puedes conducir.',
+  'ui.moodGreat': 'Bien',
+  'ui.moodGood': 'Regular',
+  'ui.moodRough': 'Tocado',
+  'ui.moodBad': 'Fatal',
+  'ui.reactionCheers': 'Salud',
+  'ui.reactionFire': 'Se sale',
+  'ui.reactionLaugh': 'Me muero',
+  'ui.reactionHeart': 'Me encanta',
+  'ui.reactionEyes': 'Mirando',
 } satisfies Record<string, Message>;

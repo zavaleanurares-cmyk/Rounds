@@ -14,6 +14,7 @@ export function NavRow({
   destructive,
   last,
   accessibilityHint,
+  selected,
 }: {
   title: string;
   subtitle?: string;
@@ -23,12 +24,19 @@ export function NavRow({
   destructive?: boolean;
   last?: boolean;
   accessibilityHint?: string;
+  /**
+   * A row that PICKS something rather than going somewhere: shows a drawn tick
+   * instead of a chevron, and tells a screen reader it is selected. There are
+   * no glyph ticks in this app — see the emoji policy test.
+   */
+  selected?: boolean;
 }) {
   const tint = destructive ? color.safety : color.label.primary;
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole={selected === undefined ? 'button' : 'radio'}
+      accessibilityState={selected === undefined ? undefined : { selected }}
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
       style={({ pressed }) => [rowStyle(last), { opacity: pressed ? 0.7 : 1 }]}
@@ -41,7 +49,13 @@ export function NavRow({
         ) : null}
       </View>
       {value ? <Text variant="subheadline" tone="tertiary">{value}</Text> : null}
-      {onPress ? <Icon name="chevron.right" size={16} color={color.label.quaternary} /> : null}
+      {selected === true ? (
+        <Icon name="checkmark" size={17} color={color.brand.tintLight} />
+      ) : selected === false ? (
+        <View style={{ width: 17 }} />
+      ) : onPress ? (
+        <Icon name="chevron.right" size={16} color={color.label.quaternary} />
+      ) : null}
     </Pressable>
   );
 }

@@ -12,7 +12,7 @@ export const onboarding = {
   'onboarding.day': 'Day',
   'onboarding.month': 'Month',
   'onboarding.year': 'Year',
-  'onboarding.ageNote': '18+ in the EU, UK and Romania · 21+ in the United States.',
+  'onboarding.ageNote': '18+ in the EU and the UK · 21+ in the United States.',
   // The wheel shows abbreviated months, which are not the same three letters
   // everywhere — "Jan" is "ian" in Romanian and "ene" in Spanish.
   'onboarding.monthJan': 'Jan',
