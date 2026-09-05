@@ -6,6 +6,7 @@ import { Text } from './Text';
 import { color, paceColor, paceGradient, paceWord, type PaceState } from '@/design/tokens';
 import type { PaceResult } from '@/domain/pace';
 import { paceAccessibilityLabel } from '@/domain/pace';
+import { useStore } from '@/data/store';
 
 /**
  * The pace ring.
@@ -116,7 +117,11 @@ export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
  *    social surface (callers enforce placement; this enforces the rest)
  */
 export function PaceEstimate({ bac, state }: { bac: number; state: PaceState }) {
-  if (state === 'slow_down') return null;
+  // Suppressed entirely when the app is telling someone to slow down, and off
+  // unless they asked for it at all. Both checks live HERE rather than in the
+  // callers, so a new placement cannot forget one.
+  const { settings } = useStore();
+  if (state === 'slow_down' || !settings.showEstimate) return null;
   return (
     <View style={{ alignItems: 'center', marginTop: 10 }}>
       <Text variant="subheadline" tone="tertiary">

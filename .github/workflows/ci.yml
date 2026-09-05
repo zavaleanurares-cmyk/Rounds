@@ -55,6 +55,20 @@ jobs:
       # no pgtap, no Supabase CLI — just psql.
       - run: bash supabase/tests/run.sh
 
+  store:
+    name: Store metadata and manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Metadata lengths, the privacy manifest, the blocked permissions, the
+      # foreground-service subtype, the permission strings and the deep-link
+      # paths. Everything a wrong answer to means a rejection and a two-week
+      # delay, checked rather than remembered.
+      - run: npm run store:check
+
   tokens:
     name: Generated files are in sync
     runs-on: ubuntu-latest

@@ -1,0 +1,13 @@
+ROUNDS is a nightlife companion for adults of legal drinking age. It helps people track their own drinking, stay with their group and get home safely.
+
+AGE GATE. Date of birth is verified at sign-up and the result is stored server-side, so reinstalling does not reset it. 18 in EU/UK/RO, 21 in the US.
+
+THE BLOOD-ALCOHOL FIGURE IS AN ESTIMATE, PRESENTED AS ONE. It is secondary to a plain-language pace word, always carries the disclaimer "Pacing estimate. Never use this to decide whether to drive.", never appears near a transport option, never appears on a shareable card or any social surface, and is suppressed entirely when the app is telling the user to slow down. It is computed on-device and never transmitted or stored.
+
+BLOCK, REPORT AND ACCOUNT DELETION are all present. Block is at Person profile > ... > Block. Report is at the same menu, and at Settings > Help. Delete account is at Settings > Data & account, with a type-to-confirm and an immediate sign-out.
+
+THERE IS NO FEED and no user-generated content stream. Chat exists only inside a night you were invited to. There is no leaderboard on anything countable about alcohol, and no streak that rewards drinking.
+
+SAFETY FEATURES ARE FREE and are not behind any payment. This build offers nothing for sale: there is no subscription, no in-app purchase and no price anywhere in the app.
+
+DEMO ACCOUNT: demo@rounds.app, code 123456. Settings > Demo data fills the app with history so every screen has content.

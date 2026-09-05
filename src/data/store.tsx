@@ -69,6 +69,20 @@ export interface Settings {
   /** Sound effects. Off by default — this app gets opened in quiet places. */
   sound: boolean;
   haptics: boolean;
+  /**
+   * Whether to show the ‰ figure under the pace ring.
+   *
+   * OFF by default, and that is a product decision rather than a cautious one.
+   * The state word IS the readout — it is relative to this person's own
+   * weekday median, which is the only comparison that means anything. The ‰ is
+   * a population-average approximation that invites exactly the interpretation
+   * the product must never invite, and a person who has not asked for it is
+   * better served without it.
+   *
+   * It also keeps the number off a default install, which is what the store
+   * screenshots are taken from.
+   */
+  showEstimate: boolean;
   accentIndex: number;
   subscribed: boolean;
 }
@@ -124,6 +138,7 @@ const DEFAULT_SETTINGS: Settings = {
   reduceMotion: false,
   sound: false,
   haptics: true,
+  showEstimate: false,
   accentIndex: 0,
   subscribed: false,
 };

@@ -9,11 +9,14 @@
  * That is the "leave Expo Go, stay on Expo" call from the strategy doc, made
  * concrete: a build-pipeline change, not a rewrite.
  */
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   withInfoPlist,
   withEntitlementsPlist,
   withAndroidManifest,
   withXcodeProject,
+  withDangerousMod,
   AndroidConfig,
 } = require('expo/config-plugins');
 
@@ -66,6 +69,35 @@ function withIosSurfaces(config) {
     };
     return cfg;
   });
+
+  /**
+   * Apple's privacy manifest, copied into the iOS project on every prebuild.
+   *
+   * `ios-config/PrivacyInfo.xcprivacy` used to carry the instruction "copy into
+   * the iOS target after prebuild", which is the kind of step that is done
+   * correctly four times and then forgotten on the fifth — and a missing or
+   * stale privacy manifest is a rejection, not a warning. Prebuild wipes the
+   * `ios/` directory, so a manual copy is guaranteed to be lost eventually.
+   *
+   * `store:check` asserts that the source file and the copy agree, so a manifest
+   * edited in `ios/` by hand is caught rather than silently overwritten.
+   */
+  config = withDangerousMod(config, [
+    'ios',
+    (cfg) => {
+      const source = path.join(cfg.modRequest.projectRoot, 'ios-config', 'PrivacyInfo.xcprivacy');
+      if (!fs.existsSync(source)) {
+        throw new Error(
+          'ios-config/PrivacyInfo.xcprivacy is missing. It is required at submission and its ' +
+            'contents must match the App Privacy answers — see store/app-store.md.'
+        );
+      }
+      const target = path.join(cfg.modRequest.platformProjectRoot, cfg.modRequest.projectName ?? '');
+      fs.mkdirSync(target, { recursive: true });
+      fs.copyFileSync(source, path.join(target, 'PrivacyInfo.xcprivacy'));
+      return cfg;
+    },
+  ]);
 
   return config;
 }

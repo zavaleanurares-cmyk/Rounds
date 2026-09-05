@@ -37,3 +37,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Store screenshots are GENERATED — `npm run store:shots` rebuilds all eighteen
+# from the current web export in about a minute. Committing 16MB of PNGs that
+# change with every UI tweak buys nothing that the script does not.
+store/screenshots/

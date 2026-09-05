@@ -19,12 +19,13 @@ ask:
 >
 > · **Age gate.** Date of birth is verified at sign-up and the result is stored
 >   server-side, so reinstalling does not reset it. 18 in EU/UK/RO, 21 in the US.
-> · **The blood-alcohol figure is an estimate, presented as one.** It is
->   secondary to a plain-language pace word, always carries the disclaimer
->   "Pacing estimate. Never use this to decide whether to drive.", never appears
->   near a transport option, never appears on a shareable card or any social
->   surface, and is suppressed entirely when the app is telling the user to slow
->   down. It is computed on-device and never transmitted or stored.
+> · **The blood-alcohol figure is OFF by default and opt-in** (Settings ›
+>   Units & region). When a user turns it on it is secondary to a
+>   plain-language pace word, always carries the disclaimer "Pacing estimate.
+>   Never use this to decide whether to drive.", never appears near a transport
+>   option, never appears on a shareable card or any social surface, and is
+>   suppressed entirely when the app is telling the user to slow down. It is
+>   computed on-device and never transmitted or stored.
 > · **Block, report and account deletion** are all present. Block is at
 >   Person profile › ⋯ › Block. Report is at the same menu, and at
 >   Settings › Help. Delete account is at Settings › Data & account, with a
@@ -32,7 +33,10 @@ ask:
 > · **There is no feed and no user-generated content stream.** Chat exists only
 >   inside a night you were invited to. There is no leaderboard on anything
 >   countable about alcohol, and no streak that rewards drinking.
-> · **Safety features are free forever** and are never behind the subscription.
+>   Because it is off by default, a reviewer on a fresh install will not see a
+>   number at all — the pace word is the whole readout.
+> · **Safety features are free.** This build offers nothing for sale: there is
+>   no subscription, no in-app purchase and no price anywhere in the app.
 > · Demo account: **demo@rounds.app**, code **123456**. Settings › Demo data
 >   fills the app with history so every screen has content.
 
@@ -105,24 +109,97 @@ uploaded.
 
 Six, in this order. The first two are what people decide on.
 
-1. **Tonight · Live** — the pace ring at STEADY, with the tonight strip
+1. **Tonight · Live** — the pace ring with a night running, and the water nudge
 2. **Log sheet** — "Same again" plus the drawn drinks
 3. **Morning after** — fill the gaps
 4. **Get home safe** — the armed check-in
 5. **You** — spend and the year heatmap
 6. **Circle** — out right now
 
+Shot 1 leads on the ring reading QUICK with "Two in the last hour, no water"
+under it, rather than a calm green STEADY. That is deliberate. A green ring
+shows a pretty control; the nudge shows what the app is actually FOR, and it is
+the frame that answers "why would I install this" in the two seconds a listing
+gets.
+
 Do **not** screenshot the ‰ estimate, and do not put a number on a caption. The
-store listing is an outward-facing surface and the same rule applies.
+store listing is an outward-facing surface and the same rule applies. The
+estimate is off by default so a clean install cannot produce one by accident,
+and `scripts/store-shots.mjs` throws if a ‰ appears in any frame anyway.
+
+### Generating them
+
+```
+npx expo export --platform web && npx serve -s dist -l 4173
+npm run store:shots
+```
+
+Eighteen files in `store/screenshots/` — the six at 1320×2868, 1242×2688 and
+1080×1920, rendered at each device's real logical size and @3x so the pixel
+count is exact rather than one out. The script seeds a signed-in account with
+fourteen weeks of history, starts a night and logs into it, so no frame is an
+empty state; it fails rather than continuing if the hero would be empty.
+
+These are for the listing draft and for checking framing. **Retake the final
+ones on real devices** — a web render is close, not identical, and a reviewer
+will notice a status bar that is not iOS's.
+
+## Listing copy
+
+The strings above are not the source of truth — `store/metadata/` is, so a typo
+is a diff rather than a copy-paste. `npm run store:check` asserts every one of
+them fits inside the store's limit, which both stores enforce by silently
+truncating.
+
+```
+store/metadata/en-US/name.txt              30 chars
+store/metadata/en-US/subtitle.txt          30
+store/metadata/en-US/promotional_text.txt  170
+store/metadata/en-US/keywords.txt          100
+store/metadata/en-US/description.txt       4000
+store/metadata/en-US/short_description.txt 80   (Play)
+store/metadata/en-US/release_notes.txt     500
+store/metadata/review/notes.txt            4000
+```
 
 ## Before you press submit
 
-- [ ] Legal `[DRAFT]` sections settled by counsel
-- [ ] `PrivacyInfo.xcprivacy` copied into the iOS target
-- [ ] Support URL and marketing URL live
-- [ ] Demo account works on a clean install
-- [ ] `apple-app-site-association` and `assetlinks.json` served and verifying
-- [ ] Push certificate / FCM key uploaded
-- [ ] Subscription products created in both stores, prices set per territory
-- [ ] `STORE_WEBHOOK_SECRET` set, webhook reachable, one test purchase mirrored
-- [ ] `npm run check` green
+`npm run store:check` verifies everything in this repo that can be verified —
+metadata lengths, the privacy manifest's contents, the blocked permissions, the
+foreground-service subtype, the permission strings, the deep-link paths — and
+prints, separately, the list below. Nothing on that list is stubbed: a fake
+answer that passes a check is worse than no check, because it removes the
+reminder without doing the work.
+
+Blocked on a developer account, a key, or a live domain:
+
+- [ ] Apple Developer account and App ID for `app.rounds.client`; TEAMID then
+      replaces the placeholder in `apple-app-site-association`
+- [ ] App Store Connect app record, and the 17+ rating set on it
+- [ ] APNs auth key (.p8) → `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`.
+      Without these the Live Activity fan-out has nothing to send through
+- [ ] Play Console app, upload key AND Play App Signing fingerprint into
+      `assetlinks.json` — both placeholders are still in the file
+- [ ] FCM server key
+- [ ] `specialUse` demo video: record the ongoing notification and its two
+      action buttons
+- [ ] `rounds.app` live, serving both `.well-known` files over HTTPS, the AASA
+      as `application/json` with no extension
+- [ ] Support URL and marketing URL
+- [ ] Demo account `demo@rounds.app` / `123456` working on a clean install
+      against the production database
+- [ ] Legal `[DRAFT]` sections settled by counsel — the one that cannot be
+      worked around
+- [ ] Final screenshots retaken on real devices
+
+Deferred with billing, not blocked: subscription products, store prices per
+territory, `STORE_WEBHOOK_SECRET` and the test purchase. See
+`src/config/flags.ts`.
+
+Verified automatically:
+
+- [x] `PrivacyInfo.xcprivacy` copied into the iOS target — the config plugin
+      does it on every prebuild, so it cannot be forgotten after a clean
+- [x] Metadata within every store limit
+- [x] Review notes agree with the app as built
+- [x] `npm run check` green (typecheck, unit tests, database suite, store check)

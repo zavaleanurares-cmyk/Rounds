@@ -54,7 +54,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSCameraUsageDescription: "To scan a night's QR code and join your group.",
       NSContactsUsageDescription:
         'Contacts are hashed on your device to find friends. Raw numbers never leave your phone.',
-      NSPhotoLibraryUsageDescription: 'To pick a profile photo.',
+      NSPhotoLibraryUsageDescription:
+        'To choose a photo for your profile. ROUNDS reads only the picture you pick and never browses your library.',
       NSUserTrackingUsageDescription:
         'ROUNDS does not track you across other apps. This prompt appears only because a library requests it.',
     },

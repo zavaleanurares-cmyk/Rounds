@@ -69,7 +69,18 @@ describe('the estimate stays where it belongs', () => {
 
   it('is suppressed in the slow-down state by the component, not by callers', () => {
     const src = read('src/ui/PaceRing.tsx');
-    expect(src).toMatch(/state === 'slow_down'\)\s*return null/);
+    // Both conditions live in the component, so a new placement cannot forget
+    // one of them.
+    expect(src).toMatch(/state === 'slow_down'[\s\S]{0,60}return null/);
+  });
+
+  it('is off unless the user asked for it, and the default is off', () => {
+    const ring = read('src/ui/PaceRing.tsx');
+    expect(ring).toMatch(/!settings\.showEstimate[\s\S]{0,40}return null/);
+    const store = code('src/data/store.tsx');
+    // In DEFAULT_SETTINGS, not merely declared on the type.
+    const defaults = store.match(/const DEFAULT_SETTINGS[\s\S]*?\};/)?.[0] ?? '';
+    expect(defaults).toMatch(/showEstimate:\s*false/);
   });
 
   /**

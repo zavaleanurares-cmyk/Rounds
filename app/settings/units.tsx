@@ -1,13 +1,13 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Screen, Card, Text, Segmented } from '@/ui';
+import { Screen, Card, Text, Segmented, ToggleRow, Group } from '@/ui';
 import { useStore } from '@/data/store';
 import { STANDARD_DRINK_G, type UnitSystem } from '@/domain/units';
 import { space } from '@/design/tokens';
 
 /** S-03 · Units & region. */
 export default function Units() {
-  const { profile, updateProfile } = useStore();
+  const { profile, updateProfile, settings, updateSettings } = useStore();
   const system = profile?.unitSystem ?? 'EU';
   return (
     <Screen title="Units & region" back mood="night">
@@ -47,6 +47,22 @@ export default function Units() {
           />
         </View>
       </Card>
+
+      <Group title="THE PACE READOUT">
+        <ToggleRow
+          title="Show the ‰ estimate"
+          subtitle="Off by default. The pace word is the real readout — it compares you to your own usual Friday, which the number cannot."
+          value={settings.showEstimate}
+          onValueChange={(v) => updateSettings({ showEstimate: v })}
+          last
+        />
+      </Group>
+
+      <Text variant="footnote" tone="quaternary">
+        Whether it is shown or not, the figure is an estimate from population averages, it is
+        computed on your phone and sent nowhere, and it disappears entirely when ROUNDS is telling
+        you to slow down. Never use it to decide whether to drive.
+      </Text>
     </Screen>
   );
 }
