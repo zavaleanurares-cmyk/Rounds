@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
 /**
@@ -839,6 +840,51 @@ describe('the app is not write-only', () => {
     expect(screen).toMatch(/const expandedHeight = largeTitle \? titleTop \+ titleBlock/);
     // And the reservation must not go back to counting lines itself.
     expect(screen).not.toMatch(/titleTop \+ LARGE \* TITLE_LINE \+ \(subtitle \? 22 : 0\)/);
+  });
+
+  it('the native module is actually in the repository', () => {
+    /**
+     * `.gitignore` had `ios/` and `android/` unanchored, and a pattern without a
+     * leading slash matches a directory at ANY depth — so it was also matching
+     * `modules/rounds-native/ios/` and `.../android/`. Eight Swift files, the
+     * podspec, the Gradle build and six Kotlin files had never been committed.
+     *
+     * Nothing would have reported it. The tests pass, the web build passes, the
+     * typecheck passes — the omission only surfaces the first time somebody
+     * clones and runs `expo prebuild`, and finds an app with no Live Activity,
+     * no widgets, no App Intents, no Control Center control and no tile.
+     *
+     * Caught by diffing a clone of the repo against the working tree, which is
+     * the only way to see what tracking is missing rather than what it has.
+     */
+    const tracked = execSync('git ls-files modules/rounds-native', { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean);
+
+    // The two entry points the Expo module config names, and the surfaces.
+    for (const file of [
+      'modules/rounds-native/ios/RoundsNativeModule.swift',
+      'modules/rounds-native/ios/RoundsLiveActivityView.swift',
+      'modules/rounds-native/ios/RoundsWidgets.swift',
+      'modules/rounds-native/ios/RoundsIntents.swift',
+      'modules/rounds-native/ios/RoundsControl.swift',
+      'modules/rounds-native/ios/RoundsNative.podspec',
+      'modules/rounds-native/android/build.gradle',
+      'modules/rounds-native/android/src/main/java/app/rounds/nativemodule/RoundsNativeModule.kt',
+      'modules/rounds-native/android/src/main/java/app/rounds/nativemodule/RoundsWidget.kt',
+      'modules/rounds-native/android/src/main/java/app/rounds/nativemodule/RoundsTileService.kt',
+      'modules/rounds-native/plugin/withRoundsNative.js',
+    ]) {
+      expect({ file, tracked: tracked.includes(file) }).toEqual({ file, tracked: true });
+    }
+
+    // And the ignore patterns stay anchored to the root, where the prebuild
+    // output they exist for actually appears.
+    const ignore = readFileSync('.gitignore', 'utf8');
+    expect(ignore).toMatch(/^\/ios\/$/m);
+    expect(ignore).toMatch(/^\/android\/$/m);
+    expect(ignore).not.toMatch(/^ios\/$/m);
+    expect(ignore).not.toMatch(/^android\/$/m);
   });
 
   it('a device registers for push, or nothing can be delivered to it', () => {

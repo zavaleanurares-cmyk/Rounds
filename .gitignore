@@ -2,11 +2,20 @@
 node_modules/
 
 # expo
+#
+# ANCHORED, and that matters. `ios/` and `android/` without a leading slash match
+# a directory at ANY depth, so they were also matching
+# `modules/rounds-native/ios/` and `modules/rounds-native/android/` — the entire
+# native module. Eight Swift files, the podspec, the Gradle build and the Kotlin
+# source had never been committed, which would have put a repo on GitHub with no
+# Live Activity, no widgets, no App Intents, no Control Center control and no
+# Quick Settings tile. The prebuild output these are meant to exclude only ever
+# appears at the root.
+/ios/
+/android/
 .expo/
 dist/
 web-build/
-ios/
-android/
 *.orig.*
 expo-env.d.ts
 
