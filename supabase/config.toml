@@ -1,0 +1,89 @@
+# The Supabase CLI's project config.
+#
+# `supabase link` and `supabase db push` both refuse to run without this file,
+# so its absence was a deploy that could only fail on a fresh checkout — which
+# is every CI run.
+#
+# `project_id` is the LOCAL project name, not the production ref. The ref comes
+# from `--project-ref` at link time, so nothing environment-specific is
+# committed here.
+project_id = "rounds"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+# Match production. A local database on a different major version can accept a
+# migration that production then rejects, which is the worst time to find out.
+major_version = 16
+
+[db.pooler]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+# Overridden per environment; the local value only affects magic links in `supabase start`.
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["rounds://", "http://localhost:8081"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+# The app signs in with a six-digit OTP, not a link — `verifyOtp` in
+# src/data/remote.ts. A magic link would open a browser the app cannot read
+# back from.
+otp_length = 6
+otp_expiry = 600
+
+[auth.external.apple]
+enabled = true
+
+[auth.external.google]
+enabled = true
+
+[storage]
+enabled = true
+# Avatars are the only public bucket, and the RLS matrix asserts that.
+file_size_limit = "5MiB"
+
+[edge_runtime]
+enabled = true
+
+# ─────────────────────────────────────────────────────────────── functions
+#
+# `verify_jwt` defaults to TRUE, which is right for two of these four and wrong
+# for the other two — and wrong in a way nothing would report except the feature
+# quietly never working.
+
+[functions.invite]
+# Read by people who do not have the app and are not signed in. That is the
+# whole point of it: it renders the invite page for a stranger holding a link.
+# Left at the default it would 401 every one of them.
+verify_jwt = false
+
+[functions.store-webhook]
+# Called by Apple and Google, which have no Supabase session. It authenticates
+# itself against STORE_WEBHOOK_SECRET instead — see the function.
+verify_jwt = false
+
+[functions.send-outbound]
+# The drain. Invoked by the scheduler with the service-role key, never by a
+# device.
+verify_jwt = true
+
+[functions.sync-entitlement]
+# Called by the app for the signed-in user, and it reads that user from the
+# Authorization header.
+verify_jwt = true

@@ -1,0 +1,5 @@
+# The safety path and the schema get read by a person, always.
+/supabase/                 @zavaleanurares-cmyk
+/src/services/locationShare.ts  @zavaleanurares-cmyk
+/src/services/contacts.ts       @zavaleanurares-cmyk
+/src/content/legal.ts           @zavaleanurares-cmyk

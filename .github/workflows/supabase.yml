@@ -1,19 +1,35 @@
 name: Supabase
 
-# The GitHub integration: every push to main applies migrations to production,
-# and every PR gets its own preview branch with the schema applied.
+# Every push to main applies the migrations to production and redeploys the
+# functions. Every pull request proves the migrations apply cleanly first, to a
+# throwaway Postgres, with all three SQL suites run against them.
 #
-# Set these once in the repo settings:
-#   SUPABASE_ACCESS_TOKEN   a personal access token
-#   SUPABASE_DB_PASSWORD    the database password
-#   SUPABASE_PROJECT_REF    the project ref from the dashboard URL
+# Repository secrets this needs (Settings → Secrets and variables → Actions):
+#
+#   SUPABASE_ACCESS_TOKEN    a personal access token
+#   SUPABASE_DB_PASSWORD     the database password
+#   SUPABASE_PROJECT_REF     the ref from the dashboard URL
+#
+# And the function secrets, which are pushed from here so that rotating one is a
+# repo change rather than something somebody remembers to do in a dashboard:
+#
+#   APNS_KEY_ID · APNS_TEAM_ID · APNS_PRIVATE_KEY   Live Activity updates
+#   FCM_SERVER_KEY                                  Android push
+#   SMS_PROVIDER_SID · SMS_PROVIDER_TOKEN · SMS_FROM   the safety SMS
+#   STORE_WEBHOOK_SECRET                            entitlement webhook
+#   INVITE_PAGE_URL                                 the invite page template
 
 on:
   push:
     branches: [main]
-    paths: ['supabase/**']
+    paths: ['supabase/**', '.github/workflows/supabase.yml']
   pull_request:
-    paths: ['supabase/**']
+    paths: ['supabase/**', '.github/workflows/supabase.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -34,21 +50,103 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - run: bash supabase/tests/run.sh
+      - name: Every migration, then the RLS matrix, the escalation and the RPC rules
+        run: bash supabase/tests/run.sh
 
   deploy:
     name: Apply to production
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with: { version: latest }
-      - env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Link
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      # pg_cron is an extension, not a default. 00049 installs six schedules
+      # WHERE IT EXISTS and prints a notice where it does not — which means a
+      # project without it applies every migration successfully and schedules
+      # nothing at all, safety escalation included. Enabling it before the push
+      # is the difference between a working deployment and a silent one.
+      - name: Enable pg_cron
         run: |
-          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase db push
-          supabase functions deploy send-outbound store-webhook sync-entitlement invite
+          supabase db execute --linked \
+            --command "create extension if not exists pg_cron with schema extensions;" \
+          || supabase db execute --linked \
+            --command "create extension if not exists pg_cron;"
+
+      - name: Apply migrations
+        run: supabase db push
+
+      # The check that makes the step above honest. A migration that applies and
+      # schedules nothing looks identical to one that worked.
+      - name: Prove the jobs are scheduled
+        run: |
+          set -euo pipefail
+          expected="morning-recaps plan-reminders purge-accounts purge-locations purge-outbound safety-escalation weekly-recaps"
+          got=$(supabase db execute --linked \
+            --command "select string_agg(jobname, ' ' order by jobname) from cron.job;" \
+            | tr -d '\r' | grep -oE '[a-z-]+( [a-z-]+)*' | tail -1 || true)
+          echo "scheduled: $got"
+          for job in $expected; do
+            case " $got " in
+              *" $job "*) ;;
+              *) echo "::error::$job is not scheduled. See docs/deploy.md."; exit 1 ;;
+            esac
+          done
+
+      - name: Push the function secrets
+        run: |
+          set -euo pipefail
+          declare -a pairs=(
+            "APNS_KEY_ID=${{ secrets.APNS_KEY_ID }}"
+            "APNS_TEAM_ID=${{ secrets.APNS_TEAM_ID }}"
+            "APNS_PRIVATE_KEY=${{ secrets.APNS_PRIVATE_KEY }}"
+            "FCM_SERVER_KEY=${{ secrets.FCM_SERVER_KEY }}"
+            "SMS_PROVIDER_SID=${{ secrets.SMS_PROVIDER_SID }}"
+            "SMS_PROVIDER_TOKEN=${{ secrets.SMS_PROVIDER_TOKEN }}"
+            "SMS_FROM=${{ secrets.SMS_FROM }}"
+            "STORE_WEBHOOK_SECRET=${{ secrets.STORE_WEBHOOK_SECRET }}"
+            "INVITE_PAGE_URL=${{ secrets.INVITE_PAGE_URL }}"
+          )
+          set_these=()
+          for pair in "${pairs[@]}"; do
+            # An unset secret is an empty value; setting it would overwrite a
+            # good one with nothing.
+            [ -n "${pair#*=}" ] && set_these+=("$pair")
+          done
+          if [ ${#set_these[@]} -gt 0 ]; then
+            supabase secrets set "${set_these[@]}"
+          else
+            echo "No function secrets configured — skipping."
+          fi
+
+      - name: Deploy the functions
+        run: supabase functions deploy send-outbound store-webhook sync-entitlement invite
+
+      # The drain cannot be scheduled from SQL: send-outbound is an edge
+      # function and needs a key. It is the one step nothing here can do, and
+      # skipping it means every message the product composes sits in a table
+      # forever — so the run says so rather than finishing quietly.
+      - name: Remind about the drain
+        run: |
+          echo "### Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Migrations applied, six jobs scheduled, functions deployed." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Still manual:** the outbound drain. \`send-outbound\` is an edge function and cannot be scheduled from SQL." >> "$GITHUB_STEP_SUMMARY"
+          echo "Without it nothing is ever delivered — the safety SMS included. See \`docs/deploy.md\` §2." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```sql' >> "$GITHUB_STEP_SUMMARY"
+          echo "select count(*) filter (where sent_at is null) as waiting," >> "$GITHUB_STEP_SUMMARY"
+          echo "       count(*) filter (where sent_at is not null) as sent" >> "$GITHUB_STEP_SUMMARY"
+          echo "  from public.outbound;" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
