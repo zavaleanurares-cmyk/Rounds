@@ -31,5 +31,12 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
   psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$f"
 done
 
+HARNESS="$ROOT/supabase/tests/harness.sql"
+
 echo "  running RLS matrix"
-psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/rls_matrix.sql"
+psql -q -d "$DB" -v ON_ERROR_STOP=1 -v harness="$HARNESS" -f "$ROOT/supabase/tests/rls_matrix.sql"
+
+# Behaviour, not access control. Runs on a database the matrix has already
+# written to, so it cleans up after itself rather than assuming an empty one.
+echo "  running safety escalation"
+psql -q -d "$DB" -v ON_ERROR_STOP=1 -v harness="$HARNESS" -f "$ROOT/supabase/tests/safety_escalation.sql"

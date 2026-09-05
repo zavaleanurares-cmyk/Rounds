@@ -28,7 +28,7 @@ jobs:
         run: npm run export:web
 
   database:
-    name: Migrations and the RLS matrix
+    name: Migrations, the RLS matrix and the escalation
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -49,8 +49,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      # Applies every migration to a scratch database and runs 78 assertions
-      # across six roles. No Docker, no pgtap, no Supabase CLI.
+      # Applies every migration to a scratch database, then runs both suites:
+      # the RLS matrix (who may read what, across six roles) and the safety
+      # escalation (what actually happens to a check, end to end). No Docker,
+      # no pgtap, no Supabase CLI — just psql.
       - run: bash supabase/tests/run.sh
 
   tokens:

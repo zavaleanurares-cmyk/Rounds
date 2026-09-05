@@ -21,47 +21,8 @@
 -- ============================================================================
 
 \set ON_ERROR_STOP on
-set client_min_messages = warning;
 
-create schema if not exists t;
-
-create table if not exists t.results (n serial, name text, ok boolean);
-truncate t.results;
-
-create or replace function t.check(name text, actual boolean, expected boolean)
-returns void language plpgsql as $$
-begin
-  insert into t.results (name, ok) values (name, actual is not distinct from expected);
-  if actual is distinct from expected then
-    raise exception 'FAIL: % (expected %, got %)', name, expected, actual;
-  end if;
-end;
-$$;
-
-create or replace function t.count_eq(name text, actual bigint, expected bigint)
-returns void language plpgsql as $$
-begin
-  insert into t.results (name, ok) values (name, actual = expected);
-  if actual <> expected then
-    raise exception 'FAIL: % (expected % rows, got %)', name, expected, actual;
-  end if;
-end;
-$$;
-
-create or replace function t.rejects(name text, stmt text)
-returns void language plpgsql as $$
-begin
-  begin
-    execute stmt;
-    insert into t.results (name, ok) values (name, false);
-    raise exception 'FAIL: % (statement was allowed and should not have been)', name;
-  exception
-    when others then
-      if sqlerrm like 'FAIL:%' then raise; end if;
-      insert into t.results (name, ok) values (name, true);
-  end;
-end;
-$$;
+\i :harness
 
 -- ------------------------------------------------------------------ fixtures
 -- owner       created the session
