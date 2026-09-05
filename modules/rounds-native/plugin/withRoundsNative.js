@@ -22,6 +22,35 @@ const {
 
 const APP_GROUP = 'group.app.rounds.client';
 
+/**
+ * What the widget extension target must contain when it is finally created.
+ *
+ * Kept as data rather than prose so the implementation and the test can agree
+ * on it, and so the list cannot quietly drift from the directory. See
+ * docs/ios-widget-target.md.
+ */
+const WIDGET_EXTENSION = {
+  name: 'RoundsWidgets',
+  bundleIdSuffix: '.widgets',
+  deploymentTarget: '17.0',
+  entitlements: { 'com.apple.security.application-groups': [APP_GROUP] },
+  infoPlist: {
+    NSExtension: { NSExtensionPointIdentifier: 'com.apple.widgetkit-extension' },
+  },
+  frameworks: ['WidgetKit', 'SwiftUI', 'ActivityKit', 'AppIntents'],
+  sources: [
+    // RoundsWidgetBundle carries the @main entry point; without it the
+    // extension has no executable start and the surfaces never instantiate.
+    'RoundsWidgetBundle.swift',
+    'RoundsShared.swift',
+    'RoundsActivityAttributes.swift',
+    'RoundsIntents.swift',
+    'RoundsLiveActivityView.swift',
+    'RoundsWidgets.swift',
+    'RoundsControl.swift',
+  ],
+};
+
 /* ------------------------------------------------------------------- iOS */
 
 function withIosSurfaces(config) {
@@ -218,3 +247,4 @@ module.exports = function withRoundsNative(config) {
 };
 
 module.exports.APP_GROUP = APP_GROUP;
+module.exports.WIDGET_EXTENSION = WIDGET_EXTENSION;

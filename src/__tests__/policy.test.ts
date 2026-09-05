@@ -978,6 +978,28 @@ describe('the native build', () => {
     }
   });
 
+  it('lists every extension source, and the @main entry point among them', () => {
+    // The source list used to live inside a property nothing read, so it could
+    // drift from the directory without anyone noticing. A widget that is not in
+    // the target does not exist, however well it compiles.
+    //
+    // RoundsWidgetBundle carries @main. A WidgetKit extension without one has no
+    // executable entry point: the five surfaces are types nothing instantiates.
+    const { WIDGET_EXTENSION } = require('../../modules/rounds-native/plugin/withRoundsNative.js');
+    const onDisk = readdirSync('modules/rounds-native/ios').filter((f) => f.endsWith('.swift'));
+    const listed: string[] = WIDGET_EXTENSION.sources;
+
+    expect(listed).toContain('RoundsWidgetBundle.swift');
+    expect(readFileSync('modules/rounds-native/ios/RoundsWidgetBundle.swift', 'utf8')).toMatch(
+      /@main\s+struct \w+: WidgetBundle/
+    );
+    for (const f of listed) expect(onDisk).toContain(f);
+    // RoundsNativeModule belongs to the app, not the extension.
+    for (const f of onDisk) {
+      if (f !== 'RoundsNativeModule.swift') expect(listed).toContain(f);
+    }
+  });
+
   it('does not silently produce an iOS build with no system surfaces', () => {
     // withXcodeProject assigned `__roundsTargets` and nothing ever read it, so
     // six Swift files — the Live Activity, three widget families and the

@@ -1,0 +1,147 @@
+name: iOS
+
+# The one thing this repository could not see.
+#
+# Every other job here runs on Linux and proves things about the JavaScript, the
+# database and the store metadata. None of them compile a line of Swift, which
+# is how an Xcode project with no widget extension target in it, three missing
+# Android resources and a missing peer dependency all sat in a green build.
+#
+# GitHub's macOS runners are free for public repositories, and an unsigned build
+# needs no Apple Developer account, so the whole native surface can be compiled
+# on every change for nothing. If this repository is ever made private again,
+# macOS minutes bill at ten times the Linux rate — move this to a schedule then
+# rather than deleting it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: The app compiles for iOS
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
+      - name: Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app || xcodebuild -version
+
+      # ROUNDS_ALLOW_NO_WIDGETS is the deliberate escape hatch from
+      # modules/rounds-native/plugin/withRoundsNative.js. It builds the app
+      # without its system surfaces. The `widgets` job below is what holds the
+      # real requirement; this one exists so that a break in the app itself is
+      # not hidden behind the unfinished extension target.
+      - name: Prebuild
+        env:
+          ROUNDS_ALLOW_NO_WIDGETS: '1'
+        run: npx expo prebuild --platform ios --no-install --clean
+
+      - name: Pods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      # No signing: this proves the code compiles and links, which is the part
+      # that has never been checked. Signing needs an Apple Developer account
+      # and belongs in EAS, not here.
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/ROUNDS.xcworkspace \
+            -scheme ROUNDS \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | xcpretty || (echo "::error::iOS build failed" && exit 1)
+
+  widgets:
+    name: The Live Activity and widgets are in the app
+    runs-on: macos-15
+    timeout-minutes: 45
+    # TODO: drop continue-on-error once the widget extension target is created.
+    # Until then this job is the standing, visible record that an iOS build
+    # ships without its system surfaces — see docs/ios-widget-target.md.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
+      # Deliberately WITHOUT the escape hatch. While the target is missing the
+      # plugin throws here with an explanation, and that is the correct result.
+      - name: Prebuild, widgets required
+        run: npx expo prebuild --platform ios --no-install --clean
+
+      - name: Pods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/ROUNDS.xcworkspace \
+            -scheme ROUNDS \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | xcpretty
+
+      # The build succeeding is not the check. A widget extension that is
+      # created but never embedded produces a perfectly green build and an app
+      # with no widgets in it, which is the failure mode this whole job exists
+      # for. The only proof is the .appex inside the built product.
+      - name: The extension is actually embedded
+        run: |
+          APP=$(find build/Build/Products -maxdepth 2 -name 'ROUNDS.app' | head -1)
+          echo "app bundle: $APP"
+          test -n "$APP" || (echo "::error::no ROUNDS.app was produced" && exit 1)
+          if [ ! -d "$APP/PlugIns/RoundsWidgets.appex" ]; then
+            echo "::error::ROUNDS.app has no PlugIns/RoundsWidgets.appex — the Live Activity, the three widget families and the Control Center control are not in this build."
+            ls -la "$APP/PlugIns" 2>/dev/null || echo "(no PlugIns directory at all)"
+            exit 1
+          fi
+          echo "RoundsWidgets.appex is embedded:" >> "$GITHUB_STEP_SUMMARY"
+          du -sh "$APP/PlugIns/RoundsWidgets.appex" >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    name: The app compiles for Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install --clean
+
+      # aapt2 resolves @xml/rounds_widget_info, @drawable/ic_notification and
+      # the widget layout here. All three were missing and the build could not
+      # have succeeded; this is what stops that recurring.
+      - name: Assemble
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rounds-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
