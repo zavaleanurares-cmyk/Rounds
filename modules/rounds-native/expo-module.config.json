@@ -1,0 +1,5 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": { "modules": ["RoundsNativeModule"] },
+  "android": { "modules": ["app.rounds.nativemodule.RoundsNativeModule"] }
+}

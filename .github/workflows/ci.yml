@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Typecheck, tests, web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - name: Every screen still has a route
+        run: npm run manifest
+      - name: Web bundle builds
+        run: npm run export:web
+
+  database:
+    name: Migrations and the RLS matrix
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: rounds_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      # Applies every migration to a scratch database and runs 78 assertions
+      # across six roles. No Docker, no pgtap, no Supabase CLI.
+      - run: bash supabase/tests/run.sh
+
+  tokens:
+    name: Generated files are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # tokens.json and the Swift/Kotlin constants are GENERATED from
+      # src/design/tokens.ts. A hand-edit here is a value that will disagree
+      # with itself on a native surface, so the build catches it.
+      - run: npm run tokens
+      - run: git diff --exit-code tokens/ || (echo "::error::tokens/ is stale — run npm run tokens" && exit 1)

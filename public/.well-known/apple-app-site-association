@@ -1,0 +1,16 @@
+{
+  "_comment": "Universal Links. Must be served from https://rounds.app/.well-known/apple-app-site-association with Content-Type application/json and NO .json extension. Both must verify or the links open Safari instead of the app — which silently breaks the QR-join flow and the plan invite, i.e. the growth loop.",
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.app.rounds.client"],
+        "components": [
+          { "/": "/n/*", "comment": "join a night" },
+          { "/": "/p/*", "comment": "a plan invite" },
+          { "/": "/c/*", "comment": "a crew invite" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": { "apps": ["TEAMID.app.rounds.client"] }
+}

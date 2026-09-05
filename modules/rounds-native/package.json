@@ -1,0 +1,7 @@
+{
+  "name": "rounds-native",
+  "version": "1.0.0",
+  "description": "ROUNDS system surfaces: Live Activity, widgets, Control Center, Quick Settings, App Intents.",
+  "main": "plugin/withRoundsNative.js",
+  "private": true
+}

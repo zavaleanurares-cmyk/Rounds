@@ -1,0 +1,50 @@
+{
+  "cli": { "version": ">= 5.0.0", "appVersionSource": "remote" },
+  "build": {
+    "//": "Four ways in, in increasing order of effort for the tester.",
+
+    "go": {
+      "//": "Not a build at all. `npm run go` serves the bundle over a tunnel and prints a QR code; anyone with Expo Go is in the app in ten seconds. No account, no install, no TestFlight.",
+      "developmentClient": false,
+      "distribution": "internal",
+      "channel": "go",
+      "env": { "ROUNDS_GO": "1" }
+    },
+
+    "preview": {
+      "//": "An installable build for people without a developer account. Android gets an APK they can sideload from a link; iOS needs ad-hoc provisioning or TestFlight.",
+      "distribution": "internal",
+      "channel": "preview",
+      "android": { "buildType": "apk" },
+      "ios": { "simulator": false },
+      "env": { "APP_VARIANT": "preview" }
+    },
+
+    "development": {
+      "//": "The full thing, including the Live Activity, widgets, Control Center control and App Intents. This is the only profile where the system surfaces exist.",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "ios": { "resourceClass": "m-medium" }
+    },
+
+    "production": {
+      "channel": "production",
+      "autoIncrement": true,
+      "ios": { "resourceClass": "m-medium" }
+    }
+  },
+
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_ID",
+        "appleTeamId": "REPLACE_WITH_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./play-service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}

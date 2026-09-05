@@ -1,0 +1,1959 @@
+{
+  "summary": {
+    "total": 74,
+    "built": 74,
+    "byPriority": [
+      {
+        "priority": "P0",
+        "total": 34,
+        "built": 34
+      },
+      {
+        "priority": "P1",
+        "total": 34,
+        "built": 34
+      },
+      {
+        "priority": "P2",
+        "total": 6,
+        "built": 6
+      }
+    ],
+    "notBuilt": []
+  },
+  "screens": [
+    {
+      "id": "A-01",
+      "priority": "P0",
+      "name": "Welcome",
+      "route": "/(auth)/welcome",
+      "source": "app/(auth)/welcome.tsx",
+      "built": true,
+      "components": [
+        "Aurora",
+        "Button",
+        "InlineLink"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-02",
+      "priority": "P0",
+      "name": "Sign in",
+      "route": "/(auth)/sign-in",
+      "source": "app/(auth)/sign-in.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Screen"
+      ],
+      "reads": [
+        "signInWithEmail",
+        "signInWithProvider"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": true,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-03",
+      "priority": "P0",
+      "name": "OTP verify",
+      "route": "/(auth)/verify",
+      "source": "app/(auth)/verify.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "InlineLink",
+        "Screen"
+      ],
+      "reads": [
+        "auth",
+        "const router = useRouter();\n  const { verifyOtp"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": true,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-04",
+      "priority": "P0",
+      "name": "Age gate",
+      "route": "/(onboarding)/age",
+      "source": "app/(onboarding)/age.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Screen",
+        "T",
+        "Wheel"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { submitDob"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-05",
+      "priority": "P0",
+      "name": "Identity",
+      "route": "/(onboarding)/identity",
+      "source": "app/(onboarding)/identity.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "Field",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile",
+        "updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-06",
+      "priority": "P0",
+      "name": "Body basics",
+      "route": "/(onboarding)/body",
+      "source": "app/(onboarding)/body.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Icon",
+        "InlineLink",
+        "Screen",
+        "Segmented",
+        "Sex",
+        "Stepper"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile",
+        "updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-07",
+      "priority": "P0",
+      "name": "Region & units",
+      "route": "/(onboarding)/region",
+      "source": "app/(onboarding)/region.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Screen",
+        "Segmented",
+        "UnitSystem"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile",
+        "updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-08",
+      "priority": "P1",
+      "name": "Intent",
+      "route": "/(onboarding)/intent",
+      "source": "app/(onboarding)/intent.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Chip",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-09",
+      "priority": "P1",
+      "name": "Modules",
+      "route": "/(onboarding)/modules",
+      "source": "app/(onboarding)/modules.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Screen",
+        "ToggleRow"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile",
+        "updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-10",
+      "priority": "P0",
+      "name": "Notification primer",
+      "route": "/(onboarding)/permissions",
+      "source": "app/(onboarding)/permissions.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Icon",
+        "InlineLink",
+        "Screen"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-11",
+      "priority": "P1",
+      "name": "Ready",
+      "route": "/(onboarding)/done",
+      "source": "app/(onboarding)/done.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { completeOnboarding"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-12",
+      "priority": "P0",
+      "name": "Underage block",
+      "route": "/(onboarding)/blocked",
+      "source": "app/(onboarding)/blocked.tsx",
+      "built": true,
+      "components": [
+        "Aurora",
+        "InlineLink"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "A-13",
+      "priority": "P0",
+      "name": "Terms / Privacy",
+      "route": "/legal/[doc]",
+      "source": "app/legal/[doc].tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Screen"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-01",
+      "priority": "P0",
+      "name": "Tonight · Idle",
+      "route": "/(tabs)/tonight",
+      "source": "app/(tabs)/tonight.tsx",
+      "built": true,
+      "components": [
+        "TonightIdle",
+        "TonightLive",
+        "TonightPlanned",
+        "TonightWinddown"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-02",
+      "priority": "P1",
+      "name": "Tonight · Planned",
+      "route": "/(tabs)/tonight",
+      "source": "app/(tabs)/tonight.tsx",
+      "built": true,
+      "components": [
+        "TonightIdle",
+        "TonightLive",
+        "TonightPlanned",
+        "TonightWinddown"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-03",
+      "priority": "P0",
+      "name": "Tonight · Live",
+      "route": "/(tabs)/tonight",
+      "source": "app/(tabs)/tonight.tsx",
+      "built": true,
+      "components": [
+        "TonightIdle",
+        "TonightLive",
+        "TonightPlanned",
+        "TonightWinddown"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-04",
+      "priority": "P1",
+      "name": "Tonight · Wind-down",
+      "route": "/(tabs)/tonight",
+      "source": "app/(tabs)/tonight.tsx",
+      "built": true,
+      "components": [
+        "TonightIdle",
+        "TonightLive",
+        "TonightPlanned",
+        "TonightWinddown"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-05",
+      "priority": "P1",
+      "name": "Tonight · Morning redirect",
+      "route": "/(tabs)/tonight",
+      "source": "app/(tabs)/tonight.tsx",
+      "built": true,
+      "components": [
+        "TonightIdle",
+        "TonightLive",
+        "TonightPlanned",
+        "TonightWinddown"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-06",
+      "priority": "P0",
+      "name": "Start night sheet",
+      "route": "/session/start",
+      "source": "app/session/start.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Chip",
+        "Field",
+        "Segmented",
+        "Sheet",
+        "ToggleRow",
+        "Visibility"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { startSession",
+        "crews",
+        "profile",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-07",
+      "priority": "P0",
+      "name": "End night",
+      "route": "/session/[id]/end",
+      "source": "app/session/[id]/end.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Icon",
+        "Mood",
+        "MoodFace",
+        "Sheet"
+      ],
+      "reads": [
+        "endSession",
+        "logs",
+        "sessions"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-08",
+      "priority": "P0",
+      "name": "Night detail",
+      "route": "/session/[id]",
+      "source": "app/session/[id]/index.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "DrinkGlyph",
+        "EmptyState",
+        "Icon",
+        "Screen",
+        "Segmented",
+        "StatTile"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "T-09",
+      "priority": "P1",
+      "name": "Edit night",
+      "route": "/session/[id]/edit",
+      "source": "app/session/[id]/edit.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Chip",
+        "DrinkGlyph",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "L-01",
+      "priority": "P0",
+      "name": "Log sheet",
+      "route": "/log",
+      "source": "app/log/index.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Chip",
+        "DrinkCategory",
+        "DrinkGlyph",
+        "Icon",
+        "Row",
+        "Section",
+        "Segmented",
+        "Sheet"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "L-02",
+      "priority": "P0",
+      "name": "Custom drink",
+      "route": "/log/custom",
+      "source": "app/log/custom.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "DrinkCategory",
+        "Field",
+        "Segmented",
+        "Sheet"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "L-03",
+      "priority": "P1",
+      "name": "Round builder",
+      "route": "/log/round",
+      "source": "app/log/round.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Chip",
+        "DrinkGlyph",
+        "Icon",
+        "Sheet"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "L-04",
+      "priority": "P1",
+      "name": "Edit log",
+      "route": "/log/edit/[logId]",
+      "source": "app/log/edit/[logId].tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Chip",
+        "DrinkGlyph",
+        "Field",
+        "Sheet"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-01",
+      "priority": "P0",
+      "name": "Map",
+      "route": "/(tabs)/discover",
+      "source": "app/(tabs)/discover.tsx",
+      "built": true,
+      "components": [
+        "ActivityIndicator",
+        "Aurora",
+        "Avatar",
+        "Button",
+        "Card",
+        "Chip",
+        "DrinkGlyph",
+        "Glass",
+        "Icon",
+        "Venue",
+        "VenueMap"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const insets = useSafeAreaInsets();\n  const { people",
+        "logs",
+        "mergeVenues",
+        "venues: localVenues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-02",
+      "priority": "P1",
+      "name": "Venue detail",
+      "route": "/venue/[id]",
+      "source": "app/venue/[id].tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Screen",
+        "StatTile"
+      ],
+      "reads": [
+        "logs",
+        "people",
+        "profile",
+        "sessions",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-03",
+      "priority": "P0",
+      "name": "Venue search",
+      "route": "/venue/search",
+      "source": "app/venue/search.tsx",
+      "built": true,
+      "components": [
+        "ActivityIndicator",
+        "Button",
+        "Field",
+        "Icon",
+        "Sheet",
+        "Venue"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { venues: known",
+        "mergeVenues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-04",
+      "priority": "P2",
+      "name": "Add venue",
+      "route": "/venue/new",
+      "source": "app/venue/new.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Field",
+        "Sheet"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-05",
+      "priority": "P1",
+      "name": "Bar passport",
+      "route": "/passport",
+      "source": "app/passport.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "EmptyState",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { logs",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-06",
+      "priority": "P1",
+      "name": "Plan detail",
+      "route": "/plan/[id]",
+      "source": "app/plan/[id]/index.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Icon",
+        "ProgressBar",
+        "Screen",
+        "Segmented"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-07",
+      "priority": "P1",
+      "name": "Create plan",
+      "route": "/plan/new",
+      "source": "app/plan/new.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Chip",
+        "Field",
+        "Sheet"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { venues",
+        "createPlan",
+        "people"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "D-08",
+      "priority": "P1",
+      "name": "Plan invite",
+      "route": "/plan/[id]/invite",
+      "source": "app/plan/[id]/invite.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Sheet"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-01",
+      "priority": "P1",
+      "name": "Circle home",
+      "route": "/(tabs)/circle",
+      "source": "app/(tabs)/circle.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Group",
+        "Icon",
+        "NavRow",
+        "Screen"
+      ],
+      "reads": [
+        "blocked",
+        "const router = useRouter();\n  const { people",
+        "crews",
+        "profile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": true,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-02",
+      "priority": "P0",
+      "name": "Find people",
+      "route": "/people/search",
+      "source": "app/people/search.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Field",
+        "Icon",
+        "Sheet"
+      ],
+      "reads": [
+        "addFriend",
+        "blocked",
+        "const router = useRouter();\n  const { people"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-03",
+      "priority": "P0",
+      "name": "Person profile",
+      "route": "/people/[id]",
+      "source": "app/people/[id].tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Glass",
+        "Icon",
+        "MenuItem",
+        "Screen",
+        "StatTile"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-04",
+      "priority": "P1",
+      "name": "Contact match",
+      "route": "/people/contacts",
+      "source": "app/people/contacts.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "Icon",
+        "Sheet"
+      ],
+      "reads": [
+        "addFriend",
+        "const router = useRouter();\n  const { people"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-05",
+      "priority": "P0",
+      "name": "Join a night",
+      "route": "/live/join",
+      "source": "app/live/join.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Camera",
+        "Card",
+        "Field",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "auth",
+        "const router = useRouter();\n  const { sessions",
+        "setPendingHref"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": true,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-06",
+      "priority": "P0",
+      "name": "Live room",
+      "route": "/live/[code]",
+      "source": "app/live/[code]/index.tsx",
+      "built": true,
+      "components": [
+        "Array",
+        "Avatar",
+        "Button",
+        "Card",
+        "Chip",
+        "EmptyState",
+        "Field",
+        "Glass",
+        "Icon",
+        "Reaction",
+        "RosterRow",
+        "Screen"
+      ],
+      "reads": [
+        "blocked",
+        "logs",
+        "people",
+        "profile",
+        "sessions"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-07",
+      "priority": "P2",
+      "name": "Night bingo",
+      "route": "/live/[code]/bingo",
+      "source": "app/live/[code]/bingo.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Screen"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-08",
+      "priority": "P1",
+      "name": "Share night card",
+      "route": "/share/[sessionId]",
+      "source": "app/share/[sessionId].tsx",
+      "built": true,
+      "components": [
+        "Bloom",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Screen"
+      ],
+      "reads": [
+        "logs",
+        "sessions",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-09",
+      "priority": "P1",
+      "name": "Crew detail",
+      "route": "/crew/[slug]",
+      "source": "app/crew/[slug].tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Group",
+        "NavRow",
+        "Screen"
+      ],
+      "reads": [
+        "crews",
+        "people",
+        "plans",
+        "sessions"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-10",
+      "priority": "P1",
+      "name": "Create crew",
+      "route": "/crew/new",
+      "source": "app/crew/new.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Field",
+        "Icon",
+        "Sheet"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-11",
+      "priority": "P1",
+      "name": "Join crew",
+      "route": "/crew/join",
+      "source": "app/crew/join.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Field",
+        "Sheet"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-12",
+      "priority": "P0",
+      "name": "Friend requests",
+      "route": "/people/requests",
+      "source": "app/people/requests.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Screen"
+      ],
+      "reads": [
+        "const { people",
+        "respondToRequest"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "C-13",
+      "priority": "P1",
+      "name": "Notifications",
+      "route": "/notifications",
+      "source": "app/notifications.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "EmptyState",
+        "Icon",
+        "Record",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { notifications",
+        "markNotificationsRead"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-01",
+      "priority": "P0",
+      "name": "You",
+      "route": "/(tabs)/you",
+      "source": "app/(tabs)/you.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Card",
+        "EmptyState",
+        "Group",
+        "Icon",
+        "NavRow",
+        "NavRowCard",
+        "QuickAction",
+        "Screen",
+        "Sparkline"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile",
+        "logs",
+        "plus",
+        "sessions",
+        "settings",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-02",
+      "priority": "P2",
+      "name": "Public profile preview",
+      "route": "/people/preview",
+      "source": "app/people/preview.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Card",
+        "Screen",
+        "StatTile"
+      ],
+      "reads": [
+        "const { profile",
+        "people",
+        "sessions"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-03",
+      "priority": "P1",
+      "name": "Nights history",
+      "route": "/nights",
+      "source": "app/nights.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "EmptyState",
+        "Group",
+        "NavRow",
+        "Screen",
+        "Segmented"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { sessions",
+        "logs",
+        "profile",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-04",
+      "priority": "P1",
+      "name": "Morning after",
+      "route": "/morning/[sessionId]",
+      "source": "app/morning/[sessionId].tsx",
+      "built": true,
+      "components": [
+        "Aurora",
+        "Button",
+        "Card",
+        "Chip",
+        "EmptyState",
+        "Icon",
+        "Mood",
+        "MoodFace",
+        "StatTile"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-05",
+      "priority": "P1",
+      "name": "Insights",
+      "route": "/insights",
+      "source": "app/insights.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "EmptyState",
+        "Screen",
+        "Sparkline",
+        "StatTile"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { logs",
+        "plus",
+        "profile",
+        "settings",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-06",
+      "priority": "P1",
+      "name": "Wellbeing hub",
+      "route": "/wellbeing",
+      "source": "app/wellbeing/index.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Goal",
+        "Group",
+        "Icon",
+        "InlineLink",
+        "NavRow",
+        "ProgressRing",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { goals",
+        "logs",
+        "profile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-07",
+      "priority": "P1",
+      "name": "Goal editor",
+      "route": "/wellbeing/goal/[type]",
+      "source": "app/wellbeing/goal/[type].tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Icon",
+        "Sheet",
+        "Step",
+        "ToggleRow"
+      ],
+      "reads": [
+        "goals",
+        "profile",
+        "setGoal"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-08",
+      "priority": "P2",
+      "name": "Nicotine dashboard",
+      "route": "/nicotine",
+      "source": "app/nicotine.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "EmptyState",
+        "Screen",
+        "StatTile"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-09",
+      "priority": "P1",
+      "name": "Achievements",
+      "route": "/achievements",
+      "source": "app/achievements.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "const { logs",
+        "crews",
+        "people",
+        "plans",
+        "safety",
+        "sessions"
+      ],
+      "states": {
+        "loading": true,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-10",
+      "priority": "P0",
+      "name": "Get home safe",
+      "route": "/safety",
+      "source": "app/safety/index.tsx",
+      "built": true,
+      "components": [
+        "Action",
+        "Button",
+        "Card",
+        "Chip",
+        "Glow",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-11",
+      "priority": "P1",
+      "name": "Bar passport (shared with D-05)",
+      "route": "/passport",
+      "source": "app/passport.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "EmptyState",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { logs",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "Y-12",
+      "priority": "P2",
+      "name": "Wrapped",
+      "route": "/wrapped/[year]",
+      "source": "app/wrapped/[year].tsx",
+      "built": true,
+      "components": [
+        "Aurora",
+        "Button",
+        "Card"
+      ],
+      "reads": [
+        "logs",
+        "plus",
+        "profile",
+        "sessions",
+        "settings",
+        "venues"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-01",
+      "priority": "P0",
+      "name": "Settings home",
+      "route": "/settings",
+      "source": "app/settings/index.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Group",
+        "NavRow",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { profile",
+        "plus",
+        "safety",
+        "settings",
+        "signOut"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-02",
+      "priority": "P2",
+      "name": "Appearance",
+      "route": "/settings/appearance",
+      "source": "app/settings/appearance.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Group",
+        "Screen",
+        "ToggleRow"
+      ],
+      "reads": [
+        "const { settings",
+        "updateSettings"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-03",
+      "priority": "P0",
+      "name": "Units & region",
+      "route": "/settings/units",
+      "source": "app/settings/units.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Screen",
+        "Segmented"
+      ],
+      "reads": [
+        "const { profile",
+        "updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-04",
+      "priority": "P1",
+      "name": "Modules",
+      "route": "/settings/modules",
+      "source": "app/settings/modules.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Group",
+        "Screen",
+        "ToggleRow"
+      ],
+      "reads": [
+        "const { profile",
+        "updateProfile"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-05",
+      "priority": "P0",
+      "name": "Notifications",
+      "route": "/settings/notifications",
+      "source": "app/settings/notifications.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Group",
+        "Screen",
+        "ToggleRow"
+      ],
+      "reads": [
+        "const { settings",
+        "safety",
+        "updateSettings"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-06",
+      "priority": "P0",
+      "name": "Privacy",
+      "route": "/settings/privacy",
+      "source": "app/settings/privacy.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Group",
+        "Screen",
+        "Segmented",
+        "ToggleRow"
+      ],
+      "reads": [
+        "const { profile",
+        "settings",
+        "updateProfile",
+        "updateSettings"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-07",
+      "priority": "P1",
+      "name": "Safety",
+      "route": "/settings/safety",
+      "source": "app/settings/safety.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Field",
+        "Group",
+        "NavRow",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { safety"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-08",
+      "priority": "P1",
+      "name": "Subscription",
+      "route": "/settings/subscription",
+      "source": "app/settings/subscription.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "InlineLink",
+        "Screen"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { settings",
+        "plus",
+        "updateSettings"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-09",
+      "priority": "P1",
+      "name": "Trusted contacts",
+      "route": "/safety/contacts",
+      "source": "app/safety/contacts.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "EmptyState",
+        "Field",
+        "Icon",
+        "Screen"
+      ],
+      "reads": [
+        "addTrustedContact",
+        "const { safety",
+        "removeTrustedContact"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-10",
+      "priority": "P1",
+      "name": "Arm safe arrival",
+      "route": "/safety/arm",
+      "source": "app/safety/arm.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Chip",
+        "Field",
+        "Sheet"
+      ],
+      "reads": [
+        "const router = useRouter();\n  const { armSafeArrival",
+        "profile",
+        "safety"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-11",
+      "priority": "P0",
+      "name": "Blocked users",
+      "route": "/settings/blocked",
+      "source": "app/settings/blocked.tsx",
+      "built": true,
+      "components": [
+        "Avatar",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Screen"
+      ],
+      "reads": [
+        "const { blocked",
+        "people",
+        "unblockUser"
+      ],
+      "states": {
+        "loading": false,
+        "empty": true,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-12",
+      "priority": "P0",
+      "name": "Data & account",
+      "route": "/settings/data",
+      "source": "app/settings/data.tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Field",
+        "Screen"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": true,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-13",
+      "priority": "P0",
+      "name": "Help & legal",
+      "route": "/settings/help",
+      "source": "app/settings/help.tsx",
+      "built": true,
+      "components": [
+        "Card",
+        "Group",
+        "NavRow",
+        "Screen"
+      ],
+      "reads": [],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-14",
+      "priority": "P1",
+      "name": "ROUNDS+ paywall",
+      "route": "/paywall",
+      "source": "app/paywall.tsx",
+      "built": true,
+      "components": [
+        "ActivityIndicator",
+        "Button",
+        "Card",
+        "Icon",
+        "InlineLink",
+        "Screen"
+      ],
+      "reads": [
+        "activeSession",
+        "const router = useRouter();\n  const toast = useToast();\n  const { updateSettings",
+        "refreshEntitlement"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    },
+    {
+      "id": "S-15",
+      "priority": "P0",
+      "name": "Report",
+      "route": "/report/[targetType]/[targetId]",
+      "source": "app/report/[targetType]/[targetId].tsx",
+      "built": true,
+      "components": [
+        "Button",
+        "Card",
+        "Field",
+        "Icon",
+        "Report",
+        "Screen"
+      ],
+      "reads": [
+        "store"
+      ],
+      "states": {
+        "loading": false,
+        "empty": false,
+        "error": false,
+        "offline": false,
+        "populated": true
+      }
+    }
+  ]
+}

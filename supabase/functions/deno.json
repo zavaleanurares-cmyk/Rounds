@@ -1,0 +1,6 @@
+{
+  "//": "Edge functions run on Deno, not on the app's TypeScript config. They are excluded from `tsc` in tsconfig.json and type-checked by `deno check` instead.",
+  "imports": {
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
