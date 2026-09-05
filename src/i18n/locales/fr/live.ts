@@ -68,4 +68,10 @@ export const live = {
   'live.leaveNight': 'Quitter cette soirée',
   'live.leaveNightTitle': 'Quitter la soirée ?',
   'live.leaveNightBody': 'Elle continue sans toi et ce que tu as noté reste à toi. Tu peux revenir avec le code.',
+  'live.hereNow': "Présent",
+  'live.rosterHereLabel': "{name}, présent ce soir",
+  'live.mapLabel': {
+    one: 'Carte : {count} personne partage sa position',
+    other: 'Carte : {count} personnes partagent leur position',
+  },
 } satisfies Record<string, Message>;

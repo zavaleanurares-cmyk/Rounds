@@ -473,6 +473,34 @@ describe('the app is not write-only', () => {
     expect(screen).not.toMatch(/people\.filter\([\s\S]{0,200}username/);
   });
 
+  it('live locations are read, not only written', () => {
+    // Written every two minutes, read by nothing. The live room showed a grey
+    // rectangle with a pin icon in it — a picture of a map — while the rows sat
+    // in a table whose policy exists to let exactly those people read them.
+    const share = code('src/services/locationShare.ts');
+    expect(share).toContain("from('session_locations')");
+    expect(share).toContain('readSessionLocations');
+    expect(code('app/live/[code]/index.tsx')).toContain('readSessionLocations');
+  });
+
+  it('the live roster shows no drink counts it could not know', () => {
+    // `read your own logs` is the only select policy on consumption_logs, so
+    // another person's pace and count are unfetchable, not merely unfetched.
+    // The roster rendered every friend as "steady · 3 drinks": a number no data
+    // could ever have produced, on the screen where people look at each other.
+    const room = code('app/live/[code]/index.tsx');
+    expect(room).not.toMatch(/drinks=\{\d+\}/);
+    expect(room).not.toMatch(/tint=\{color\.pace\.steady\}/);
+  });
+
+  it('one location switch, not two, and the one in the room is not a decoration', () => {
+    const room = code('app/live/[code]/index.tsx');
+    expect(room).toContain('shareLocationFor');
+    // It used to flip a local boolean: the label changed, the pin turned blue,
+    // and nothing was ever sent.
+    expect(room).not.toContain('setSharingLocation');
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

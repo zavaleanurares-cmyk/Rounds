@@ -114,3 +114,48 @@ export async function stopSharing(): Promise<void> {
     /* the TTL and the purge job are the backstop */
   }
 }
+
+/**
+ * Where everybody in this night is.
+ *
+ * The other half of the feature, and for a while the missing one: locations
+ * were written every two minutes and read by nothing. The live room showed a
+ * grey rectangle with a pin icon in it — a picture of a map rather than a map —
+ * while the rows sat in the table with a policy ("participants see live
+ * location") written to let exactly these people read them.
+ *
+ * Scoped by RLS rather than here: a participant sees the night's points, a
+ * blocked account sees none, and somebody who is not in the session gets an
+ * empty list. The client asks for the whole table for this session and receives
+ * only what it may have.
+ *
+ * Expired rows are filtered client-side too. `expires_at` is enforced by a
+ * purge job on a schedule, so between two runs a row can outlive its window,
+ * and a stale point on this particular screen is the one kind of wrong answer
+ * it must never give.
+ */
+export interface LivePoint {
+  userId: string;
+  lat: number;
+  lng: number;
+  updatedAt: number;
+}
+
+export async function readSessionLocations(sessionId: string): Promise<LivePoint[] | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('session_locations')
+    .select('user_id, lat, lng, updated_at, expires_at')
+    .eq('session_id', sessionId);
+  if (error) return null;
+  const now = Date.now();
+  return (data as Record<string, any>[])
+    .filter((r) => new Date(r.expires_at).getTime() > now)
+    .map((r) => ({
+      userId: r.user_id,
+      lat: r.lat,
+      lng: r.lng,
+      updatedAt: new Date(r.updated_at).getTime(),
+    }));
+}

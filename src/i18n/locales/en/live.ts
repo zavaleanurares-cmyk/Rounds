@@ -62,4 +62,10 @@ export const live = {
   'live.leaveNight': 'Leave this night',
   'live.leaveNightTitle': 'Leave the night?',
   'live.leaveNightBody': 'It carries on without you and what you logged stays yours. You can scan back in with the code.',
+  'live.hereNow': "Here",
+  'live.rosterHereLabel': "{name}, here tonight",
+  'live.mapLabel': {
+    one: 'Map with {count} person sharing their location',
+    other: 'Map with {count} people sharing their location',
+  },
 } satisfies Record<string, Message>;

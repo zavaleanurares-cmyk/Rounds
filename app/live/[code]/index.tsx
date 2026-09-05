@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { View, Pressable, Share, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Pressable, Share, Alert, useWindowDimensions, AppState } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Avatar, Icon, Chip, Glass, EmptyState, Button, Reaction, REACTIONS, REACTION_LABEL, type ReactionKind } from '@/ui';
 import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
 import { useSessionRealtime } from '@/hooks/useSessionRealtime';
+import { LiveMap } from '@/features/live/LiveMap';
+import { readSessionLocations, type LivePoint } from '@/services/locationShare';
 import { paceState } from '@/domain/pace';
 import { useT } from '@/i18n';
 import { paceColor, paceWord, color, radius, space } from '@/design/tokens';
@@ -22,10 +24,24 @@ export default function LiveRoom() {
   const router = useRouter();
   const t = useT();
   const { code } = useLocalSearchParams<{ code: string }>();
-  const { sessions, people, logs, profile, blocked, messages, auth, sendMessage, sendReaction, receiveMessage, receiveReaction, leaveSession } = useStore();
+  const { sessions, people, logs, profile, blocked, messages, auth, safety, sendMessage, sendReaction, receiveMessage, receiveReaction, leaveSession, shareLocationFor } = useStore();
   const session = sessions.find((s) => s.joinCode === code);
   const [message, setMessage] = useState('');
-  const [sharingLocation, setSharingLocation] = useState(false);
+
+  /**
+   * The same switch as the one on the safety screen, not a second one.
+   *
+   * This button used to flip a local boolean: the label changed, the pin turned
+   * blue, and no location was ever sent. Two controls for one feature, one of
+   * them lying — and the one that lied is the one somebody actually reaches for,
+   * because it is in the room with the people they are sharing with.
+   *
+   * `locationSharingUntil` is the single piece of state; the store's driver
+   * starts and stops the two-minute writer from it and expires it on time.
+   * Two hours is the default here because that is the length of the part of
+   * the night you are in when you open this screen.
+   */
+  const sharingLocation = (safety.locationSharingUntil ?? 0) > Date.now();
 
   // The room's chat is store state, not component state: what the sender types
   // has to reach the other people in the night, and what they send has to reach
@@ -42,6 +58,38 @@ export default function LiveRoom() {
     onMessage: receiveMessage,
     onReaction: receiveReaction,
   });
+
+  /**
+   * Everybody's points, refreshed while this screen is open.
+   *
+   * Polled rather than pushed. The writer ticks every two minutes, so realtime
+   * would deliver a handful of events an hour down a channel that has to be
+   * held open all night — and a room reopened after the phone was in a pocket
+   * needs the CURRENT positions, which a subscription does not give you: it
+   * gives you what changes next. A poll on the same cadence, plus one on
+   * foreground, answers the question the screen is actually asking.
+   */
+  const { width } = useWindowDimensions();
+  const [points, setPoints] = useState<LivePoint[]>([]);
+  const sessionId = session?.id ?? null;
+  useEffect(() => {
+    if (!sessionId) return;
+    let alive = true;
+    const load = async () => {
+      const found = await readSessionLocations(sessionId);
+      if (alive && found) setPoints(found);
+    };
+    void load();
+    const timer = setInterval(load, 2 * 60_000);
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void load();
+    });
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [sessionId]);
 
   const roster = useMemo(
     () => people.filter((p) => p.status === 'friend' && p.liveNow && !blocked.includes(p.id)),
@@ -115,37 +163,56 @@ export default function LiveRoom() {
           ) : null}
         </View>
         <View style={{ marginTop: space.m, gap: space.m }}>
-          <RosterRow name={profile?.displayName ?? t('live.you')} state={myPace ? t(paceWord[myPace.state]) : '—'} tint={myPace ? paceColor[myPace.state] : color.label.tertiary} drinks={myPace?.drinks ?? 0} you />
+          {/*
+            Your row carries your pace and your count. Everybody else's carries
+            their name and the fact that they are here, and nothing else.
+
+            Not a simplification: `read your own logs` is the only select policy
+            on consumption_logs, so another person's pace and drink count are
+            not merely unfetched, they are unfetchable. This roster used to
+            render every friend as "steady · 3 drinks" — a number no data could
+            ever have produced, sitting on the screen where people are looking
+            at each other. It also happens to be the rule the product is built
+            on: ROUNDS never ranks people on anything countable about alcohol.
+          */}
+          <RosterRow
+            name={profile?.displayName ?? t('live.you')}
+            state={myPace ? t(paceWord[myPace.state]) : '—'}
+            tint={myPace ? paceColor[myPace.state] : color.label.tertiary}
+            drinks={myPace?.drinks ?? 0}
+            you
+          />
           {roster.map((p) => (
-            <RosterRow key={p.id} name={p.displayName} state={t(paceWord.steady)} tint={color.pace.steady} drinks={3} />
+            <RosterRow key={p.id} name={p.displayName} />
           ))}
         </View>
       </Card>
 
       <Card>
         <Text variant="sectionHeader" tone="tertiary">{t('live.whereEveryoneIs')}</Text>
-        <View
-          style={{
-            height: 130,
-            borderRadius: radius.control,
-            backgroundColor: color.surface.secondary,
-            marginTop: space.m,
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: space.sm,
-          }}
-        >
-          <Icon name="location" size={22} color={sharingLocation ? color.brand.tintLight : color.label.quaternary} />
-          <Text variant="footnote" tone="tertiary" center style={{ maxWidth: 250 }}>
-            {sharingLocation ? t('live.locationOn') : t('live.locationOff')}
-          </Text>
-        </View>
+        {/*
+          A real panel, drawn from real rows. It was a grey rectangle with a pin
+          icon in it: locations were written every two minutes and read by
+          nothing, while `session_locations` sat there with a policy written to
+          let exactly these people read them.
+        */}
+        <LiveMap
+          points={points}
+          meId={auth.userId}
+          width={width - space.md * 4}
+          nameFor={(id) =>
+            id === auth.userId
+              ? profile?.displayName ?? t('live.you')
+              : people.find((x) => x.id === id)?.displayName ?? t('live.someone')
+          }
+          empty={sharingLocation ? t('live.locationOn') : t('live.locationOff')}
+        />
         <View style={{ marginTop: space.m }}>
           <Button
             title={sharingLocation ? t('live.stopSharingLocation') : t('live.shareLocation')}
             kind={sharingLocation ? 'plain' : 'glass'}
             compact
-            onPress={() => setSharingLocation((s) => !s)}
+            onPress={() => shareLocationFor(sharingLocation ? 0 : 2)}
           />
         </View>
       </Card>
@@ -222,23 +289,33 @@ function RosterRow({
   you,
 }: {
   name: string;
-  state: string;
-  tint: string;
-  drinks: number;
+  /** Only ever your own — see the note where this is rendered. */
+  state?: string;
+  tint?: string;
+  drinks?: number;
   you?: boolean;
 }) {
   const t = useT();
+  const mine = you && state !== undefined;
   return (
     <View
       style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}
-      accessibilityLabel={t('live.rosterLabel', { name, state, count: drinks })}
+      accessibilityLabel={
+        mine
+          ? t('live.rosterLabel', { name, state: state!, count: drinks ?? 0 })
+          : t('live.rosterHereLabel', { name })
+      }
     >
       <Avatar name={name} size={34} live />
       <View style={{ flex: 1 }}>
         <Text variant="headline">{you ? t('live.you') : name}</Text>
-        <Text variant="caption1" tone="tertiary">{t('live.drinksLogged', { count: drinks })}</Text>
+        <Text variant="caption1" tone="tertiary">
+          {mine ? t('live.drinksLogged', { count: drinks ?? 0 }) : t('live.hereNow')}
+        </Text>
       </View>
-      <Text variant="numericSmall" color={tint}>{state}</Text>
+      {mine ? (
+        <Text variant="numericSmall" color={tint}>{state}</Text>
+      ) : null}
     </View>
   );
 }

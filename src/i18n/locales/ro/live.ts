@@ -76,4 +76,11 @@ export const live = {
   'live.leaveNight': 'Ieși din seara asta',
   'live.leaveNightTitle': 'Ieși din seară?',
   'live.leaveNightBody': 'Merge mai departe fără tine, iar ce ai notat rămâne al tău. Poți intra înapoi cu codul.',
+  'live.hereNow': "Aici",
+  'live.rosterHereLabel': "{name}, aici în seara asta",
+  'live.mapLabel': {
+    one: 'Hartă: {count} persoană își partajează locația',
+    few: 'Hartă: {count} persoane își partajează locația',
+    other: 'Hartă: {count} de persoane își partajează locația',
+  },
 } satisfies Record<string, Message>;
