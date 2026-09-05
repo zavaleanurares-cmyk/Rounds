@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View, ScrollView, Pressable, Animated, type ViewStyle, type NativeSyntheticEvent,
   type NativeScrollEvent,
@@ -105,6 +105,24 @@ export function Screen({
     extrapolate: 'clamp',
   });
 
+  /**
+   * The title block's real height, measured rather than assumed.
+   *
+   * The header reserves space for the title by computing it, and that
+   * computation used to hard-code ONE line of large title plus 22pt of
+   * subtitle. The moment titles were allowed to wrap to two lines — which they
+   * had to be, because "When were you born?" was rendering as "When were you
+   * bor…" — the block grew and the reservation did not, so the second line sat
+   * on top of the content beneath it.
+   *
+   * Measuring is the fix rather than a bigger constant: the block's height
+   * depends on the title, the subtitle, the type scale and the width, and any
+   * constant is wrong for some combination of those. `transform` does not
+   * affect layout, so this reads the natural height even while the title is
+   * mid-collapse.
+   */
+  const [titleH, setTitleH] = useState(0);
+
   const hasHeader = Boolean(title);
   // Header geometry, all derived from one place so the backdrop, the title and
   // the ScrollView's top padding can never disagree with each other.
@@ -112,9 +130,10 @@ export function Screen({
   const titleTop = ROW + space.xs;
   const titleCentre = titleTop + (LARGE * TITLE_LINE) / 2;
   const collapsedHeight = ROW + space.sm;
-  const expandedHeight = largeTitle
-    ? titleTop + LARGE * TITLE_LINE + (subtitle ? 22 : 0) + space.sm
-    : collapsedHeight;
+  // Until the first measurement lands, assume the single-line case — it is the
+  // common one, and it errs toward too little rather than a visible jump.
+  const titleBlock = titleH || LARGE * TITLE_LINE + (subtitle ? 22 : 0);
+  const expandedHeight = largeTitle ? titleTop + titleBlock + space.sm : collapsedHeight;
   const headerHeight = hasHeader ? expandedHeight : 0;
   // Collapsed, the title rides up into the action row. When there is a back
   // chevron it also slides right so it lands beside it rather than on top of it.
@@ -247,6 +266,13 @@ export function Screen({
             {largeTitle ? (
               <Animated.View
                 pointerEvents="none"
+                onLayout={(e) => {
+                  const h = Math.round(e.nativeEvent.layout.height);
+                  // Guarded: onLayout fires on every collapse frame on some
+                  // platforms, and setting state from each one would re-render
+                  // the screen sixty times a second.
+                  setTitleH((prev) => (Math.abs(prev - h) > 1 ? h : prev));
+                }}
                 style={{
                   marginTop: space.xs,
                   // Keep clear of the right-hand action once the title has
@@ -273,7 +299,10 @@ export function Screen({
                 */}
                 <Text variant="largeTitle" numberOfLines={2}>{title}</Text>
                 {subtitle ? (
-                  <Animated.View style={{ opacity: subtitleOpacity }}>
+                  // A gap the single-line case did not need and the two-line
+                  // case does: with the title wrapping, the descender of
+                  // "born?" sat directly on the subtitle's cap height.
+                  <Animated.View style={{ opacity: subtitleOpacity, marginTop: space.xs }}>
                     <Text variant="subheadline" tone="secondary" numberOfLines={2}>{subtitle}</Text>
                   </Animated.View>
                 ) : null}

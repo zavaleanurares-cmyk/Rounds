@@ -821,6 +821,26 @@ describe('the app is not write-only', () => {
     expect(hook).toContain('useIdTokenAuthRequest');
   });
 
+  it('reserves header space by measuring the title, not by assuming one line', () => {
+    /**
+     * The header computes how much room to leave for the title. That
+     * computation hard-coded one line of large title plus 22pt of subtitle, so
+     * the moment titles were allowed to wrap — which they had to be, because
+     * "When were you born?" was rendering as "When were you bor…" — the block
+     * grew, the reservation did not, and the second line sat on top of the
+     * content beneath it.
+     *
+     * Any constant is wrong for some combination of title, subtitle, type scale
+     * and width. Measuring is the only version that stays right.
+     */
+    const screen = code('src/ui/Screen.tsx');
+    expect(screen).toContain('onLayout');
+    expect(screen).toContain('setTitleH');
+    expect(screen).toMatch(/const expandedHeight = largeTitle \? titleTop \+ titleBlock/);
+    // And the reservation must not go back to counting lines itself.
+    expect(screen).not.toMatch(/titleTop \+ LARGE \* TITLE_LINE \+ \(subtitle \? 22 : 0\)/);
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.
