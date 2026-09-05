@@ -215,8 +215,7 @@ export const stats = {
   'stats.logged': 'apuntados',
   'stats.freeStreak': 'Racha sin nicotina',
   'stats.nicotineNote':
-    'Apunta un cigarro, un vapeador o una bolsita donde apuntas una copa y aparece aquí, no en tu historial de copas. Las dos cosas nunca se mezclan.',
-
+    "Se registra aquí, no en la hoja de bebidas, y queda fuera de tu historial — nicotina y alcohol nunca se mezclan en una sola cifra.",
   // S-15 · Report
   'stats.reportTitle': 'Denunciar',
   'stats.reportedTitle': 'Denunciado',

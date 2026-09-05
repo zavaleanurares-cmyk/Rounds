@@ -246,8 +246,7 @@ export const stats = {
   'stats.logged': 'notate',
   'stats.freeStreak': 'Serie fără nicotină',
   'stats.nicotineNote':
-    'Notează o țigară, un vape sau un pliculeț acolo unde notezi o băutură și apare aici, nu în istoricul băuturilor. Cele două nu se amestecă niciodată.',
-
+    "Se notează aici, nu în lista de băuturi, și rămâne în afara istoricului tău — nicotina și alcoolul nu se amestecă niciodată într-un singur număr.",
   // S-15 · Report
   'stats.reportTitle': 'Raportează',
   'stats.reportedTitle': 'Raportat',

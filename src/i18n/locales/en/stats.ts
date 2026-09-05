@@ -201,8 +201,7 @@ export const stats = {
   'stats.logged': 'logged',
   'stats.freeStreak': 'Free streak',
   'stats.nicotineNote':
-    'Log a cigarette, vape or pouch from the log sheet and it appears here rather than in your drink history. The two are never mixed.',
-
+    "Logged here, not on the drink sheet, and kept out of your drink history — nicotine and alcohol are never mixed into one number.",
   // S-15 · Report
   'stats.reportTitle': 'Report',
   'stats.reportedTitle': 'Reported',

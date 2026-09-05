@@ -221,8 +221,7 @@ export const stats = {
   'stats.logged': 'notés',
   'stats.freeStreak': 'Série sans nicotine',
   'stats.nicotineNote':
-    "Note une cigarette, une vape ou un sachet là où tu notes un verre et ça apparaît ici, pas dans ton historique de verres. Les deux ne sont jamais mélangés.",
-
+    "Enregistré ici, pas sur la fiche des boissons, et gardé hors de votre historique — nicotine et alcool ne sont jamais additionnés.",
   // S-15 · Report
   'stats.reportTitle': 'Signaler',
   'stats.reportedTitle': 'Signalé',

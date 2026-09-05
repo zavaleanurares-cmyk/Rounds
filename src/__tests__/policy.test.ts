@@ -800,6 +800,27 @@ describe('the app is not write-only', () => {
     }
   });
 
+  it('the sign-in screen renders without a Google client id', () => {
+    /**
+     * `useIdTokenAuthRequest` does not return null when it is unconfigured — it
+     * THROWS during render: "Client Id property `webClientId` must be defined".
+     * So a web build with no Google client id rendered a blank white page on
+     * the first screen a new user ever sees, and every route test passed
+     * because none of them opened it.
+     *
+     * The hook must therefore not be called at all when Google is not
+     * configured for this platform, which is safe only because that is a
+     * module-scope constant read from the environment.
+     */
+    const auth = code('src/services/auth.ts');
+    expect(auth).toContain('GOOGLE_CONFIGURED');
+    expect(auth).toMatch(/if \(!GOOGLE_CONFIGURED\) return \{ ready: false \};/);
+    // The call itself is also wrapped, because this costs a whole screen.
+    const hook = auth.slice(auth.indexOf('export function useGoogleAuthRequest'));
+    expect(hook).toContain('try {');
+    expect(hook).toContain('useIdTokenAuthRequest');
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

@@ -90,9 +90,24 @@ export async function signInWithApple(): Promise<SignInResult> {
 
 /* ----------------------------------------------------------------- Google */
 
+/**
+ * Whether Google is configured FOR THIS PLATFORM.
+ *
+ * Per-platform, because the client ids are: `expo-auth-session` wants a web
+ * client id on web, and having only an iOS one is not "Google is available"
+ * anywhere else. Read once at module scope — env vars cannot change while the
+ * process runs — which is what lets the hook below decide whether to call
+ * another hook at all without ever changing hook order.
+ */
+const GOOGLE_CONFIGURED: boolean = (() => {
+  const web = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  if (Platform.OS === 'web') return Boolean(web);
+  if (Platform.OS === 'ios') return Boolean(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || web);
+  return Boolean(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || web);
+})();
+
 export function googleAvailable(): boolean {
-  return Boolean(process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID) ||
-         Boolean(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+  return GOOGLE_CONFIGURED;
 }
 
 /**
@@ -132,17 +147,41 @@ export async function signInWithGoogle(
  * The hook the sign-in screen uses to build Google's request. Kept here so the
  * screen has one import and no knowledge of AuthSession.
  */
-export function useGoogleAuthRequest() {
+export function useGoogleAuthRequest(): {
+  ready: boolean;
+  promptAsync?: () => Promise<{ type: string; params?: Record<string, string> }>;
+} {
+  /**
+   * Not called at all when Google is not configured for this platform.
+   *
+   * The previous version called `useIdTokenAuthRequest` with an empty config on
+   * the reasoning that a hook must be called unconditionally — and the library
+   * does not return null for that, it THROWS during render: "Client Id property
+   * `webClientId` must be defined to use Google auth on this platform." So on
+   * any web build without a Google client id, the sign-in screen rendered
+   * nothing at all. A blank white page, on the first screen a new user ever
+   * sees, and every route test passed because none of them opened it.
+   *
+   * Skipping the call is safe here specifically because `GOOGLE_CONFIGURED` is
+   * a module-scope constant read from the environment: it cannot differ between
+   * two renders of the same process, so hook order is stable. A value that
+   * could change would have to be handled the other way round.
+   */
+  if (!GOOGLE_CONFIGURED) return { ready: false };
+
   const Google = optional(() => require('expo-auth-session/providers/google'));
-  const clientIds = {
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-  };
-  // The hook must be called unconditionally, so it is called with empty config
-  // when nothing is set and the screen simply hides the button.
-  const [request, , promptAsync] = Google
-    ? Google.useIdTokenAuthRequest(clientIds)
-    : [null, null, undefined];
-  return { ready: Boolean(request) && googleAvailable(), promptAsync };
+  if (!Google) return { ready: false };
+
+  try {
+    const [request, , promptAsync] = Google.useIdTokenAuthRequest({
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    });
+    return { ready: Boolean(request), promptAsync };
+  } catch {
+    // Belt and braces: a misconfiguration must cost the Google button, never
+    // the screen. Nothing about signing in with an email depends on Google.
+    return { ready: false };
+  }
 }
