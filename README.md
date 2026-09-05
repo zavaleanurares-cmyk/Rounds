@@ -22,13 +22,19 @@ Settings › System surfaces.
 
 ```bash
 npm run check      # everything below, in one
-npm test           # 78 unit tests: pace, queue, stats, catalogue, and the policy suite
+npm test           # 225 unit tests: pace, queue, stats, catalogue, i18n, nicotine, policy
 npm run typecheck  # tsc --noEmit, strict
-npm run db:test    # applies every migration to a scratch Postgres, runs the RLS matrix
+npm run db:test    # every migration against a scratch Postgres, then all three SQL suites
 npm run export:web # production web bundle into dist/
+npm run tester     # one self-contained HTML file with the whole app in it
 npm run tokens     # regenerate tokens.json + Swift + Kotlin from src/design/tokens.ts
 npm run manifest   # regenerate the screen manifest by walking the route tree
 ```
+
+**`npm run tester`** writes `/tmp/rounds-tester.html` — the entire app inlined
+into a single file, running inside a realistic iPhone. Open it anywhere, no
+install and no backend; CI attaches one to every run, so a pull request can be
+used rather than read. Sign in with any email and any six digits.
 
 For the system surfaces — Live Activity, widgets, Control Center, Siri — you
 need a development build rather than Expo Go:
@@ -63,8 +69,9 @@ src/
 modules/
   rounds-native/     Swift + Kotlin for the surfaces, and the config plugin
 supabase/
-  migrations/        00001–00024: schema, RLS, moderation, deletion, plans, safety, spend
-  tests/             rls_matrix.sql — six roles, 64 assertions, plain SQL, no pgtap
+  migrations/        00001–00050: schema, RLS, moderation, deletion, plans, safety,
+                     spend, push, full sync, i18n, nicotine, the scheduled jobs
+  tests/             three suites, 269 assertions, plain SQL — no pgtap, no Docker
   services/          venues, purchases, push, analytics, capability detection
 supabase/
   functions/         edge functions: outbound queue, store webhook, entitlement
@@ -97,9 +104,16 @@ mutation.
 
 **Row-level security** (`supabase/tests/rls_matrix.sql`). Six roles — owner,
 participant, friend, crew-mate, stranger, and **blocked**. The sixth is the
-point: a block is a clause in every social predicate, not a filtered list. 64
+point: a block is a clause in every social predicate, not a filtered list. 145
 assertions in plain SQL, so `npm run db:test` runs the whole schema and matrix
 against a bare Postgres with no Docker, no pgtap and no Supabase CLI.
+
+Two suites sit beside it. `safety_escalation.sql` (42) proves what actually
+*happens* to an armed check — both stages, the grace window, the queue under
+retry, a user offline for the whole window. `rpc_rules.sql` (82) covers the
+rules that live inside `security definer` functions, where RLS does not apply
+and every scope has to be hand-written: the friend-request cap, who may resolve
+a safe-arrival check, what a stranger may see of an invite.
 
 **165 drawn drinks** (`src/domain/catalog.ts`, `src/ui/DrinkGlyph.tsx`). The
 whole IBA official cocktail list plus everything people actually order, each
@@ -150,17 +164,45 @@ multiplexed realtime channel per live session with backoff on foreground.
 
 Honest list of what is still missing.
 
-- **Watch app (X-08)** — a target stub, and P2 by the brief's own ordering.
+- **Watch app** — deferred, and P2 by the brief's own ordering.
+- **Billing.** `src/services/purchases.ts` is complete behind `BILLING_VISIBLE`,
+  which is `false`: both routes redirect, nothing is locked, and ten policy
+  tests hold that shut. Shipping it needs StoreKit and Play Billing products,
+  which need developer accounts.
 - **Legal `[DRAFT]` sections.** `src/content/legal.ts` is written to be
   reviewable and specific — the alcohol disclaimer, the GDPR articles, the
   retention periods and the subprocessor list are all there — but the governing
   law, the liability cap and the entity details are marked `[DRAFT]` and the app
   shows a warning banner on any document that still contains one. A lawyer has
-  to settle those.
+  to settle those, and `legal.test.ts` flips from passing to blocking when they
+  are gone.
 - **Store account plumbing**: product IDs, certificates, service-account keys
   and the `sha256_cert_fingerprints` in `public/.well-known/assetlinks.json`.
-  All of it needs accounts I cannot create. `store/app-store.md` is the
-  checklist.
-- **Live Activity push updates.** The Activity declares `pushType: .token` so
-  other participants' logs can update it; the token upload and the sender are
-  not written.
+  `npm run store:check` prints the live list — 11 items, all needing accounts.
+- **Five surfaces nobody has watched run**: the map, the QR scanner, the Live
+  Activity, the widgets, and push delivery end to end. All wired, all
+  type-checked, none possible without a development build on real hardware.
+
+## Deploying
+
+`docs/deploy.md` is the whole procedure. Two steps there are load-bearing and
+silent if skipped:
+
+1. **`create extension pg_cron;` before `db push`.** Without it `00049` applies,
+   prints a notice and schedules nothing — safety escalation included. The
+   deploy workflow enables it and then reads `cron.job` back to prove the seven
+   jobs are there, because a migration that schedules nothing looks exactly like
+   one that worked.
+2. **Schedule the outbound drain.** `send-outbound` is an edge function, so it
+   cannot be scheduled from SQL. Skip it and every message the product composes
+   sits in a table forever, the safety SMS included.
+
+## A note on how this was built
+
+Nearly every bug worth fixing in this repo was found by *running* something
+rather than reading it — a contact sheet that showed 22 pouches rendering
+identically, a browser walk that found the sign-in screen rendering a blank
+page, a mutation test that revealed seven database assertions had been passing
+for the wrong reason. The test suites are green and that is worth very little on
+its own; `npm run tester` and `scripts/render-nicotine.mjs` exist because
+looking is the part that finds things.
