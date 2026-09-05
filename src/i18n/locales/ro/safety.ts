@@ -39,7 +39,7 @@ export const safety = {
   'safety.checkOnMe': 'Vezi ce fac',
   'safety.shareLocation': 'ÎMPARTE LOCAȚIA MEA',
   'safety.shareLocationBody':
-    'Pe timp limitat și numai cu persoanele tale de încredere. Se oprește singură.',
+    'Pe timp limitat, cu oamenii din seara ta. Se oprește singură, iar datele se șterg, nu doar se ascund.',
   'safety.hours': { one: '{count}h', few: '{count}h', other: '{count}h' },
   'safety.callEmergencyTitle': 'Suni la {number}?',
   'safety.callEmergencyBody': 'Asta sună la serviciile de urgență.',
@@ -81,4 +81,7 @@ export const safety = {
   'safety.contactPhone': 'Telefon',
   'safety.addContact': 'Adaugă o persoană',
   'safety.threeMax': 'Trei e maximul.',
+  'safety.sharingUntil': 'Se împarte cu seara ta până la {time}.',
+  'safety.stopSharing': 'Nu mai împărți',
+  'safety.shareNeedsNight': 'Începe întâi o seară — locația se împarte cu oamenii cu care ești în oraș.',
 } satisfies Record<string, Message>;

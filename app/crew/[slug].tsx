@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Button, Avatar, NavRow, Group, EmptyState } from '@/ui';
 import { useStore } from '@/data/store';
@@ -22,7 +22,8 @@ export default function CrewDetail() {
   const t = useT();
   const f = useFormat();
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { crews, people, plans, sessions } = useStore();
+  const store = useStore();
+  const { crews, people, plans, sessions } = store;
   const crew = crews.find((c) => c.slug === slug);
 
   if (!crew) return <Screen title={t('social.crewTitle')} back><EmptyState title={t('social.crewNotFoundTitle')} body={t('social.crewNotFoundBody')} icon="person.2" /></Screen>;
@@ -93,6 +94,29 @@ export default function CrewDetail() {
           <NavRow key={m.id} title={m.displayName} subtitle={t('social.handle', { username: m.username })} onPress={() => router.push(`/people/${m.id}` as never)} last={i === members.length - 1} />
         ))}
       </Group>
+
+      {/*
+        Leaving removes this account's membership and nothing else. A crew
+        outlives the person who walks out of it, so this is not a delete — and
+        it asks first, because there is no undo from here.
+      */}
+      <Button
+        title={t('social.leaveCrew')}
+        kind="destructive"
+        onPress={() =>
+          Alert.alert(t('social.leaveCrewTitle', { name: crew.name }), t('social.leaveCrewBody'), [
+            { text: t('ui.cancel'), style: 'cancel' },
+            {
+              text: t('social.leaveCrew'),
+              style: 'destructive',
+              onPress: () => {
+                store.leaveCrew(crew.id);
+                router.replace('/(tabs)/circle');
+              },
+            },
+          ])
+        }
+      />
     </Screen>
   );
 }

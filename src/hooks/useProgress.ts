@@ -37,7 +37,7 @@ const ICON_FOR: Record<string, IconName> = {
  */
 export function useProgress() {
   const t = useT();
-  const { logs, sessions, people, crews, plans, goals, safety, settings } = useStore();
+  const { logs, sessions, people, crews, plans, goals, safety, settings, recordEarned } = useStore();
 
   const progress: Progress = useMemo(
     () =>
@@ -97,6 +97,20 @@ export function useProgress() {
       seenRef.current = next;
       setSeen(next);
       void writeJson(KEYS.celebrated, next);
+
+      /**
+       * Record what was earned, on the server.
+       *
+       * Achievements are recomputed locally from logs and sessions every time,
+       * so this is not how the app decides what you have — it is the record
+       * that you got there, and when. Without it a reinstall silently
+       * un-earns two dozen things somebody actually did.
+       *
+       * Note this runs on `firstEver` too: an account with existing history
+       * should have its achievements written even though it is not shown a
+       * single modal. Earning and celebrating are different events.
+       */
+      recordEarned([...progress.earned]);
     }
 
     if (firstEver || (freshAchievements.length === 0 && !leveled)) return;

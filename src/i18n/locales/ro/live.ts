@@ -52,9 +52,7 @@ export const live = {
   'live.chat': 'CHAT',
   'live.chatPlaceholder': 'Zi ceva',
   'live.send': 'Trimite',
-  // Seeded room chatter, so a room opened cold is not empty.
-  'live.sampleMessageOne': 'suntem în spate, după bar',
-  'live.sampleMessageTwo': 'comand, vrea cineva ceva',
+  'live.someone': 'Cineva',
   'live.partyMode': 'Mod petrecere: bingo de seară',
 
   // C-07 · night bingo
@@ -75,4 +73,7 @@ export const live = {
     few: '{count} din {total}',
     other: '{count} din {total}',
   },
+  'live.leaveNight': 'Ieși din seara asta',
+  'live.leaveNightTitle': 'Ieși din seară?',
+  'live.leaveNightBody': 'Merge mai departe fără tine, iar ce ai notat rămâne al tău. Poți intra înapoi cu codul.',
 } satisfies Record<string, Message>;

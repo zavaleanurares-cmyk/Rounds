@@ -25,9 +25,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * without anybody reviewing what it sends.
  *
  * Anything absent from this list does not leave the device. That is a design
- * statement, not an omission: session_locations, session_messages and
- * session_reactions are live-only and go over realtime, and `events` is
- * fire-and-forget analytics.
+ * statement, not an omission: session_locations is live-only and goes over
+ * realtime, and `events` is fire-and-forget analytics.
+ *
+ * Chat and reactions were described that way too, and that was simply wrong:
+ * realtime is a LISTENER, not a writer. The room subscribed to
+ * `session_messages` INSERTs that nothing ever wrote, so two people in the same
+ * night sat in two private chats. They are ordinary queued writes now —
+ * `insert_message` and `insert_reaction` — and realtime is how the other phones
+ * hear about them.
  */
 export type QueueOp =
   /* the night */
@@ -38,9 +44,12 @@ export type QueueOp =
   | 'end_session'
   | 'join_session'
   | 'leave_session'
+  | 'insert_message'
+  | 'insert_reaction'
   /* the account */
   | 'upsert_profile'
   | 'upsert_goal'
+  | 'earn_achievement'
   /* safety — the reason this list grew */
   | 'upsert_contact'
   | 'delete_contact'

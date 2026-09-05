@@ -46,9 +46,7 @@ export const live = {
   'live.chat': 'CHAT',
   'live.chatPlaceholder': 'Di algo',
   'live.send': 'Enviar',
-  // Seeded room chatter, so a room opened cold is not empty.
-  'live.sampleMessageOne': 'estamos al fondo, pasando la barra',
-  'live.sampleMessageTwo': 'voy a pedir, alguien quiere algo',
+  'live.someone': 'Alguien',
   'live.partyMode': 'Modo fiesta: bingo de noche',
 
   // C-07 · night bingo
@@ -65,4 +63,7 @@ export const live = {
   'live.bingoBattery': 'Móvil al 4%',
   'live.bingoSmoking': 'Ana encuentra la zona de fumadores',
   'live.bingoProgress': { one: '{count} de {total}', other: '{count} de {total}' },
+  'live.leaveNight': 'Salir de esta noche',
+  'live.leaveNightTitle': '¿Salir de la noche?',
+  'live.leaveNightBody': 'Sigue sin ti y lo que has apuntado sigue siendo tuyo. Puedes volver a entrar con el código.',
 } satisfies Record<string, Message>;

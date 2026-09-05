@@ -371,10 +371,11 @@ describe('the app is not write-only', () => {
   it('every declared op is actually enqueued somewhere', () => {
     // An op nobody sends is a table nobody syncs — which is exactly the state
     // this whole change was fixing.
+    // No exceptions any more. An op nobody sends is a table nobody syncs,
+    // which is the state this whole change was fixing — the two that used to
+    // sit here, delete_crew_member and leave_session, now have screens.
     const unused = OPS.filter((op) => !store.includes(`op: '${op}'`));
-    // These two are the known exceptions and are named rather than tolerated
-    // by a loose rule: nothing in the product leaves a crew or a night yet.
-    expect(unused.sort()).toEqual(['delete_crew_member', 'leave_session']);
+    expect(unused).toEqual([]);
   });
 
   /**

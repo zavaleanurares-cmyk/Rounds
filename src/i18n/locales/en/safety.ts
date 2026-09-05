@@ -29,7 +29,7 @@ export const safety = {
   'safety.walkIt': 'Walk it',
   'safety.checkOnMe': 'Check on me',
   'safety.shareLocation': 'SHARE MY LOCATION',
-  'safety.shareLocationBody': 'Timed, with your trusted contacts only. It stops on its own.',
+  'safety.shareLocationBody': 'Timed, with the people in your night. It stops on its own, and the row is deleted rather than hidden.',
   'safety.hours': { one: '{count}h', other: '{count}h' },
   'safety.callEmergencyTitle': 'Call {number}?',
   'safety.callEmergencyBody': 'This dials emergency services.',
@@ -64,4 +64,7 @@ export const safety = {
   'safety.contactPhone': 'Phone',
   'safety.addContact': 'Add contact',
   'safety.threeMax': 'Three is the maximum.',
+  'safety.sharingUntil': 'Sharing with your night until {time}.',
+  'safety.stopSharing': 'Stop sharing',
+  'safety.shareNeedsNight': 'Start a night first — your location is shared with the people you are out with.',
 } satisfies Record<string, Message>;

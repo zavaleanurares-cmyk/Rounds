@@ -1,24 +1,50 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Sheet, Card, Text, Button, Icon, Avatar } from '@/ui';
+import { Sheet, Card, Text, Button, Icon, Avatar, Spinner } from '@/ui';
+import { Field } from '@/features/forms/Field';
 import { useStore } from '@/data/store';
+import { findFriends, makeFindable, type Match } from '@/services/contacts';
 import { useT } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
 /**
- * C-04 · Contact match.
+ * C-05 · Find people from your contacts.
  *
- * Numbers are hashed on-device with a salt (`expo-crypto`) and only the hashes
- * are sent. The screen says so, because a permission prompt with no explanation
- * is how you lose the permission and the trust in one go.
+ * Two separate things, deliberately not bundled into one button:
+ *
+ *  1. FINDING your friends. Reads the address book, hashes every number on the
+ *     device, and asks which hashes have accounts. No number is sent.
+ *  2. BEING FINDABLE. Registers a hash of your own number so other people's
+ *     lookups can return you. Opt-in, and asked for separately — finding your
+ *     friends should not require making yourself findable to everybody who has
+ *     your number.
+ *
+ * This screen used to flip a local boolean and list people already in the
+ * store. It asked for no permission, read no contacts and matched nothing.
  */
 export default function ContactMatch() {
   const router = useRouter();
   const t = useT();
-  const { people, addFriend } = useStore();
-  const [granted, setGranted] = useState(false);
-  const candidates = people.filter((p) => p.status === 'none');
+  const { addFriend } = useStore();
+
+  const [state, setState] = useState<'idle' | 'working' | 'done' | 'refused'>('idle');
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [number, setNumber] = useState('');
+  const [findable, setFindable] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  const run = async () => {
+    setState('working');
+    const found = await findFriends();
+    if (found === null) {
+      // Refused is not the same as "nobody matched", and saying "nobody" when
+      // somebody declined a permission is how an app looks broken.
+      setState('refused');
+      return;
+    }
+    setMatches(found);
+    setState('done');
+  };
 
   return (
     <Sheet title={t('social.contactsTitle')} onClose={() => router.back()}>
@@ -32,22 +58,65 @@ export default function ContactMatch() {
           </View>
         </Card>
 
-        {!granted ? (
-          <Button title={t('social.matchContacts')} onPress={() => setGranted(true)} />
-        ) : candidates.length === 0 ? (
+        {state === 'idle' ? (
+          <Button title={t('social.matchContacts')} onPress={() => void run()} />
+        ) : state === 'working' ? (
+          <Spinner />
+        ) : state === 'refused' ? (
+          <Text variant="subheadline" tone="tertiary">{t('social.contactsRefused')}</Text>
+        ) : matches.length === 0 ? (
           <Text variant="subheadline" tone="tertiary">{t('social.contactsNone')}</Text>
         ) : (
-          candidates.map((p) => (
+          matches.map((p) => (
             <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
-              <Avatar name={p.displayName} size={40} />
+              <Avatar name={p.displayName} url={p.avatarUrl} size={38} />
               <View style={{ flex: 1 }}>
                 <Text variant="body">{p.displayName}</Text>
                 <Text variant="footnote" tone="tertiary">{t('social.handle', { username: p.username })}</Text>
               </View>
-              <Button title={t('social.add')} kind="glass" compact full={false} onPress={() => addFriend(p.id)} />
+              <Button
+                title={t('social.add')}
+                kind="glass"
+                compact
+                full={false}
+                onPress={() => addFriend(p.id)}
+              />
             </View>
           ))
         )}
+
+        {/*
+          The other direction, asked for separately. Somebody looking their
+          friends up has not agreed to be looked up.
+        */}
+        <Card>
+          <Text variant="sectionHeader" tone="tertiary">{t('social.beFindable')}</Text>
+          <Text variant="footnote" tone="quaternary" style={{ marginTop: 2 }}>
+            {t('social.beFindableBody')}
+          </Text>
+          <View style={{ marginTop: space.m, gap: space.m }}>
+            <Field
+              label={t('social.yourNumber')}
+              value={number}
+              onChangeText={setNumber}
+              placeholder={t('social.numberPlaceholder')}
+              keyboardType="phone-pad"
+              hint={findable === 'saved' ? t('social.findableSaved') : t('social.numberHint')}
+            />
+            <Button
+              title={findable === 'saving' ? t('ui.saving') : t('social.makeFindable')}
+              kind="glass"
+              compact
+              full={false}
+              disabled={number.trim().length < 8 || findable === 'saving'}
+              onPress={async () => {
+                setFindable('saving');
+                const ok = await makeFindable(number);
+                setFindable(ok ? 'saved' : 'idle');
+              }}
+            />
+          </View>
+        </Card>
       </View>
     </Sheet>
   );

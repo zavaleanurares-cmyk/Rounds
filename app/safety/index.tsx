@@ -27,6 +27,9 @@ export default function Safety() {
   const { safety, profile } = store;
   const now = useTick(30_000);
   const [shareHours, setShareHours] = useState<1 | 2 | 4 | null>(null);
+  const sharingUntil = store.safety.locationSharingUntil;
+  // Location is shared into a night, because the night is who sees it.
+  const liveSession = store.sessions.find((x) => x.endedAt === null) ?? null;
 
   const remaining = safety.activeCheck ? safety.activeCheck.deadlineAt - now : 0;
   const emergency = EMERGENCY[profile?.region ?? 'RO'] ?? '112';
@@ -95,19 +98,44 @@ export default function Safety() {
         <Text variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
           {t('safety.shareLocationBody')}
         </Text>
-        <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.m }}>
-          {([1, 2, 4] as const).map((h) => (
-            <Chip
-              key={h}
-              label={t('safety.hours', { count: h })}
-              selected={shareHours === h}
+
+        {sharingUntil ? (
+          /* Sharing is on. The screen says until when, and offers a way out —
+             a control you cannot turn off is not a control. */
+          <View style={{ marginTop: space.m, gap: space.m }}>
+            <Text variant="body">{t('safety.sharingUntil', { time: f.clock(sharingUntil) })}</Text>
+            <Button
+              title={t('safety.stopSharing')}
+              kind="glass"
+              compact
+              full={false}
               onPress={() => {
-                setShareHours(h);
-                store.shareLocationFor(h);
+                setShareHours(null);
+                store.shareLocationFor(0);
               }}
             />
-          ))}
-        </View>
+          </View>
+        ) : liveSession ? (
+          <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.m }}>
+            {([1, 2, 4] as const).map((h) => (
+              <Chip
+                key={h}
+                label={t('safety.hours', { count: h })}
+                selected={shareHours === h}
+                onPress={() => {
+                  setShareHours(h);
+                  store.shareLocationFor(h);
+                }}
+              />
+            ))}
+          </View>
+        ) : (
+          /* Nobody to share with. Saying so beats offering a control that
+             would silently do nothing — which is what it used to do. */
+          <Text variant="footnote" tone="quaternary" style={{ marginTop: space.m }}>
+            {t('safety.shareNeedsNight')}
+          </Text>
+        )}
       </Card>
 
       <Glow color={color.pace.steady} radius={radius.button}>

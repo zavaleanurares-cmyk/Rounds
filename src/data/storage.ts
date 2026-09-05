@@ -29,6 +29,8 @@ export const KEYS = {
   profile: 'rounds.profile.v1',
   logs: 'rounds.logs.v1',
   sessions: 'rounds.sessions.v1',
+  /** Live-room chat. Persisted like every other slice; never pulled. */
+  messages: 'rounds.messages.v1',
   people: 'rounds.people.v1',
   plans: 'rounds.plans.v1',
   crews: 'rounds.crews.v1',

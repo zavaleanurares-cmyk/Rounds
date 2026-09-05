@@ -217,6 +217,35 @@ async function writeExtended(supabase: SupabaseClient, item: QueueItem): Promise
           .eq('session_id', p.sessionId)
           .eq('user_id', p.userId)).error
       );
+    case 'insert_message':
+      // The row the room's realtime subscription has been waiting for since it
+      // was written. `id` is the client's UUID, so the copy that comes back off
+      // the channel is recognisably the one the sender already has on screen.
+      return fail(
+        (await supabase
+          .from('session_messages')
+          .upsert(
+            { id: p.id, session_id: p.sessionId, user_id: p.userId, body: p.text },
+            { onConflict: 'id' }
+          )).error
+      );
+    case 'insert_reaction':
+      // Keyed by the id the client minted (00032), like everything else here,
+      // so a replay after a flaky night lands on the same row rather than
+      // producing a second cheer. `created_at` is sent too because the old
+      // composite is still a uniqueness rule.
+      return fail(
+        (await supabase.from('session_reactions').upsert(
+          {
+            id: p.id,
+            session_id: p.sessionId,
+            user_id: p.userId,
+            emoji: p.reaction,
+            created_at: new Date(p.at).toISOString(),
+          },
+          { onConflict: 'id' }
+        )).error
+      );
 
     /* ----------------------------------------------------------- account */
     case 'upsert_goal':
@@ -226,6 +255,24 @@ async function writeExtended(supabase: SupabaseClient, item: QueueItem): Promise
           .upsert(
             { user_id: p.userId, type: p.type, target: p.target, enabled: p.enabled },
             { onConflict: 'user_id,type' }
+          )).error
+      );
+
+    case 'earn_achievement':
+      // Achievements are computed locally from logs and sessions, so the server
+      // copy is not the source of truth — it is the RECORD that this account
+      // reached it, and when. Without it a reinstall silently un-earns two
+      // dozen things somebody actually did, and no other device or person can
+      // ever see them.
+      //
+      // `ignoreDuplicates` because the earliest earned_at is the true one: a
+      // re-sync must not move the date forward.
+      return fail(
+        (await supabase
+          .from('achievements')
+          .upsert(
+            { user_id: p.userId, code: p.code, earned_at: new Date(p.earnedAt).toISOString() },
+            { onConflict: 'user_id,code', ignoreDuplicates: true }
           )).error
       );
 
@@ -408,6 +455,12 @@ async function writeExtended(supabase: SupabaseClient, item: QueueItem): Promise
 
 /* ------------------------------------------------------------------- pull */
 
+/**
+ * Note what is NOT in here: chat. `sync_pull` does not return session_messages
+ * and should not — a night's messages arriving over realtime while you are in
+ * the room is the feature, and back-filling a week of other people's chat on
+ * every cold start is a different and worse one.
+ */
 export interface PullResult {
   profile: Partial<Profile> | null;
   logs: Log[];
@@ -674,6 +727,7 @@ export function subscribeToSession(
     onLog?: (row: Record<string, unknown>) => void;
     onParticipant?: (row: Record<string, unknown>) => void;
     onMessage?: (row: Record<string, unknown>) => void;
+    onReaction?: (row: Record<string, unknown>) => void;
     onStatus?: (status: string) => void;
   }
 ): (() => void) | null {
@@ -691,6 +745,12 @@ export function subscribeToSession(
     .on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'session_messages', filter: `session_id=eq.${sessionId}` },
       (p) => handlers.onMessage?.(p.new as Record<string, unknown>))
+    // Reactions travel the same way. Writing them without listening for them
+    // was the mirror image of the bug this channel was built to fix: durable,
+    // and invisible to everybody else in the room.
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'session_reactions', filter: `session_id=eq.${sessionId}` },
+      (p) => handlers.onReaction?.(p.new as Record<string, unknown>))
     .subscribe((status) => handlers.onStatus?.(status));
 
   return () => void supabase.removeChannel(channel);

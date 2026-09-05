@@ -1,3 +1,4 @@
+import type { ReactionKind } from '@/ui/Reaction';
 import type { UnitSystem } from './units';
 import type { Sex } from './pace';
 import type { DrinkArt } from './art';
@@ -123,6 +124,29 @@ export interface Participant {
   avatarUrl: string | null;
   joinedAt: number;
   isHost: boolean;
+}
+
+/**
+ * One line in a live room: a message, or a reaction.
+ *
+ * `id` is a client-generated UUID, for the same reason a `Log`'s is — the queue
+ * replays, and a replay must land on the row it already wrote. It is also what
+ * the realtime handler dedupes on: the sender receives their OWN insert back
+ * off the channel a moment after posting it, and must not see it twice.
+ *
+ * Exactly one of `text` and `reaction` is set. A reaction is one of the five
+ * drawn kinds rather than free emoji — see `src/ui/Reaction.tsx` for why that
+ * set is closed.
+ */
+export interface SessionMessage {
+  id: string;
+  sessionId: string;
+  userId: string;
+  /** Resolved when the row lands, because the server row carries only an id. */
+  displayName: string;
+  text: string | null;
+  reaction: ReactionKind | null;
+  at: number;
 }
 
 export interface Person {

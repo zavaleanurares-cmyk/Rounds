@@ -35,11 +35,13 @@ import type {
   Rsvp,
   SafeArrivalCheck,
   Session,
+  SessionMessage,
   TrustedContact,
   Venue,
   Visibility,
 } from '@/domain/types';
 import { nightKey } from '@/domain/nightKey';
+import type { ReactionKind } from '@/ui/Reaction';
 import { useI18n } from '@/i18n';
 import { CATALOG, WATER, byId } from '@/domain/catalog';
 import { KEYS, readJson, writeJson, remove } from './storage';
@@ -48,6 +50,7 @@ import { uuid } from './uuid';
 import * as remote from './remote';
 import * as analytics from '@/services/analytics';
 import * as push from '@/services/push';
+import * as locationShare from '@/services/locationShare';
 import * as purchases from '@/services/purchases';
 import { configureFeedback, releaseFeedback } from '@/services/feedback';
 import { BILLING_VISIBLE } from '@/config/flags';
@@ -133,6 +136,14 @@ export interface State {
   profile: Profile | null;
   logs: Log[];
   sessions: Session[];
+  /**
+   * Live-room chat and reactions, across every night this device has seen.
+   *
+   * Filled by the sender's own action and by realtime, never by a pull —
+   * `sync_pull` does not return chat and should not. See the merge in
+   * `syncNow`, where its absence would otherwise look like an oversight.
+   */
+  messages: SessionMessage[];
   people: Person[];
   crews: Crew[];
   plans: Plan[];
@@ -186,6 +197,7 @@ const INITIAL: State = {
   profile: null,
   logs: [],
   sessions: [],
+  messages: [],
   people: [],
   crews: [],
   plans: [],
@@ -204,6 +216,7 @@ type Action =
   | { type: 'patchProfile'; payload: Partial<Profile> }
   | { type: 'addLog'; payload: Log }
   | { type: 'patchLog'; id: string; payload: Partial<Log> }
+  | { type: 'addMessage'; payload: SessionMessage }
   | { type: 'addSession'; payload: Session }
   | { type: 'patchSession'; id: string; payload: Partial<Session> }
   | { type: 'patchSettings'; payload: Partial<Settings> }
@@ -225,6 +238,12 @@ function reducer(state: State, action: Action): State {
         ...state,
         logs: state.logs.map((l) => (l.id === action.id ? { ...l, ...action.payload } : l)),
       };
+    case 'addMessage':
+      // Deduped by id, because the sender gets their own INSERT back off the
+      // realtime channel a moment after posting it and must not see it twice.
+      return state.messages.some((m) => m.id === action.payload.id)
+        ? state
+        : { ...state, messages: [...state.messages, action.payload].sort((a, b) => a.at - b.at) };
     case 'addSession':
       return { ...state, sessions: [...state.sessions, action.payload] };
     case 'patchSession':
@@ -309,12 +328,37 @@ export interface Store extends State {
   endSession(id: string, input: { mood: Mood | null; safeHome: boolean }): void;
   updateSessionVisibility(id: string, visibility: Visibility): void;
   activeSession: Session | null;
+  /* the live room */
+  sendMessage(sessionId: string, text: string): void;
+  sendReaction(sessionId: string, kind: ReactionKind): void;
+  /**
+   * A `session_messages` row off the realtime channel. The one action here that
+   * does NOT enqueue: this row already exists on the server, and writing it
+   * back would be an echo. Reads through `stateRef`, so the live room can hand
+   * it to a subscription that captures its handlers once.
+   */
+  receiveMessage(row: Record<string, unknown>): void;
+  /**
+   * Records which achievements this account has earned. Idempotent by
+   * (user, code) and the server keeps the EARLIEST date, so calling it with the
+   * full set on every recompute is correct and cheap.
+   */
+  recordEarned(codes: string[]): void;
+  /** The same, for a reaction. Deduped on the id 00032 added. */
+  receiveReaction(row: Record<string, unknown>): void;
   /* social */
   setRsvp(planId: string, rsvp: Rsvp): void;
   voteVenue(planId: string, venueId: string): void;
   createPlan(input: { title: string; startsAt: number; note: string | null; venueIds: string[]; inviteeIds: string[] }): Plan;
   createCrew(input: { name: string; icon: Crew['icon']; accentIndex: number; memberIds?: string[] }): Crew;
   joinCrew(code: string): Crew | null;
+  /**
+   * Leaves a crew. Removes only this account's membership — a crew outlives
+   * the person who walks out of it, and a member is not an owner.
+   */
+  leaveCrew(crewId: string): void;
+  /** Leaves a shared night without ending it for anybody else. */
+  leaveSession(sessionId: string): void;
   addVenue(input: { name: string; area: string | null; category: string | null }): Venue;
   addFriend(personId: string): void;
   respondToRequest(personId: string, accept: boolean): void;
@@ -359,12 +403,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       await logQueue.load();
-      const [auth, profile, logs, sessions, people, crews, plans, goals, safety, blocked, reports, notifications, settings] =
+      const [auth, profile, logs, sessions, messages, people, crews, plans, goals, safety, blocked, reports, notifications, settings] =
         await Promise.all([
           readJson<AuthState>(KEYS.auth, INITIAL.auth),
           readJson<Profile | null>(KEYS.profile, null),
           readJson<Log[]>(KEYS.logs, []),
           readJson<Session[]>(KEYS.sessions, []),
+          readJson<SessionMessage[]>(KEYS.messages, []),
           readJson<Person[]>(KEYS.people, []),
           readJson<Crew[]>(KEYS.crews, []),
           readJson<Plan[]>(KEYS.plans, []),
@@ -382,6 +427,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           profile,
           logs,
           sessions,
+          messages,
           people,
           crews,
           plans,
@@ -403,6 +449,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (state.hydrated) persist(KEYS.profile, state.profile); }, [state.profile, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.logs, state.logs); }, [state.logs, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.sessions, state.sessions); }, [state.sessions, state.hydrated, persist]);
+  useEffect(() => { if (state.hydrated) persist(KEYS.messages, state.messages); }, [state.messages, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.people, state.people); }, [state.people, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.crews, state.crews); }, [state.crews, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.plans, state.plans); }, [state.plans, state.hydrated, persist]);
@@ -462,6 +509,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           // The rest is server-authoritative once the queue is empty, which is
           // exactly the condition we are in.
           sessions: result.sessions.length ? result.sessions : current.sessions,
+          // `messages` is deliberately absent. `sync_pull` does not return chat
+          // and should not: a night's messages arriving over realtime while you
+          // are in the room is the whole feature, and back-filling a week of
+          // other people's chat on every cold start is a different, worse one.
           goals: result.goals.length ? result.goals : current.goals,
           people: result.people.length ? result.people : current.people,
           crews: result.crews,
@@ -506,6 +557,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       unsubscribe();
     };
   }, [state.hydrated, state.auth.status, syncNow]);
+
+  /**
+   * Live location sharing, driven from state rather than from the button.
+   *
+   * `shareLocationFor()` used to set a timestamp that nothing read: the chips
+   * on the safety screen recorded a preference and no location was ever sent
+   * anywhere. This is what makes the control do what it says.
+   *
+   * It needs a night to share into — `session_locations` is keyed by session,
+   * because the audience is the people you are out with. With no live night
+   * there is nobody to tell, and the screen says so rather than pretending.
+   */
+  const sharingUntil = state.safety.locationSharingUntil;
+  const liveSessionId = state.sessions.find((x) => x.endedAt === null)?.id ?? null;
+  useEffect(() => {
+    const userId = stateRef.current.auth.userId;
+    if (!sharingUntil || !liveSessionId || !userId || sharingUntil <= Date.now()) {
+      void locationShare.stopSharing();
+      return;
+    }
+    locationShare.startSharing(liveSessionId, userId, sharingUntil);
+    // Stop exactly when the window closes rather than on the next tick, so
+    // "it stops on its own" is true to the minute.
+    const t = setTimeout(() => {
+      void locationShare.stopSharing();
+      dispatch({ type: 'patchSafety', payload: { locationSharingUntil: null } });
+    }, Math.max(0, sharingUntil - Date.now()));
+    return () => clearTimeout(t);
+  }, [sharingUntil, liveSessionId]);
 
   /**
    * A device that has never registered a push token cannot be told anything —
@@ -916,6 +996,125 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       });
     },
 
+    /* ----------------------------------------------------- live room */
+    /**
+     * Chat, exactly like `addLog`: local state first, queue second, network
+     * never awaited. The sender sees their own line the instant they tap it —
+     * in a basement, on aeroplane mode, on a dying phone — and the row reaches
+     * the other people in the night whenever the queue next drains.
+     *
+     * Before this existed the room held its chat in a `useState`, so two people
+     * in the same night sat in two private chats.
+     */
+    sendMessage(sessionId, text) {
+      const body = text.trim();
+      if (!body) return;
+      const { auth, profile } = stateRef.current;
+      const message: SessionMessage = {
+        id: uuid(), // client-generated: what makes the queue idempotent
+        sessionId,
+        userId: auth.userId ?? 'me',
+        displayName: profile?.displayName ?? '',
+        text: body,
+        reaction: null,
+        at: Date.now(),
+      };
+      dispatch({ type: 'addMessage', payload: message });
+      logQueue.enqueue({ id: message.id, op: 'insert_message', payload: message });
+    },
+    /**
+     * The same path for one of the five drawn reactions.
+     *
+     * The server row is keyed by (session, user, emoji, created_at) rather than
+     * by an id, so `at` is part of the key and is sent as-is — see the writer in
+     * remote.ts. The queue item keeps the client UUID regardless, because that
+     * is what the queue dedupes and what `isSyncable` checks.
+     */
+    sendReaction(sessionId, kind) {
+      const { auth, profile } = stateRef.current;
+      const reaction: SessionMessage = {
+        id: uuid(),
+        sessionId,
+        userId: auth.userId ?? 'me',
+        displayName: profile?.displayName ?? '',
+        text: null,
+        reaction: kind,
+        at: Date.now(),
+      };
+      dispatch({ type: 'addMessage', payload: reaction });
+      logQueue.enqueue({ id: reaction.id, op: 'insert_reaction', payload: reaction });
+    },
+
+    /**
+     * A `session_reactions` row off the wire. Same shape as `receiveMessage`
+     * and, like it, does not enqueue: the row is already on the server.
+     *
+     * The sender receives their own insert back, which is why 00032 gave
+     * reactions an id — the reducer dedupes on it, so an optimistic reaction
+     * and its echo are one row rather than two.
+     */
+    receiveReaction(row) {
+      const id = typeof row.id === 'string' ? row.id : null;
+      const sessionId = typeof row.session_id === 'string' ? row.session_id : null;
+      if (!id || !sessionId) return;
+      const userId = typeof row.user_id === 'string' ? row.user_id : '';
+      const { people, profile, auth, blocked } = stateRef.current;
+      if (blocked.includes(userId)) return;
+      dispatch({
+        type: 'addMessage',
+        payload: {
+          id,
+          sessionId,
+          userId,
+          displayName:
+            (userId === auth.userId ? profile?.displayName : people.find((x) => x.id === userId)?.displayName) ?? '',
+          text: null,
+          reaction: (row.emoji as SessionMessage['reaction']) ?? null,
+          at: typeof row.created_at === 'string' ? new Date(row.created_at).getTime() : Date.now(),
+        },
+      });
+    },
+    recordEarned(codes) {
+      const me = stateRef.current.auth.userId;
+      if (!me) return;
+      const at = Date.now();
+      for (const code of codes) {
+        logQueue.enqueue({
+          // Composite key, like every other pairing in this queue. Both halves
+          // must be syncable, so a demo account never writes one.
+          id: `${me}:${code}`,
+          op: 'earn_achievement',
+          payload: { userId: me, code, earnedAt: at },
+        });
+      }
+    },
+    receiveMessage(row) {
+      const id = typeof row.id === 'string' ? row.id : null;
+      const sessionId = typeof row.session_id === 'string' ? row.session_id : null;
+      if (!id || !sessionId) return;
+      const userId = typeof row.user_id === 'string' ? row.user_id : '';
+      const { people, profile, auth, blocked } = stateRef.current;
+      // A block has to hold inside a shared night too. RLS cannot express this
+      // one — both people are legitimately in the same session — so the room
+      // that renders the message is where it gets dropped.
+      if (blocked.includes(userId)) return;
+      dispatch({
+        type: 'addMessage',
+        payload: {
+          id,
+          sessionId,
+          userId,
+          // The row carries an id and no name; everything else the app knows
+          // about that person is already local.
+          displayName:
+            (userId === auth.userId ? profile?.displayName : people.find((x) => x.id === userId)?.displayName) ?? '',
+          text: typeof row.body === 'string' ? row.body : null,
+          reaction: null,
+          at: typeof row.created_at === 'string' ? new Date(row.created_at).getTime() : Date.now(),
+        },
+      });
+    },
+
     /* -------------------------------------------------------- social */
     setRsvp(planId, rsvp) {
       const me = stateRef.current.auth.userId ?? 'me';
@@ -1104,6 +1303,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         payload: { crewId: crew.id, userId: me },
       });
       return joined;
+    },
+    leaveCrew(crewId) {
+      const me = stateRef.current.auth.userId ?? 'me';
+      dispatch({
+        type: 'set',
+        payload: {
+          // The crew disappears from THIS account rather than being deleted:
+          // everybody else is still in it, and the plans attached to it are
+          // still theirs.
+          crews: stateRef.current.crews.filter((c) => c.id !== crewId),
+        },
+      });
+      logQueue.enqueue({
+        id: `${crewId}:${me}`,
+        op: 'delete_crew_member',
+        payload: { crewId, userId: me },
+      });
+    },
+    leaveSession(sessionId) {
+      const me = stateRef.current.auth.userId ?? 'me';
+      // Leaving is not ending. The night carries on for whoever is still out;
+      // this account simply stops being part of it, and its own logs stay its
+      // own — they are keyed by user, not by session membership.
+      logQueue.enqueue({
+        id: `${sessionId}:${me}`,
+        op: 'leave_session',
+        payload: { sessionId, userId: me },
+      });
     },
     addVenue(input) {
       const venue: Venue = {
@@ -1341,10 +1568,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       logQueue.enqueue({ id, op: 'delete_contact', payload: { id } });
     },
     shareLocationFor(hours) {
-      dispatch({
-        type: 'patchSafety',
-        payload: { locationSharingUntil: Date.now() + hours * 3600000 },
-      });
+      // Zero means stop. The screen offers it as a button rather than making
+      // somebody wait out a window they no longer want.
+      const until = hours <= 0 ? null : Date.now() + hours * 3600000;
+      dispatch({ type: 'patchSafety', payload: { locationSharingUntil: until } });
     },
 
     /* ------------------------------------------------------ settings */
@@ -1381,7 +1608,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     async clearAllData() {
       dispatch({
         type: 'set',
-        payload: { logs: [], sessions: [], people: [], crews: [], plans: [], notifications: [] },
+        payload: { logs: [], sessions: [], messages: [], people: [], crews: [], plans: [], notifications: [] },
       });
       await logQueue.clear();
     },

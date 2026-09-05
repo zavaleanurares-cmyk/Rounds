@@ -34,7 +34,7 @@ export const safety = {
   'safety.checkOnMe': 'Mira cómo estoy',
   'safety.shareLocation': 'COMPARTIR MI UBICACIÓN',
   'safety.shareLocationBody':
-    'Con tiempo limitado y solo con tus contactos de confianza. Se para sola.',
+    'Con tiempo limitado, con la gente de tu noche. Se para sola, y el dato se borra en vez de ocultarse.',
   'safety.hours': { one: '{count} h', other: '{count} h' },
   'safety.callEmergencyTitle': '¿Llamar al {number}?',
   'safety.callEmergencyBody': 'Esto llama a los servicios de emergencia.',
@@ -73,4 +73,7 @@ export const safety = {
   'safety.contactPhone': 'Teléfono',
   'safety.addContact': 'Añadir contacto',
   'safety.threeMax': 'Tres es el máximo.',
+  'safety.sharingUntil': 'Se comparte con tu noche hasta las {time}.',
+  'safety.stopSharing': 'Dejar de compartir',
+  'safety.shareNeedsNight': 'Empieza una noche primero — tu ubicación se comparte con la gente con la que sales.',
 } satisfies Record<string, Message>;

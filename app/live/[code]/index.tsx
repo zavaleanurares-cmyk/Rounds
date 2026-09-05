@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Pressable, Share } from 'react-native';
+import { View, Pressable, Share, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Card, Text, Avatar, Icon, Chip, Glass, EmptyState, Button, Reaction, REACTIONS, REACTION_LABEL, type ReactionKind } from '@/ui';
 import { Field } from '@/features/forms/Field';
@@ -22,19 +22,25 @@ export default function LiveRoom() {
   const router = useRouter();
   const t = useT();
   const { code } = useLocalSearchParams<{ code: string }>();
-  const { sessions, people, logs, profile, blocked } = useStore();
+  const { sessions, people, logs, profile, blocked, messages, auth, sendMessage, sendReaction, receiveMessage, receiveReaction, leaveSession } = useStore();
   const session = sessions.find((s) => s.joinCode === code);
   const [message, setMessage] = useState('');
-  const [chat, setChat] = useState<Array<{ id: string; who: string; text?: string; reaction?: ReactionKind }>>([
-    { id: '1', who: 'Ana Marin', text: t('live.sampleMessageOne') },
-    { id: '2', who: 'Tudor', text: t('live.sampleMessageTwo') },
-  ]);
   const [sharingLocation, setSharingLocation] = useState(false);
 
-  // One multiplexed channel, reconnecting on foreground with backoff.
+  // The room's chat is store state, not component state: what the sender types
+  // has to reach the other people in the night, and what they send has to reach
+  // this screen. Both directions go through the store.
+  const chat = useMemo(
+    () => messages.filter((m) => m.sessionId === session?.id),
+    [messages, session?.id]
+  );
+
+  // One multiplexed channel, reconnecting on foreground with backoff. The hook
+  // captures its handlers once; `receiveMessage` reads through the store's ref,
+  // so the captured copy stays correct for the life of the room.
   const realtime = useSessionRealtime(session?.id ?? null, {
-    onMessage: (row) =>
-      setChat((c) => [...c, { id: String(row.id), who: String(row.user_id), text: String(row.body) }]),
+    onMessage: receiveMessage,
+    onReaction: receiveReaction,
   });
 
   const roster = useMemo(
@@ -80,7 +86,7 @@ export default function LiveRoom() {
             <Pressable
               onPress={() => {
                 if (!message.trim()) return;
-                setChat((c) => [...c, { id: String(Date.now()), who: t('live.you'), text: message.trim() }]);
+                sendMessage(session.id, message);
                 setMessage('');
               }}
               accessibilityRole="button"
@@ -147,19 +153,22 @@ export default function LiveRoom() {
       <Card>
         <Text variant="sectionHeader" tone="tertiary">{t('live.chat')}</Text>
         <View style={{ marginTop: space.m, gap: space.m }}>
-          {chat.map((c) => (
-            <View key={c.id} style={{ flexDirection: 'row', gap: space.m }}>
-              <Avatar name={c.who} size={28} />
-              <View style={{ flex: 1 }}>
-                <Text variant="caption1" tone="tertiary">{c.who}</Text>
-                {c.reaction ? (
-                  <Reaction kind={c.reaction} size={22} />
-                ) : (
-                  <Text variant="subheadline">{c.text}</Text>
-                )}
+          {chat.map((c) => {
+            const who = c.userId === auth.userId ? t('live.you') : c.displayName || t('live.someone');
+            return (
+              <View key={c.id} style={{ flexDirection: 'row', gap: space.m }}>
+                <Avatar name={who} size={28} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="caption1" tone="tertiary">{who}</Text>
+                  {c.reaction ? (
+                    <Reaction kind={c.reaction} size={22} />
+                  ) : (
+                    <Text variant="subheadline">{c.text}</Text>
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
         <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md }}>
           {REACTIONS.map((r: ReactionKind) => (
@@ -168,13 +177,39 @@ export default function LiveRoom() {
               label={t(REACTION_LABEL[r])}
               compact
               glyph={<Reaction kind={r} size={18} />}
-              onPress={() => setChat((c) => [...c, { id: String(Date.now()), who: t('live.you'), reaction: r }])}
+              onPress={() => sendReaction(session.id, r)}
             />
           ))}
         </View>
       </Card>
 
       <Button title={t('live.partyMode')} kind="plain" icon="sparkles" onPress={() => router.push(`/live/${code}/bingo` as never)} />
+
+      {/*
+        Leaving is not ending. The night carries on for whoever is still out;
+        this account stops being part of it. Only shown to somebody who is not
+        the host — the host ending their own night is the End button on the
+        session screen, which is a different thing.
+      */}
+      {session.ownerId !== auth.userId ? (
+        <Button
+          title={t('live.leaveNight')}
+          kind="destructive"
+          onPress={() =>
+            Alert.alert(t('live.leaveNightTitle'), t('live.leaveNightBody'), [
+              { text: t('ui.cancel'), style: 'cancel' },
+              {
+                text: t('live.leaveNight'),
+                style: 'destructive',
+                onPress: () => {
+                  leaveSession(session.id);
+                  router.replace('/(tabs)/tonight');
+                },
+              },
+            ])
+          }
+        />
+      ) : null}
     </Screen>
   );
 }
