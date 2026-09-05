@@ -36,7 +36,17 @@ export type GlassShape =
   | 'sling'         // footed sling
   | 'julep'         // silver cup
   | 'water'
-  | 'cup';          // coffee, soft
+  | 'cup'           // coffee, soft
+  /**
+   * Not glassware.
+   *
+   * The nicotine module records things that are not drunk, and the glyph
+   * system is the app's whole answer to "never an emoji" — so rather than
+   * exempt it, these are two more silhouettes drawn the same way, with an
+   * empty cavity so the liquid layer has nothing to fill.
+   */
+  | 'cigarette'
+  | 'vape';
 
 export type Garnish =
   | 'citrusWheel' | 'citrusWedge' | 'citrusTwist' | 'orangePeel'
@@ -141,4 +151,7 @@ export const CUSTOM_ART = {
   shot:     { glass: 'shot',     liquid: LIQUID.clear,  fill: 0.72 },
   soft:     { glass: 'highball', liquid: LIQUID.soda,   fill: 0.8, ice: 'cubes', garnish: ['straw'] },
   water:    { glass: 'water',    liquid: LIQUID.water,  fill: 0.72, ice: 'cubes' },
+  // A custom nicotine entry cannot be created from the drink sheet, but the map
+  // is keyed by category and a missing key is a crash rather than a blank.
+  nicotine: { glass: 'cigarette', liquid: LIQUID.water,  fill: 0 },
 } satisfies Record<string, DrinkArt>;

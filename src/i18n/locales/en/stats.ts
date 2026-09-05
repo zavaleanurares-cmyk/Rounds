@@ -202,7 +202,6 @@ export const stats = {
   'stats.freeStreak': 'Free streak',
   'stats.nicotineNote':
     'Log a cigarette, vape or pouch from the log sheet and it appears here rather than in your drink history. The two are never mixed.',
-  'stats.logNicotine': 'Log nicotine',
 
   // S-15 · Report
   'stats.reportTitle': 'Report',
@@ -259,4 +258,6 @@ export const stats = {
   'stats.notFoundBody':
     "The page you were looking for doesn't exist — or the night it pointed at has ended.",
   'stats.backToTonight': 'Back to Tonight',
+  'stats.nicotineLogged': "{what} logged",
+  'stats.nicotineTonight': "TONIGHT",
 } satisfies Record<string, Message>;

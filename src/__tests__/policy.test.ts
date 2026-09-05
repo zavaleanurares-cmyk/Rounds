@@ -612,6 +612,22 @@ describe('the app is not write-only', () => {
     expect(invite).not.toMatch(/displayName|avatar/);
   });
 
+  it('the nicotine module can record something', () => {
+    // It was a shell: two literal zeros on the dashboard, a "Log nicotine"
+    // button that opened the drinks sheet, no nicotine category to log into,
+    // and a `nicotine_free` goal with no branch in goalProgress — so its ring
+    // read 0% whatever anybody did.
+    const screen = code('app/nicotine.tsx');
+    expect(screen).toContain('logNicotine');
+    expect(screen).not.toMatch(/f\.number\(0, 0\)/);
+    expect(store).toContain('logNicotine(drinkId)');
+    expect(code('src/domain/stats.ts')).toContain("goal.type === 'nicotine_free'");
+    // And nothing nicotine ever carries ethanol, which is what keeps every
+    // alcohol total right without a filter anybody has to remember.
+    const nic = code('src/domain/nicotine.ts');
+    expect(nic).toMatch(/ml: 0,\s*\n\s*abv: 0,/);
+  });
+
   it('a device registers for push, or nothing can be delivered to it', () => {
     // push_tokens was empty for every real account: registerForPush existed and
     // was never called, so even stage one of the escalation had nowhere to go.

@@ -173,4 +173,5 @@ export const common = {
   'common.demoPlanTitle': 'Vineri, ca lumea',
   'common.demoPlanNote': 'Începem la Roots, restul îl decidem acolo.',
   'common.you': 'Tu',
+  'common.categoryNicotine': 'Nicotină',
 } satisfies Record<string, Message>;

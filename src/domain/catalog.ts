@@ -215,6 +215,10 @@ export const CATEGORY_LABEL: Record<DrinkCategory, MessageKey> = {
   shot: 'common.categoryShot',
   soft: 'common.categorySoft',
   water: 'common.categoryWater',
+  // Never a heading in the drink sheet — CATEGORY_ORDER leaves it out — but the
+  // label exists because the log list and the session screen group by category
+  // and a nicotine log has to be able to say what it is.
+  nicotine: 'common.categoryNicotine',
 };
 
 export const CATEGORY_ORDER: DrinkCategory[] = [

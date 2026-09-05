@@ -247,7 +247,6 @@ export const stats = {
   'stats.freeStreak': 'Serie fără nicotină',
   'stats.nicotineNote':
     'Notează o țigară, un vape sau un pliculeț acolo unde notezi o băutură și apare aici, nu în istoricul băuturilor. Cele două nu se amestecă niciodată.',
-  'stats.logNicotine': 'Notează nicotina',
 
   // S-15 · Report
   'stats.reportTitle': 'Raportează',
@@ -317,4 +316,6 @@ export const stats = {
     'Pagina pe care o căutai nu există — sau seara la care ducea s-a terminat.',
   // "Diseară" names the tab, so it keeps its capital.
   'stats.backToTonight': 'Înapoi la Diseară',
+  'stats.nicotineLogged': "Am notat: {what}",
+  'stats.nicotineTonight': "ÎN SEARA ASTA",
 } satisfies Record<string, Message>;

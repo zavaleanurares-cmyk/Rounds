@@ -222,7 +222,6 @@ export const stats = {
   'stats.freeStreak': 'Série sans nicotine',
   'stats.nicotineNote':
     "Note une cigarette, une vape ou un sachet là où tu notes un verre et ça apparaît ici, pas dans ton historique de verres. Les deux ne sont jamais mélangés.",
-  'stats.logNicotine': 'Noter la nicotine',
 
   // S-15 · Report
   'stats.reportTitle': 'Signaler',
@@ -284,4 +283,6 @@ export const stats = {
     "La page que tu cherchais n'existe pas — ou la soirée qu'elle visait est terminée.",
   // "Ce soir" names the tab, so it keeps its capital.
   'stats.backToTonight': 'Retour à Ce soir',
+  'stats.nicotineLogged': "{what} enregistrée",
+  'stats.nicotineTonight': "CE SOIR",
 } satisfies Record<string, Message>;

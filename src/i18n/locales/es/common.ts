@@ -163,4 +163,5 @@ export const common = {
   'common.demoPlanTitle': 'Viernes, en condiciones',
   'common.demoPlanNote': 'Empezamos en Roots y el resto lo decidimos allí.',
   'common.you': 'Tú',
+  'common.categoryNicotine': 'Nicotina',
 } satisfies Record<string, Message>;

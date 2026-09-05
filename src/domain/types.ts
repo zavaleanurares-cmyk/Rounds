@@ -6,7 +6,18 @@ import type { Locale } from '@/i18n/plurals';
 
 export type Visibility = 'private' | 'friends' | 'crew' | 'link';
 export type Mood = 'great' | 'good' | 'rough' | 'bad';
-export type DrinkCategory = 'beer' | 'wine' | 'spirit' | 'cocktail' | 'shot' | 'soft' | 'water';
+export type DrinkCategory =
+  | 'beer' | 'wine' | 'spirit' | 'cocktail' | 'shot' | 'soft' | 'water'
+  /**
+   * Not a drink, and deliberately in the same union.
+   *
+   * A cigarette is a consumption log like any other — a time, a night, maybe a
+   * venue — containing no ethanol. `ethanol_g` is a GENERATED column over
+   * volume and ABV, both zero here, so every alcohol total in the product
+   * excludes it by construction rather than by a filter somebody has to
+   * remember. Water already proved that path works.
+   */
+  | 'nicotine';
 
 export interface Profile {
   id: string;

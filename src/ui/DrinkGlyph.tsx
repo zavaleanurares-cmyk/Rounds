@@ -59,6 +59,40 @@ interface Stroke {
 /* ------------------------------------------------------------- glassware */
 
 const GLASSES: Record<GlassShape, GlassDef> = {
+  /**
+   * The two that hold nothing.
+   *
+   * `opaque` keeps the liquid layer out, and the cavity is a degenerate point
+   * so nothing can be clipped into it — a cigarette with a fill level would be
+   * a strange object. Everything else about them is the same as a glass: one
+   * stroke, the app's palette, crisp at 18pt in a chip.
+   */
+  cigarette: {
+    cavity: { path: 'M22 28 L22 28 Z', top: 28, bottom: 28, rimHalf: 0, cx: 22 },
+    opaque: true,
+    front: (s) => (
+      <>
+        {/* the body, angled, with the filter banded off at the near end */}
+        <Path {...s} d="M9 44 L33 20" strokeWidth={5} strokeLinecap="round" />
+        <Path {...s} d="M9 44 L15.5 37.5" strokeWidth={5} strokeLinecap="round" opacity={0.45} />
+        <Line {...s} x1="15.5" y1="37.5" x2="15.5" y2="37.5" strokeWidth={5} />
+        {/* smoke */}
+        <Path {...s} d="M34.5 17 Q31 13.5 34 10.5 Q37 7.5 33.5 4.5" strokeWidth={1.4} opacity={0.55} />
+      </>
+    ),
+  },
+  vape: {
+    cavity: { path: 'M22 28 L22 28 Z', top: 28, bottom: 28, rimHalf: 0, cx: 22 },
+    opaque: true,
+    front: (s) => (
+      <>
+        <Path {...s} d="M16 12 L28 12 Q30 12 30 14.5 L30 45 Q30 48 27 48 L17 48 Q14 48 14 45 L14 14.5 Q14 12 16 12 Z" />
+        <Line {...s} x1="18.5" y1="9" x2="25.5" y2="9" strokeWidth={3.2} strokeLinecap="round" />
+        <Line {...s} x1="18" y1="40" x2="26" y2="40" strokeWidth={1} opacity={0.5} />
+        <Path {...s} d="M33 8 Q29.5 5 32.5 2" strokeWidth={1.4} opacity={0.55} />
+      </>
+    ),
+  },
   pint: {
     cavity: { path: 'M11.5 8 L32.5 8 L29.5 49.5 Q22 51.5 14.5 49.5 Z', top: 8, bottom: 50, rimHalf: 10.5, cx: 22 },
     front: (s) => (

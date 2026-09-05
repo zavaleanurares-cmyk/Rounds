@@ -5,6 +5,7 @@
  */
 import type { Log, Session, Goal } from './types';
 import { nightKey, nightWeekday } from './nightKey';
+import { nicotineFreeDays } from './nicotine';
 
 export interface NightSummary {
   key: string;
@@ -207,6 +208,20 @@ export function goalProgress(logs: Log[], goal: Goal): { value: number; target: 
       if (!has || dry.has(key)) count += 1;
     }
     value = count;
+  } else if (goal.type === 'nicotine_free') {
+    /**
+     * Days clean, straight from the nicotine module.
+     *
+     * This branch did not exist. The goal type has been selectable since the
+     * goal editor shipped and `goalProgress` had no case for it, so it returned
+     * 0 and the ring read 0% forever, whatever the person actually did.
+     *
+     * Delegated rather than reimplemented: the dashboard and the goal ring
+     * showing one person two different streaks would be worse than either
+     * number being off by one, and the rules — night keys rather than calendar
+     * days, tonight not banked until it ends — belong in one place.
+     */
+    value = nicotineFreeDays(logs, now.getTime());
   }
   return { value, target: goal.target, pct: goal.target > 0 ? Math.min(1, value / goal.target) : 0 };
 }

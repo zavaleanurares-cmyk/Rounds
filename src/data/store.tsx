@@ -54,6 +54,7 @@ import * as locationShare from '@/services/locationShare';
 import * as purchases from '@/services/purchases';
 import { configureFeedback, releaseFeedback } from '@/services/feedback';
 import { BILLING_VISIBLE } from '@/config/flags';
+import { NICOTINE } from '@/domain/nicotine';
 import {
   DEMO_CREWS,
   DEMO_PEOPLE,
@@ -420,6 +421,15 @@ export interface Store extends State {
   removeFriend(personId: string): void;
   /** Where "home" is, for the ride and walk actions. Private to this account. */
   setHomeAddress(address: string): void;
+  /**
+   * Records a cigarette or a vape.
+   *
+   * Its own action rather than `addLog` from a screen, so the nicotine module
+   * stays a module: nothing outside it needs to know these entries exist, and
+   * the drink sheet — which is a grid of drinks — never grows a cigarette in
+   * it. The row itself is an ordinary log with no ethanol in it.
+   */
+  logNicotine(drinkId: string): void;
   addFriend(personId: string): void;
   /** Acknowledges a declined request so the message stops being shown. */
   clearFriendRequestOutcome(): void;
@@ -1554,6 +1564,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'set', payload: { venues: [...stateRef.current.venues, venue] } });
       logQueue.enqueue({ id: venue.id, op: 'upsert_venue', payload: venue });
       return venue;
+    },
+    logNicotine(drinkId) {
+      const drink = NICOTINE.find((x) => x.id === drinkId);
+      if (!drink) return;
+      // No price: a night's spend is what the night cost at the bar, and
+      // folding a pack of cigarettes into it would quietly change what that
+      // number means on the morning screen.
+      addLog({ drink, priceMinor: null });
     },
     askForRound(input) {
       const session = stateRef.current.sessions.find((x) => x.endedAt === null);
