@@ -82,6 +82,36 @@ describe('the pictograms', () => {
     expect(tints.size).toBeGreaterThanOrEqual(8);
   });
 
+  it('gives no two products the same picture', () => {
+    /**
+     * `Cigarette` and `Rolled` shared a silhouette, and so did IQOS and glo —
+     * in both cases the two products a person actually chooses between. A
+     * contact sheet showed it; nothing else did, so this is the assertion that
+     * stands in for looking.
+     *
+     * `scripts/render-nicotine.mjs` is the looking, when a shape changes.
+     */
+    const seen = new Map<string, string>();
+    for (const p of NICOTINE_PRODUCTS) {
+      const art = asDrink(p).art;
+      const key = `${art.glass}|${art.liquid.join()}`;
+      const clash = seen.get(key);
+      expect({ id: p.id, sameAs: clash ?? null }).toEqual({ id: p.id, sameAs: null });
+      seen.set(key, p.id);
+    }
+  });
+
+  it('deepens a brand’s colour as the strength rises', () => {
+    // Real tins signal strength by shade, and four identical white pillows
+    // labelled only by their text is not a picker.
+    const zyn = POUCHES.filter((p) => p.brand === 'ZYN');
+    expect(zyn.length).toBeGreaterThan(2);
+    const shades = zyn.map((p) => asDrink(p).art.liquid[0]);
+    expect(new Set(shades).size).toBe(zyn.length);
+    // …and never past recognition: the hue is the brand.
+    for (const s of shades) expect(s).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
   it('draws a legacy cigarette as a cigarette, not as a vape', () => {
     // The old catalogue had two ids; `cigarette` became `cig-other`, so every
     // row written before this catalogue existed resolved to nothing and fell

@@ -75,9 +75,27 @@ const GLASSES: Record<GlassShape, GlassDef> = {
         {/* the body, angled, with the filter banded off at the near end */}
         <Path {...s} d="M9 44 L33 20" strokeWidth={5} strokeLinecap="round" />
         <Path {...s} d="M9 44 L15.5 37.5" strokeWidth={5} strokeLinecap="round" opacity={0.45} />
-        <Line {...s} x1="15.5" y1="37.5" x2="15.5" y2="37.5" strokeWidth={5} />
         {/* smoke */}
         <Path {...s} d="M34.5 17 Q31 13.5 34 10.5 Q37 7.5 33.5 4.5" strokeWidth={1.4} opacity={0.55} />
+      </>
+    ),
+  },
+  /**
+   * Hand-rolled: thinner, no filter band, and pinched shut at the far end.
+   *
+   * It had been sharing the cigarette silhouette, so the two were
+   * indistinguishable in a grid where they sit next to each other — which is
+   * the one place the difference matters.
+   */
+  rolled: {
+    cavity: { path: 'M22 28 L22 28 Z', top: 28, bottom: 28, rimHalf: 0, cx: 22 },
+    opaque: true,
+    front: (s) => (
+      <>
+        <Path {...s} d="M10 43 L30.5 22.5" strokeWidth={3.4} strokeLinecap="round" />
+        {/* the twist */}
+        <Path {...s} d="M30.5 22.5 L34 19" strokeWidth={1.6} strokeLinecap="round" />
+        <Path {...s} d="M35.5 16 Q32.5 13 35 10" strokeWidth={1.3} opacity={0.5} />
       </>
     ),
   },
@@ -88,14 +106,21 @@ const GLASSES: Record<GlassShape, GlassDef> = {
    * and a ZYN read white at 18pt in a chip.
    */
   pouch: {
-    cavity: { path: 'M9 20 Q9 16.5 12.5 16.5 L31.5 16.5 Q35 16.5 35 20 L35 36 Q35 39.5 31.5 39.5 L12.5 39.5 Q9 39.5 9 36 Z', top: 16.5, bottom: 39.5, rimHalf: 13, cx: 22 },
+    /**
+     * A slim pouch, which is a small pillow — much wider than it is tall, with
+     * fully rounded ends. The first version was 26 wide by 23 tall with a small
+     * corner radius, so it rendered as a rounded square: an app icon, or a tin,
+     * and not the thing that goes under a lip. Looking at a contact sheet is
+     * what showed it; nothing else would have.
+     */
+    cavity: { path: 'M6 30 Q6 20 16 20 L28 20 Q38 20 38 30 Q38 40 28 40 L16 40 Q6 40 6 30 Z', top: 20, bottom: 40, rimHalf: 16, cx: 22 },
     front: (s) => (
       <>
-        <Path {...s} d="M9 20 Q9 16.5 12.5 16.5 L31.5 16.5 Q35 16.5 35 20 L35 36 Q35 39.5 31.5 39.5 L12.5 39.5 Q9 39.5 9 36 Z" />
-        {/* the seam, and the fold at each end */}
-        <Path {...s} d="M11.5 28 Q22 25.5 32.5 28" strokeWidth={1} opacity={0.55} />
-        <Path {...s} d="M13.5 17 Q13 28 13.5 39" strokeWidth={0.9} opacity={0.4} />
-        <Path {...s} d="M30.5 17 Q31 28 30.5 39" strokeWidth={0.9} opacity={0.4} />
+        <Path {...s} d="M6 30 Q6 20 16 20 L28 20 Q38 20 38 30 Q38 40 28 40 L16 40 Q6 40 6 30 Z" />
+        {/* the seam along the middle, and the soft gather at each end */}
+        <Path {...s} d="M10 30 Q22 27.5 34 30" strokeWidth={1} opacity={0.5} />
+        <Path {...s} d="M13 22 Q11.5 30 13 38" strokeWidth={0.9} opacity={0.35} />
+        <Path {...s} d="M31 22 Q32.5 30 31 38" strokeWidth={0.9} opacity={0.35} />
       </>
     ),
   },
@@ -138,10 +163,27 @@ const GLASSES: Record<GlassShape, GlassDef> = {
     opaque: true,
     front: (s) => (
       <>
-        <Path {...s} d="M16 12 L28 12 Q30 12 30 14.5 L30 45 Q30 48 27 48 L17 48 Q14 48 14 45 L14 14.5 Q14 12 16 12 Z" />
-        <Line {...s} x1="18.5" y1="9" x2="25.5" y2="9" strokeWidth={3.2} strokeLinecap="round" />
+        <Path {...s} d="M16 14 L28 14 Q30 14 30 16.5 L30 45 Q30 48 27 48 L17 48 Q14 48 14 45 L14 16.5 Q14 14 16 14 Z" />
+        {/* the mouthpiece, on the body rather than floating above it */}
+        <Path {...s} d="M19 14 L19 10 Q19 8.5 20.5 8.5 L23.5 8.5 Q25 8.5 25 10 L25 14" />
         <Line {...s} x1="18" y1="40" x2="26" y2="40" strokeWidth={1} opacity={0.5} />
-        <Path {...s} d="M33 8 Q29.5 5 32.5 2" strokeWidth={1.4} opacity={0.55} />
+      </>
+    ),
+  },
+  /**
+   * The other heated device: shorter, wider, with the stick sunk into it rather
+   * than standing out. It shared `heatstick` with IQOS and the two were the
+   * same picture, which for the two products a smoker actually chooses between
+   * is the worst place to be identical.
+   */
+  heatstickWide: {
+    cavity: { path: 'M12 22 Q12 19.5 14.5 19.5 L29.5 19.5 Q32 19.5 32 22 L32 46 Q32 49 29 49 L15 49 Q12 49 12 46 Z', top: 19.5, bottom: 49, rimHalf: 10, cx: 22 },
+    front: (s) => (
+      <>
+        <Path {...s} d="M12 22 Q12 19.5 14.5 19.5 L29.5 19.5 Q32 19.5 32 22 L32 46 Q32 49 29 49 L15 49 Q12 49 12 46 Z" />
+        {/* the stick, sunk in */}
+        <Path {...s} d="M19.5 19.5 L19.5 12 L24.5 12 L24.5 19.5" />
+        <Line {...s} x1="13.5" y1="27" x2="30.5" y2="27" strokeWidth={1} opacity={0.5} />
       </>
     ),
   },

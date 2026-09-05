@@ -47,9 +47,11 @@ export type GlassShape =
    */
   | 'cigarette'
   | 'vape'
-  | 'pouch'       // a single white pouch, from the tin
-  | 'pack'        // a cigarette pack, flip-top open
-  | 'heatstick';  // a heated-tobacco stick and its holder
+  | 'pouch'          // a single slim pouch, from the tin
+  | 'pack'           // a cigarette pack, flip-top open
+  | 'rolled'         // hand-rolled: thinner, unfiltered, twisted shut
+  | 'heatstick'      // a heated-tobacco stick standing in its holder
+  | 'heatstickWide'; // the shorter, wider device, stick sunk in
 
 export type Garnish =
   | 'citrusWheel' | 'citrusWedge' | 'citrusTwist' | 'orangePeel'

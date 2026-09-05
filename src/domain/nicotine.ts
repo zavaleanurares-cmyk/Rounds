@@ -59,7 +59,7 @@ export interface NicotineProduct {
   mg: number | null;
   glass: GlassShape;
   /** The tin or pack colour, so a brand is recognisable at 18pt. */
-  tint: readonly [string, string];
+  tint: Tint;
 }
 
 /* Tin and pack colours, drawn from each brand's own packaging. */
@@ -74,10 +74,45 @@ const TINT = {
   skruf:    ['#2B6E4F', '#12513A'],
   helwit:   ['#7A4FA3', '#3C2455'],
   xqs:      ['#EFC94C', '#A8871F'],
+  /**
+   * Pack colours: one each, and deliberately not anybody's trade dress.
+   *
+   * They exist so eleven packs in a grid are eleven distinguishable tiles
+   * rather than three colours repeated — five brands rendered identically in
+   * the first version, which a contact sheet showed and a type check could not.
+   * They carry no wordmark, no logo and no attempt at a real pack's design;
+   * they are a colour and a silhouette, enough to find your own brand in a list
+   * you chose it from.
+   */
+  packRed:    ['#C0453B', '#75211B'],
+  packAmber:  ['#D98A3C', '#8A4E16'],
+  packBlue:   ['#3E6FA8', '#1E3D63'],
+  packSlate:  ['#59636E', '#2B333B'],
+  packGreen:  ['#3F7D62', '#1D4434'],
+  packSand:   ['#C9A46B', '#7C6033'],
+  packPlum:   ['#7B4A6E', '#3F2338'],
+  packTeal:   ['#3B7E86', '#1B444A'],
+  packRust:   ['#A85C33', '#5F2F14'],
+  packInk:    ['#454B57', '#20242C'],
+  packMoss:   ['#6E7B4A', '#3A4126'],
+
   tobacco:  ['#B4713A', '#6E401B'],
-  ember:    ['#E2703A', '#8A3410'],
   device:   ['#3D4854', '#1B2129'],
-} as const satisfies Record<string, readonly [string, string]>;
+} as const;
+
+/**
+ * `TINT` is `as const` and nothing more.
+ *
+ * It used to end `satisfies Record<string, readonly [string, string]>`, and an
+ * index signature over `string` means every key is valid — so when a colour was
+ * renamed, `TINT.ember` still type-checked, evaluated to `undefined` at
+ * runtime, and the product it belonged to had no artwork at all. `tsc` was
+ * clean. This way a missing key is a compile error, which is what it should
+ * have been.
+ */
+type Tint = (typeof TINT)[keyof typeof TINT];
+const _tintsAreColourPairs: Record<keyof typeof TINT, readonly [string, string]> = TINT;
+void _tintsAreColourPairs;
 
 /**
  * Pouches, by brand, at the strengths each actually sells.
@@ -120,21 +155,21 @@ export const POUCHES: NicotineProduct[] = [
  * implication that one of these is lighter than another.
  */
 export const SMOKED: NicotineProduct[] = [
-  { id: 'cig-marlboro',    brand: 'Marlboro',     name: 'Marlboro',     format: 'cigarette', mg: null, glass: 'pack', tint: TINT.ember },
-  { id: 'cig-lm',          brand: 'L&M',          name: 'L&M',          format: 'cigarette', mg: null, glass: 'pack', tint: TINT.ember },
-  { id: 'cig-winston',     brand: 'Winston',      name: 'Winston',      format: 'cigarette', mg: null, glass: 'pack', tint: TINT.ember },
-  { id: 'cig-camel',       brand: 'Camel',        name: 'Camel',        format: 'cigarette', mg: null, glass: 'pack', tint: TINT.tobacco },
-  { id: 'cig-kent',        brand: 'Kent',         name: 'Kent',         format: 'cigarette', mg: null, glass: 'pack', tint: TINT.device },
-  { id: 'cig-pallmall',    brand: 'Pall Mall',    name: 'Pall Mall',    format: 'cigarette', mg: null, glass: 'pack', tint: TINT.ember },
-  { id: 'cig-lucky',       brand: 'Lucky Strike', name: 'Lucky Strike', format: 'cigarette', mg: null, glass: 'pack', tint: TINT.ember },
-  { id: 'cig-rothmans',    brand: 'Rothmans',     name: 'Rothmans',     format: 'cigarette', mg: null, glass: 'pack', tint: TINT.device },
-  { id: 'cig-chesterfield',brand: 'Chesterfield', name: 'Chesterfield', format: 'cigarette', mg: null, glass: 'pack', tint: TINT.tobacco },
-  { id: 'cig-davidoff',    brand: 'Davidoff',     name: 'Davidoff',     format: 'cigarette', mg: null, glass: 'pack', tint: TINT.device },
-  { id: 'cig-parliament',  brand: 'Parliament',   name: 'Parliament',   format: 'cigarette', mg: null, glass: 'pack', tint: TINT.device },
-  { id: 'cig-other',       brand: '',             name: 'Cigarette',    format: 'cigarette', mg: null, glass: 'cigarette', tint: TINT.ember },
-  { id: 'rolled',          brand: '',             name: 'Rolled',       format: 'rolled',    mg: null, glass: 'cigarette', tint: TINT.tobacco },
+  { id: 'cig-marlboro',    brand: 'Marlboro',     name: 'Marlboro',     format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packRed },
+  { id: 'cig-lm',          brand: 'L&M',          name: 'L&M',          format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packAmber },
+  { id: 'cig-winston',     brand: 'Winston',      name: 'Winston',      format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packBlue },
+  { id: 'cig-camel',       brand: 'Camel',        name: 'Camel',        format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packSand },
+  { id: 'cig-kent',        brand: 'Kent',         name: 'Kent',         format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packTeal },
+  { id: 'cig-pallmall',    brand: 'Pall Mall',    name: 'Pall Mall',    format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packRust },
+  { id: 'cig-lucky',       brand: 'Lucky Strike', name: 'Lucky Strike', format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packMoss },
+  { id: 'cig-rothmans',    brand: 'Rothmans',     name: 'Rothmans',     format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packSlate },
+  { id: 'cig-chesterfield',brand: 'Chesterfield', name: 'Chesterfield', format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packPlum },
+  { id: 'cig-davidoff',    brand: 'Davidoff',     name: 'Davidoff',     format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packInk },
+  { id: 'cig-parliament',  brand: 'Parliament',   name: 'Parliament',   format: 'cigarette', mg: null, glass: 'pack', tint: TINT.packGreen },
+  { id: 'cig-other',       brand: '',             name: 'Cigarette',    format: 'cigarette', mg: null, glass: 'cigarette', tint: TINT.packRed },
+  { id: 'rolled',          brand: '',             name: 'Rolled',       format: 'rolled',    mg: null, glass: 'rolled',    tint: TINT.tobacco },
   { id: 'heated-iqos',     brand: 'IQOS',         name: 'IQOS',         format: 'heated',    mg: null, glass: 'heatstick', tint: TINT.device },
-  { id: 'heated-glo',      brand: 'glo',          name: 'glo',          format: 'heated',    mg: null, glass: 'heatstick', tint: TINT.device },
+  { id: 'heated-glo',      brand: 'glo',          name: 'glo',          format: 'heated',    mg: null, glass: 'heatstickWide', tint: TINT.device },
   { id: 'vape',            brand: '',             name: 'Vape',         format: 'vape',      mg: null, glass: 'vape',      tint: TINT.device },
 ];
 
@@ -168,6 +203,32 @@ export const nicotineById = (id: string): NicotineProduct | undefined =>
  * one row shape. `makeDrink` derives `ethanolG` from volume and ABV, both zero,
  * so it is zero by construction.
  */
+/**
+ * Deepens a brand's colour with its strength.
+ *
+ * ZYN 3 and ZYN 11 come in the same tin with a different lid, and on a contact
+ * sheet the first version of this drew all four ZYNs as the same white pillow —
+ * four identical tiles distinguished only by the words under them, in a grid of
+ * twenty-two. Real tins signal strength by shade, so this does too: the hue is
+ * the brand, the depth is the strength.
+ *
+ * Bounded so a mild pouch never washes out and a strong one never goes black —
+ * the brand has to stay recognisable, which is the whole job of the colour.
+ */
+function byStrength(tint: readonly [string, string], mg: number | null): readonly [string, string] {
+  if (mg === null) return tint;
+  // 0 at 3 mg, 1 at 17 mg and above — the span the catalogue actually covers.
+  const t = Math.min(1, Math.max(0, (mg - 3) / 14));
+  const darken = (hex: string, by: number) => {
+    const n = parseInt(hex.slice(1), 16);
+    const mix = (c: number) => Math.round(c * (1 - by));
+    return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255]
+      .map((c) => mix(c).toString(16).padStart(2, '0'))
+      .join('')}`;
+  };
+  return [darken(tint[0], t * 0.34), darken(tint[1], t * 0.34)];
+}
+
 export function asDrink(product: NicotineProduct): Drink {
   return makeDrink({
     id: product.id,
@@ -188,7 +249,7 @@ export function asDrink(product: NicotineProduct): Drink {
      * was dead data. `1` fills the silhouette, which is what makes a Killa
      * read black and a ZYN read white at 18pt in a chip.
      */
-    art: { glass: product.glass, liquid: product.tint, fill: 1 },
+    art: { glass: product.glass, liquid: byStrength(product.tint, product.mg), fill: 1 },
   });
 }
 
