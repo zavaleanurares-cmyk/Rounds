@@ -25,6 +25,14 @@ interface RoundsNativeSpec {
   startHud(payload: string): Promise<boolean>;
   updateHud(payload: string): Promise<boolean>;
   endHud(): Promise<boolean>;
+  /**
+   * The APNs token for the running Activity, or null.
+   *
+   * Separate from `startHud` because ActivityKit hands the token over
+   * asynchronously — it is not available at the instant `Activity.request`
+   * returns, and a start that waited for it would block the HUD appearing.
+   */
+  hudPushToken(): Promise<string | null>;
   /** Drains the shared container the out-of-app surfaces write into. */
   drainPending(): Promise<string>;
   /** X-03/04/05 · Widget payload. */
@@ -98,6 +106,22 @@ export const NightHud = {
   },
   async end() {
     return (await call('endHud')) ?? false;
+  },
+  /**
+   * The Activity's push token, polled briefly after start.
+   *
+   * ActivityKit delivers it on an async sequence some hundreds of milliseconds
+   * after the Activity appears, so a single call right after `start` reliably
+   * returns null. Polling is the honest shape here; the alternative is an
+   * event emitter for one value that arrives once.
+   */
+  async pushToken({ tries = 6, gapMs = 500 } = {}): Promise<string | null> {
+    for (let i = 0; i < tries; i++) {
+      const token = await call('hudPushToken');
+      if (token) return token;
+      await new Promise((r) => setTimeout(r, gapMs));
+    }
+    return null;
   },
 };
 

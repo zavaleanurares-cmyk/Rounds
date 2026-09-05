@@ -15,7 +15,26 @@ import { Platform } from 'react-native';
 import { capabilities, optional, isExpoGo } from './optional';
 import { getClient } from '@/data/remote';
 
-export type Category = 'morning' | 'weekly' | 'plans' | 'social' | 'safety' | 'gamification';
+export type Category = 'morning' | 'weekly' | 'plans' | 'social' | 'safety' | 'gamification' | 'live';
+
+/**
+ * What a `live` data push carries.
+ *
+ * Android has no Live Activity. Its equivalent is the ongoing foreground
+ * notification, which only this process can redraw, so the fan-out reaches it
+ * as a silent data push that this handler turns into a HUD update.
+ *
+ * The shape is the same as the iOS content state and, like it, carries only the
+ * shared facts of the night: a count and the last drink. There is no pace and
+ * no estimate in it, because neither is computable from anyone else's log and
+ * neither should ever travel between devices.
+ */
+export interface LiveHudPush {
+  sessionId: string;
+  drinks: number;
+  lastDrink: string;
+  at: number;
+}
 
 const CHANNELS: Array<{ id: Category; name: string; importance: 'default' | 'high' | 'low' }> = [
   { id: 'safety', name: 'Safety check-ins', importance: 'high' },
@@ -37,6 +56,20 @@ export function configureHandler(isNightLive: () => boolean): void {
   N.setNotificationHandler({
     handleNotification: async (notification: any) => {
       const category = notification?.request?.content?.data?.category as Category | undefined;
+
+      // A HUD refresh is not a notification. It exists to redraw a surface the
+      // user is already looking at; showing a banner and a tray entry for it
+      // would mean a buzz in your pocket every time anyone at the table logged
+      // a drink, which is the fastest way to make people turn the feature off.
+      if (category === 'live') {
+        return {
+          shouldShowBanner: false,
+          shouldShowList: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      }
+
       // The one rule. A safety notification is the sole exception, because it
       // is the one the user explicitly asked for before they went out.
       const suppress = isNightLive() && category !== 'safety';
@@ -48,6 +81,34 @@ export function configureHandler(isNightLive: () => boolean): void {
       };
     },
   });
+}
+
+/**
+ * Subscribes to `live` data pushes and hands each one to `onHudRefresh`.
+ *
+ * Returns an unsubscribe function, or a no-op where notifications are
+ * unavailable — the caller must not have to care which.
+ */
+export function onLiveHudPush(handler: (payload: LiveHudPush) => void): () => void {
+  const N = mod();
+  if (!N) return () => {};
+  const sub = N.addNotificationReceivedListener((notification: any) => {
+    const data = notification?.request?.content?.data;
+    if (data?.category !== 'live' || !data?.sessionId) return;
+    handler({
+      sessionId: String(data.sessionId),
+      drinks: Number(data.drinks ?? 0),
+      lastDrink: String(data.lastDrink ?? ''),
+      at: Number(data.at ?? Date.now()),
+    });
+  });
+  return () => {
+    try {
+      sub?.remove();
+    } catch {
+      /* already gone */
+    }
+  };
 }
 
 export async function ensureChannels(): Promise<void> {

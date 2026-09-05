@@ -71,6 +71,68 @@ describe('the estimate stays where it belongs', () => {
     const src = read('src/ui/PaceRing.tsx');
     expect(src).toMatch(/state === 'slow_down'\)\s*return null/);
   });
+
+  /**
+   * The Live Activity fan-out is a NEW outward path: a payload that leaves one
+   * person's phone, crosses a server and lands on somebody else's Lock Screen.
+   * It is the single easiest place in the product to leak the estimate, so the
+   * assertions below cover every hop of it — the trigger that builds the row,
+   * the worker that sends it, the client that registers the token, and the
+   * handler that applies the result.
+   */
+  describe('and never crosses the Live Activity fan-out', () => {
+    const FANOUT = [
+      'supabase/migrations/00029_live_activity_push.sql',
+      'supabase/functions/send-outbound/index.ts',
+      'supabase/functions/_shared/apns.ts',
+      'src/services/liveActivity.ts',
+    ];
+
+    it('no hop of it mentions the estimate', () => {
+      for (const file of FANOUT) {
+        const src = readFileSync(file, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^\s*(?:\/\/|--).*$/gm, '');
+        expect(src).not.toMatch(/bacAt|promille|‰/);
+        expect(src).not.toMatch(/\bpaceState\b|\bpaceWord\b/);
+      }
+    });
+
+    it('the enqueued payload is a closed list of shared facts', () => {
+      const sql = readFileSync('supabase/migrations/00029_live_activity_push.sql', 'utf8');
+      const build = sql.match(/jsonb_build_object\([\s\S]*?\)\n/)?.[0] ?? '';
+      expect(build).toBeTruthy();
+      const keys = [...build.matchAll(/'([a-zA-Z]+)',/g)].map((m) => m[1]).sort();
+      // Adding a key here is a deliberate act, and changing this list is the
+      // review step that goes with it.
+      expect(keys).toEqual(['at', 'byUserId', 'drinks', 'lastDrink', 'sessionId', 'token']);
+    });
+
+    it('the APNs content state carries the same closed list', () => {
+      const src = read('supabase/functions/send-outbound/index.ts');
+      const body = src.match(/sendLiveActivityUpdate\(cfg, token, \{[\s\S]*?\}\)/)?.[0] ?? '';
+      expect(body).toBeTruthy();
+      const keys = [...body.matchAll(/^\s*([a-zA-Z]+):/gm)].map((m) => m[1]).sort();
+      expect(keys).toEqual(['drinks', 'lastDrink', 'updatedAt']);
+    });
+
+    it('the Android handler keeps the local pace rather than taking one from a push', () => {
+      const src = read('src/hooks/useSystemSurfaces.ts');
+      const handler = src.match(/onLiveHudPush\(\(payload\) => \{[\s\S]*?\}\);/)?.[0] ?? '';
+      expect(handler).toBeTruthy();
+      // Only these two fields may come off the wire.
+      expect(handler).toMatch(/drinks:/);
+      expect(handler).toMatch(/lastDrinkName:/);
+      expect(handler).not.toMatch(/paceState|paceWord/);
+    });
+
+    it('nothing sends to APNs inline — it all goes through the outbound queue', () => {
+      const sql = read('supabase/migrations/00029_live_activity_push.sql');
+      // The trigger writes rows and makes no network call of any kind.
+      expect(sql).toMatch(/insert into public\.outbound/);
+      expect(sql).not.toMatch(/http_post|net\.http|pg_net|curl/i);
+    });
+  });
 });
 
 describe('no feed, no drinking leaderboard, no drinking streak', () => {

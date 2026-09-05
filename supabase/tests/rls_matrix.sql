@@ -451,6 +451,98 @@ select public.set_current_user(:owner);
 select t.count_eq('the blocked user could not remove the block',
   (select count(*) from public.blocks), 1);
 
+-- ===================================== live activity tokens & fan-out (29)
+-- The owner is in session e1; so is :part. :strang is in nothing.
+set role authenticated;
+select public.set_current_user(:owner);
+insert into public.live_activity_tokens (session_id, user_id, token, platform)
+  values ('00000000-0000-0000-0000-0000000000e1', :owner, 'tok-owner', 'ios');
+select t.count_eq('you can register your own Activity token for a night you are in',
+  (select count(*) from public.live_activity_tokens where user_id = :owner), 1);
+
+select t.rejects('you cannot register a token as somebody else',
+  $$insert into public.live_activity_tokens (session_id, user_id, token, platform)
+    values ('00000000-0000-0000-0000-0000000000e1',
+            '00000000-0000-0000-0000-0000000000a2', 'tok-forged', 'ios')$$);
+
+select public.set_current_user(:strang);
+select t.rejects('you cannot register a token against a night you are not in',
+  $$insert into public.live_activity_tokens (session_id, user_id, token, platform)
+    values ('00000000-0000-0000-0000-0000000000e1', auth.uid(), 'tok-stranger', 'ios')$$);
+select t.count_eq('and you cannot read the tokens of a night you are not in',
+  (select count(*) from public.live_activity_tokens), 0);
+
+select public.set_current_user(:part);
+insert into public.live_activity_tokens (session_id, user_id, token, platform)
+  values ('00000000-0000-0000-0000-0000000000e1', :part, 'tok-part', 'ios');
+select t.count_eq('a participant reads the tokens for the night they are in',
+  (select count(*) from public.live_activity_tokens
+    where session_id = '00000000-0000-0000-0000-0000000000e1'), 2);
+
+with attempt as (
+  delete from public.live_activity_tokens where user_id = :owner returning 1
+)
+select t.count_eq('but cannot delete somebody else''s token',
+  (select count(*) from attempt), 0);
+
+-- The fan-out itself. Runs as the service role, the way the trigger does.
+reset role;
+select t.count_eq('the queue starts empty of HUD refreshes',
+  (select count(*) from public.outbound where category = 'live'), 0);
+
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
+  values (gen_random_uuid(), :owner, '00000000-0000-0000-0000-0000000000e1',
+          'beer-pint', 'Pint', 'beer', 568, 4.5);
+
+select t.count_eq('a log on a shared night enqueues exactly one HUD refresh — for the OTHER participant',
+  (select count(*) from public.outbound where category = 'live'), 1);
+select t.check('and it is addressed to the participant, not the logger',
+  (select user_id = :part from public.outbound where category = 'live'), true);
+select t.check('it is queued, not sent — the sender drains it',
+  (select sent_at is null from public.outbound where category = 'live'), true);
+select t.check('the payload carries the last drink and the night''s live count',
+  (select o.payload->>'lastDrink' = 'Pint'
+      and (o.payload->>'drinks')::int = (
+            select count(*) from public.consumption_logs l
+             where l.session_id = '00000000-0000-0000-0000-0000000000e1'
+               and l.deleted_at is null)
+     from public.outbound o where o.category = 'live'), true);
+select t.check('and the timestamp is whole milliseconds, not a fractional epoch',
+  (select (payload->>'at') ~ '^[0-9]+$' from public.outbound where category = 'live'), true);
+
+/**
+ * The payload must never carry a pace state or an estimate. Asserted on the
+ * row itself rather than on the trigger's source, so a future column added to
+ * `jsonb_build_object` fails here even if nobody re-reads the comment above it.
+ */
+select t.check('and carries no pace, no estimate, no per-person anything',
+  (select not (payload ?| array['bac', 'bacAt', 'paceState', 'paceWord', 'estimate', 'promille'])
+     from public.outbound where category = 'live'), true);
+
+select t.check('a HUD refresh is never spent against the weekly notification cap',
+  public.may_notify(:part, 'live'), true);
+
+-- A solo night has nobody to tell.
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
+  values (gen_random_uuid(), :owner, '00000000-0000-0000-0000-0000000000e2',
+          'beer-pint', 'Pint', 'beer', 568, 4.5);
+select t.count_eq('a log on a solo night fans out to nobody',
+  (select count(*) from public.outbound where category = 'live'), 1);
+
+-- A participant with no Activity registered gets no row.
+delete from public.live_activity_tokens where user_id = :part;
+insert into public.consumption_logs (id, user_id, session_id, drink_id, drink_name, category, volume_ml, abv)
+  values (gen_random_uuid(), :owner, '00000000-0000-0000-0000-0000000000e1',
+          'beer-pint', 'Pint', 'beer', 568, 4.5);
+select t.count_eq('a participant with no Activity running is not pushed at',
+  (select count(*) from public.outbound where category = 'live'), 1);
+
+delete from public.outbound where category = 'live';
+delete from public.consumption_logs where session_id in
+  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e2');
+delete from public.live_activity_tokens;
+set role authenticated;
+
 -- ============================================ profile personalisation (27)
 select public.set_current_user(:owner);
 update public.profiles set bio = 'A line about me', avatar_tint = 3, home_city = 'Bucharest'

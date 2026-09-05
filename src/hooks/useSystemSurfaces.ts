@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useStore } from '@/data/store';
 import { useNightState } from './useNightState';
 import { NightHud, QuickLog, WidgetData, QuickTile, VoiceIntents, WatchBridge, type HudState } from '@/native';
+import { registerActivityToken, releaseActivityTokens } from '@/services/liveActivity';
+import { onLiveHudPush } from '@/services/push';
 import { paceState, weekdayMedian } from '@/domain/pace';
 import { summariseNights, heatmap, goalProgress } from '@/domain/stats';
 import { byId } from '@/domain/catalog';
@@ -97,18 +99,71 @@ export function useSystemSurfaces() {
     if (!hud) {
       void NightHud.end();
       void WatchBridge.update(null);
+      // The token dies with the Activity. Leaving it behind means APNs rows
+      // queued for a token Apple has already retired.
+      void releaseActivityTokens();
       return;
     }
+    let cancelled = false;
     void NightHud.start(hud);
     void WatchBridge.update(hud);
+
+    /**
+     * Register the Activity's push token so the rest of the table can move this
+     * HUD. Without it the Live Activity only ever updates from its own device,
+     * which is what made two people on one night see two different counts.
+     *
+     * Fire-and-forget on purpose: a token that never arrives (Expo Go, an
+     * Android build, a user who disabled Live Activities) must degrade to the
+     * old behaviour rather than hold anything up.
+     */
+    void (async () => {
+      const token = await NightHud.pushToken();
+      if (cancelled || !token) return;
+      await registerActivityToken(hud.sessionId, token);
+    })();
+
     const ceiling = setTimeout(() => void NightHud.end(), Math.max(0, 12 * 3600000 - (Date.now() - hud.startedAt)));
-    return () => clearTimeout(ceiling);
+    return () => {
+      cancelled = true;
+      clearTimeout(ceiling);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hud?.sessionId]);
+
+  // The push handler is registered once and must not be torn down on every HUD
+  // change, so it reads the current state through a ref.
+  const hudRef = useRef(hud);
+  hudRef.current = hud;
 
   useEffect(() => {
     if (hud) void NightHud.update(hud);
   }, [hud]);
+
+  /**
+   * Android's half of the fan-out.
+   *
+   * iOS Live Activities are updated by APNs directly and never reach JS at all.
+   * The Android foreground-service notification can only be redrawn by this
+   * process, so it arrives as a silent data push and is applied here.
+   *
+   * The push carries the table's count and the last drink. The pace stays
+   * whatever THIS device computed from THIS user's own logs — merging it from a
+   * push would be showing one person another person's body, which is the one
+   * thing this app will not do.
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    return onLiveHudPush((payload) => {
+      const current = hudRef.current;
+      if (!current || current.sessionId !== payload.sessionId) return;
+      void NightHud.update({
+        ...current,
+        drinks: Math.max(current.drinks, payload.drinks),
+        lastDrinkName: payload.lastDrink || current.lastDrinkName,
+      });
+    });
+  }, []);
 
   /* ---------------------------------------------------------- widgets out */
   useEffect(() => {

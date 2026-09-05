@@ -1,12 +1,15 @@
 import { admin, json } from '../_shared/db.ts';
+import { apnsConfig, sendLiveActivityUpdate, ApnsError } from '../_shared/apns.ts';
 
 /**
  * Drains the outbound queue.
  *
  * Push goes through Expo's service; SMS through whichever provider is
- * configured. Both are best-effort with a bounded retry, and a row that has
- * failed five times is left with its error visible rather than retried forever
- * — a stuck safety message must be findable, not silently requeued.
+ * configured; Live Activity updates go straight to APNs, because Expo's push
+ * service has no notion of the `liveactivity` push type. All of them are
+ * best-effort with a bounded retry, and a row that has failed five times is
+ * left with its error visible rather than retried forever — a stuck safety
+ * message must be findable, not silently requeued.
  *
  * Invoked on a schedule (every minute) alongside `run_safety_escalation`.
  */
@@ -16,7 +19,7 @@ const BATCH = 100;
 interface Row {
   id: string;
   user_id: string | null;
-  channel: 'push' | 'sms' | 'email';
+  channel: 'push' | 'sms' | 'email' | 'live_activity';
   category: string;
   payload: Record<string, unknown>;
   destination: string | null;
@@ -45,13 +48,26 @@ Deno.serve(async () => {
 
   for (const row of (rows ?? []) as Row[]) {
     try {
-      if (row.channel === 'push') await sendPush(db, row);
+      if (row.channel === 'live_activity') await sendLiveActivity(db, row);
+      else if (row.channel === 'push') await sendPush(db, row);
       else if (row.channel === 'sms') await sendSms(row);
       else await sendEmail(row);
 
       await db.from('outbound').update({ sent_at: new Date().toISOString() }).eq('id', row.id);
       sent++;
     } catch (err) {
+      // A dead device token is not a transient failure. Retrying it four more
+      // times over sixteen minutes achieves nothing except keeping a stuck row
+      // in a queue whose whole value is that stuck rows are visible.
+      if (err instanceof ApnsError && err.permanent) {
+        await db.from('live_activity_tokens').delete().eq('token', row.payload.token as string);
+        await db
+          .from('outbound')
+          .update({ sent_at: new Date().toISOString(), last_error: `dropped: ${err.reason}` })
+          .eq('id', row.id);
+        failed++;
+        continue;
+      }
       failed++;
       await db
         .from('outbound')
@@ -69,6 +85,33 @@ Deno.serve(async () => {
   return json({ sent, failed, considered: rows?.length ?? 0 });
 });
 
+/**
+ * X-01 · the Live Activity fan-out.
+ *
+ * The content state carries the shared facts of the night and nothing else: how
+ * many drinks the table has logged and what the last one was. No pace state, no
+ * estimate, nothing derived from anybody's body. Each device works out its own
+ * pace locally from its own logs — which is both the only correct answer and
+ * the reason this payload can safely travel between people at all.
+ */
+async function sendLiveActivity(db: ReturnType<typeof admin>, row: Row) {
+  const cfg = apnsConfig();
+  if (!cfg) throw new Error('apns not configured');
+  const token = row.payload.token as string | undefined;
+  if (!token) throw new Error('no activity token on the row');
+
+  await sendLiveActivityUpdate(cfg, token, {
+    drinks: Number(row.payload.drinks ?? 0),
+    lastDrink: String(row.payload.lastDrink ?? ''),
+    updatedAt: Number(row.payload.at ?? Date.now()),
+  });
+
+  await db
+    .from('live_activity_tokens')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('token', token);
+}
+
 async function sendPush(db: ReturnType<typeof admin>, row: Row) {
   const { data: tokens } = await db
     .from('push_tokens')
@@ -77,16 +120,28 @@ async function sendPush(db: ReturnType<typeof admin>, row: Row) {
 
   if (!tokens?.length) return; // no device registered; not an error
 
+  // Android has no Live Activity. Its equivalent is the ongoing
+  // foreground-service notification, which only the app process can redraw, so
+  // the fan-out reaches it as a DATA-ONLY push: no title, no body, no sound,
+  // no tray entry. It wakes the handler, which calls updateHud. A visible
+  // notification here would mean a buzz in your pocket every time anybody at
+  // the table logged a drink.
+  const live = row.category === 'live';
+
   const messages = tokens.map((t: { token: string }) => ({
     to: t.token,
-    title: row.payload.title ?? 'ROUNDS',
-    body: row.payload.body ?? '',
-    data: { category: row.category, ...row.payload },
-    sound: row.category === 'safety' ? 'default' : null,
-    channelId: row.category,
-    priority: row.category === 'safety' ? 'high' : 'default',
-    // A safety notification must survive the OS deciding the app is idle.
-    ...(row.category === 'safety' ? { _contentAvailable: true } : {}),
+    ...(live
+      ? { data: { category: 'live', ...row.payload }, _contentAvailable: true, priority: 'high' }
+      : {
+          title: row.payload.title ?? 'ROUNDS',
+          body: row.payload.body ?? '',
+          data: { category: row.category, ...row.payload },
+          sound: row.category === 'safety' ? 'default' : null,
+          channelId: row.category,
+          priority: row.category === 'safety' ? 'high' : 'default',
+          // A safety notification must survive the OS deciding the app is idle.
+          ...(row.category === 'safety' ? { _contentAvailable: true } : {}),
+        }),
   }));
 
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
