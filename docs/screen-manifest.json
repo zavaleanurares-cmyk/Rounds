@@ -81,7 +81,7 @@
       ],
       "reads": [
         "auth",
-        "const router = useRouter();\n  const { verifyOtp"
+        "const router = useRouter();\n  const t = useT();\n  const { verifyOtp"
       ],
       "states": {
         "loading": false,
@@ -106,7 +106,7 @@
         "Wheel"
       ],
       "reads": [
-        "const router = useRouter();\n  const { submitDob"
+        "const router = useRouter();\n  const t = useT();\n  const { submitDob"
       ],
       "states": {
         "loading": false,
@@ -132,7 +132,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile",
+        "const router = useRouter();\n  const t = useT();\n  const { profile",
         "updateProfile"
       ],
       "states": {
@@ -161,7 +161,7 @@
         "Stepper"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { profile",
         "updateProfile"
       ],
       "states": {
@@ -187,7 +187,7 @@
         "UnitSystem"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { profile",
         "updateProfile"
       ],
       "states": {
@@ -213,7 +213,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { updateProfile"
+        "const router = useRouter();\n  const t = useT();\n  const { updateProfile"
       ],
       "states": {
         "loading": false,
@@ -237,7 +237,7 @@
         "ToggleRow"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile",
+        "const router = useRouter();\n  const t = useT();\n  const { profile",
         "updateProfile"
       ],
       "states": {
@@ -285,7 +285,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { completeOnboarding"
+        "const router = useRouter();\n  const t = useT();\n  const { completeOnboarding"
       ],
       "states": {
         "loading": false,
@@ -462,7 +462,7 @@
         "Visibility"
       ],
       "reads": [
-        "const router = useRouter();\n  const { startSession",
+        "const router = useRouter();\n  const t = useT();\n  const { startSession",
         "crews",
         "profile",
         "venues"
@@ -634,7 +634,7 @@
         "loading": false,
         "empty": false,
         "error": false,
-        "offline": false,
+        "offline": true,
         "populated": true
       }
     },
@@ -684,9 +684,9 @@
         "VenueMap"
       ],
       "reads": [
-        "const router = useRouter();\n  const insets = useSafeAreaInsets();\n  const { people",
         "logs",
         "mergeVenues",
+        "people",
         "venues: localVenues"
       ],
       "states": {
@@ -743,8 +743,8 @@
         "Venue"
       ],
       "reads": [
-        "const router = useRouter();\n  const { venues: known",
-        "mergeVenues"
+        "mergeVenues",
+        "venues: known"
       ],
       "states": {
         "loading": false,
@@ -766,7 +766,9 @@
         "Field",
         "Sheet"
       ],
-      "reads": [],
+      "reads": [
+        "const router = useRouter();\n  const toast = useToast();\n  const t = useT();\n  const { addVenue"
+      ],
       "states": {
         "loading": false,
         "empty": false,
@@ -789,7 +791,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { logs",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { logs",
         "venues"
       ],
       "states": {
@@ -842,7 +844,7 @@
         "Sheet"
       ],
       "reads": [
-        "const router = useRouter();\n  const { venues",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { venues",
         "createPlan",
         "people"
       ],
@@ -896,7 +898,7 @@
       ],
       "reads": [
         "blocked",
-        "const router = useRouter();\n  const { people",
+        "const router = useRouter();\n  const t = useT();\n  const { people",
         "crews",
         "profile"
       ],
@@ -920,12 +922,14 @@
         "Button",
         "Field",
         "Icon",
-        "Sheet"
+        "SearchHit",
+        "Sheet",
+        "Spinner"
       ],
       "reads": [
         "addFriend",
         "blocked",
-        "const router = useRouter();\n  const { people"
+        "const router = useRouter();\n  const t = useT();\n  const { people"
       ],
       "states": {
         "loading": false,
@@ -975,12 +979,16 @@
         "Avatar",
         "Button",
         "Card",
+        "Field",
         "Icon",
-        "Sheet"
+        "Match",
+        "Sheet",
+        "Spinner"
       ],
       "reads": [
-        "addFriend",
-        "const router = useRouter();\n  const { people"
+        "const router = useRouter();\n  const t = useT();\n  const { addFriend",
+        "settings",
+        "updateSettings"
       ],
       "states": {
         "loading": false,
@@ -1007,7 +1015,8 @@
       ],
       "reads": [
         "auth",
-        "const router = useRouter();\n  const { sessions",
+        "joinNight",
+        "sessions",
         "setPendingHref"
       ],
       "states": {
@@ -1026,7 +1035,6 @@
       "source": "app/live/[code]/index.tsx",
       "built": true,
       "components": [
-        "Array",
         "Avatar",
         "Button",
         "Card",
@@ -1035,16 +1043,27 @@
         "Field",
         "Glass",
         "Icon",
+        "LiveMap",
+        "LivePoint",
         "Reaction",
         "RosterRow",
         "Screen"
       ],
       "reads": [
+        "auth",
         "blocked",
+        "leaveSession",
         "logs",
+        "messages",
         "people",
         "profile",
-        "sessions"
+        "receiveMessage",
+        "receiveReaction",
+        "safety",
+        "sendMessage",
+        "sendReaction",
+        "sessions",
+        "shareLocationFor"
       ],
       "states": {
         "loading": false,
@@ -1118,10 +1137,7 @@
         "Screen"
       ],
       "reads": [
-        "crews",
-        "people",
-        "plans",
-        "sessions"
+        "store"
       ],
       "states": {
         "loading": false,
@@ -1144,7 +1160,9 @@
         "Icon",
         "Sheet"
       ],
-      "reads": [],
+      "reads": [
+        "const router = useRouter();\n  const t = useT();\n  const toast = useToast();\n  const { createCrew"
+      ],
       "states": {
         "loading": false,
         "empty": false,
@@ -1165,11 +1183,13 @@
         "Field",
         "Sheet"
       ],
-      "reads": [],
+      "reads": [
+        "const router = useRouter();\n  const t = useT();\n  const toast = useToast();\n  const { joinCrew"
+      ],
       "states": {
         "loading": false,
         "empty": false,
-        "error": false,
+        "error": true,
         "offline": false,
         "populated": true
       }
@@ -1189,7 +1209,7 @@
         "Screen"
       ],
       "reads": [
-        "const { people",
+        "const t = useT();\n  const { people",
         "respondToRequest"
       ],
       "states": {
@@ -1215,7 +1235,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { notifications",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { notifications",
         "markNotificationsRead"
       ],
       "states": {
@@ -1236,9 +1256,12 @@
       "components": [
         "Avatar",
         "Card",
+        "DrinkGlyph",
         "EmptyState",
+        "Enter",
         "Group",
         "Icon",
+        "LevelBar",
         "NavRow",
         "NavRowCard",
         "QuickAction",
@@ -1246,7 +1269,7 @@
         "Sparkline"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { profile",
         "logs",
         "plus",
         "sessions",
@@ -1275,8 +1298,7 @@
         "StatTile"
       ],
       "reads": [
-        "const { profile",
-        "people",
+        "const t = useT();\n  const { profile",
         "sessions"
       ],
       "states": {
@@ -1303,7 +1325,7 @@
         "Segmented"
       ],
       "reads": [
-        "const router = useRouter();\n  const { sessions",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { sessions",
         "logs",
         "profile",
         "venues"
@@ -1353,7 +1375,6 @@
       "source": "app/insights.tsx",
       "built": true,
       "components": [
-        "Button",
         "Card",
         "EmptyState",
         "Screen",
@@ -1361,7 +1382,7 @@
         "StatTile"
       ],
       "reads": [
-        "const router = useRouter();\n  const { logs",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { logs",
         "plus",
         "profile",
         "settings",
@@ -1394,7 +1415,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { goals",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { goals",
         "logs",
         "profile"
       ],
@@ -1441,14 +1462,18 @@
       "source": "app/nicotine.tsx",
       "built": true,
       "components": [
-        "Button",
         "Card",
+        "Chip",
+        "DrinkGlyph",
         "EmptyState",
         "Screen",
         "StatTile"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile"
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { profile",
+        "logNicotine",
+        "logs",
+        "undoLast"
       ],
       "states": {
         "loading": false,
@@ -1468,18 +1493,21 @@
       "components": [
         "Card",
         "Icon",
-        "Screen"
+        "LevelBar",
+        "Screen",
+        "Stagger"
       ],
       "reads": [
-        "const { logs",
+        "const t = useT();\n  const f = useFormat();\n  const { logs",
         "crews",
+        "goals",
         "people",
         "plans",
         "safety",
         "sessions"
       ],
       "states": {
-        "loading": true,
+        "loading": false,
         "empty": false,
         "error": false,
         "offline": false,
@@ -1527,7 +1555,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { logs",
+        "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { logs",
         "venues"
       ],
       "states": {
@@ -1548,7 +1576,7 @@
       "components": [
         "Aurora",
         "Button",
-        "Card"
+        "UpgradeSlide"
       ],
       "reads": [
         "logs",
@@ -1580,8 +1608,7 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { profile",
-        "plus",
+        "profile",
         "safety",
         "settings",
         "signOut"
@@ -1604,11 +1631,12 @@
       "components": [
         "Card",
         "Group",
+        "Icon",
         "Screen",
         "ToggleRow"
       ],
       "reads": [
-        "const { settings",
+        "const t = useT();\n  const { settings",
         "updateSettings"
       ],
       "states": {
@@ -1628,12 +1656,16 @@
       "built": true,
       "components": [
         "Card",
+        "Group",
         "Screen",
-        "Segmented"
+        "Segmented",
+        "ToggleRow"
       ],
       "reads": [
-        "const { profile",
-        "updateProfile"
+        "const t = useT();\n  const { profile",
+        "settings",
+        "updateProfile",
+        "updateSettings"
       ],
       "states": {
         "loading": false,
@@ -1657,7 +1689,7 @@
         "ToggleRow"
       ],
       "reads": [
-        "const { profile",
+        "const t = useT();\n  const { profile",
         "updateProfile"
       ],
       "states": {
@@ -1682,7 +1714,7 @@
         "ToggleRow"
       ],
       "reads": [
-        "const { settings",
+        "const t = useT();\n  const { settings",
         "safety",
         "updateSettings"
       ],
@@ -1709,7 +1741,7 @@
         "ToggleRow"
       ],
       "reads": [
-        "const { profile",
+        "const t = useT();\n  const { profile",
         "settings",
         "updateProfile",
         "updateSettings"
@@ -1737,13 +1769,14 @@
         "Screen"
       ],
       "reads": [
-        "const router = useRouter();\n  const { safety"
+        "const router = useRouter();\n  const t = useT();\n  const { safety",
+        "setHomeAddress"
       ],
       "states": {
         "loading": false,
         "empty": false,
         "error": false,
-        "offline": false,
+        "offline": true,
         "populated": true
       }
     },
@@ -1755,16 +1788,9 @@
       "source": "app/settings/subscription.tsx",
       "built": true,
       "components": [
-        "Button",
-        "Card",
-        "InlineLink",
-        "Screen"
+        "Subscription"
       ],
-      "reads": [
-        "const router = useRouter();\n  const { settings",
-        "plus",
-        "updateSettings"
-      ],
+      "reads": [],
       "states": {
         "loading": false,
         "empty": false,
@@ -1790,7 +1816,7 @@
       ],
       "reads": [
         "addTrustedContact",
-        "const { safety",
+        "const t = useT();\n  const { safety",
         "removeTrustedContact"
       ],
       "states": {
@@ -1816,7 +1842,7 @@
         "Sheet"
       ],
       "reads": [
-        "const router = useRouter();\n  const { armSafeArrival",
+        "const router = useRouter();\n  const t = useT();\n  const { armSafeArrival",
         "profile",
         "safety"
       ],
@@ -1843,7 +1869,7 @@
         "Screen"
       ],
       "reads": [
-        "const { blocked",
+        "const t = useT();\n  const { blocked",
         "people",
         "unblockUser"
       ],
@@ -1909,18 +1935,9 @@
       "source": "app/paywall.tsx",
       "built": true,
       "components": [
-        "ActivityIndicator",
-        "Button",
-        "Card",
-        "Icon",
-        "InlineLink",
-        "Screen"
+        "Paywall"
       ],
-      "reads": [
-        "activeSession",
-        "const router = useRouter();\n  const toast = useToast();\n  const { updateSettings",
-        "refreshEntitlement"
-      ],
+      "reads": [],
       "states": {
         "loading": false,
         "empty": false,

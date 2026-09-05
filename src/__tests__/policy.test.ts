@@ -912,3 +912,32 @@ describe('the app is not write-only', () => {
     expect(queue).toContain('isSyncable');
   });
 });
+
+describe('the generated token files', () => {
+  const tokens = JSON.parse(readFileSync('tokens/tokens.json', 'utf8'));
+
+  it('never types a non-number as a duration', () => {
+    // motion was emitted with a blanket $type: 'duration', so the spring
+    // configs — objects of damping/stiffness/mass — went out claiming to be
+    // durations. Nothing reading the file as DTCG could use that.
+    for (const [name, token] of Object.entries<{ $type: string; $value: unknown }>(tokens.motion)) {
+      if (token.$type === 'duration') {
+        expect(typeof token.$value).toBe(`number`);
+      } else {
+        expect(name).toBe('spring');
+        expect(token.$type).toBe('composite');
+      }
+    }
+  });
+
+  it('is in sync with src/design/tokens.ts', () => {
+    // The CI job regenerates and diffs; this catches the same drift in the
+    // suite, where it is one command instead of a red build ten minutes later.
+    const src = readFileSync('src/design/tokens.ts', 'utf8');
+    const block = src.match(/export const motion = \{[\s\S]*?\n\} as const;/)?.[0] ?? '';
+    expect(block).toBeTruthy();
+    const keys = [...block.matchAll(/^ {2}(\w+):/gm)].map((m) => m[1]);
+    expect(keys.length).toBeGreaterThan(0);
+    expect(Object.keys(tokens.motion).sort()).toEqual(keys.sort());
+  });
+});

@@ -69,7 +69,18 @@ const tokens = {
     },
     glow: { $type: 'composite', $value: { core: glow.core, halo: glow.halo, limit: 'one control per screen' } },
   },
-  motion: leaf(motion, 'duration'),
+  /**
+   * Durations are numbers; a spring is a set of physics parameters and is not a
+   * duration at all. Stamping `duration` on both produced a tokens.json whose
+   * `$value` sometimes wasn't a number, which is not a thing a DTCG consumer
+   * can read.
+   */
+  motion: Object.fromEntries(
+    Object.entries(motion).map(([k, v]) => [
+      k,
+      typeof v === 'number' ? { $type: 'duration', $value: v } : { $type: 'composite', $value: v },
+    ])
+  ),
 };
 
 function leaf(obj, $type = 'color') {

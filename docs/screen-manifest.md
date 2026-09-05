@@ -46,11 +46,11 @@ Every screen in the inventory has a route.
 | D-07 | P1 | Create plan | /plan/new | ✓ | Button, Chip, Field, Sheet |
 | D-08 | P1 | Plan invite | /plan/[id]/invite | ✓ | Button, Card, Sheet |
 | C-01 | P1 | Circle home | /(tabs)/circle | ✓ | Avatar, Button, Card, EmptyState, Group, Icon |
-| C-02 | P0 | Find people | /people/search | ✓ | Avatar, Button, Field, Icon, Sheet |
+| C-02 | P0 | Find people | /people/search | ✓ | Avatar, Button, Field, Icon, SearchHit, Sheet |
 | C-03 | P0 | Person profile | /people/[id] | ✓ | Avatar, Button, Card, EmptyState, Glass, Icon |
-| C-04 | P1 | Contact match | /people/contacts | ✓ | Avatar, Button, Card, Icon, Sheet |
+| C-04 | P1 | Contact match | /people/contacts | ✓ | Avatar, Button, Card, Field, Icon, Match |
 | C-05 | P0 | Join a night | /live/join | ✓ | Button, Camera, Card, Field, Icon, Screen |
-| C-06 | P0 | Live room | /live/[code] | ✓ | Array, Avatar, Button, Card, Chip, EmptyState |
+| C-06 | P0 | Live room | /live/[code] | ✓ | Avatar, Button, Card, Chip, EmptyState, Field |
 | C-07 | P2 | Night bingo | /live/[code]/bingo | ✓ | Card, Screen |
 | C-08 | P1 | Share night card | /share/[sessionId] | ✓ | Bloom, Button, Card, EmptyState, Screen |
 | C-09 | P1 | Crew detail | /crew/[slug] | ✓ | Avatar, Button, Card, EmptyState, Group, NavRow |
@@ -58,30 +58,30 @@ Every screen in the inventory has a route.
 | C-11 | P1 | Join crew | /crew/join | ✓ | Button, Field, Sheet |
 | C-12 | P0 | Friend requests | /people/requests | ✓ | Avatar, Button, Card, EmptyState, Screen |
 | C-13 | P1 | Notifications | /notifications | ✓ | Card, EmptyState, Icon, Record, Screen |
-| Y-01 | P0 | You | /(tabs)/you | ✓ | Avatar, Card, EmptyState, Group, Icon, NavRow |
+| Y-01 | P0 | You | /(tabs)/you | ✓ | Avatar, Card, DrinkGlyph, EmptyState, Enter, Group |
 | Y-02 | P2 | Public profile preview | /people/preview | ✓ | Avatar, Card, Screen, StatTile |
 | Y-03 | P1 | Nights history | /nights | ✓ | Card, EmptyState, Group, NavRow, Screen, Segmented |
 | Y-04 | P1 | Morning after | /morning/[sessionId] | ✓ | Aurora, Button, Card, Chip, EmptyState, Icon |
-| Y-05 | P1 | Insights | /insights | ✓ | Button, Card, EmptyState, Screen, Sparkline, StatTile |
+| Y-05 | P1 | Insights | /insights | ✓ | Card, EmptyState, Screen, Sparkline, StatTile |
 | Y-06 | P1 | Wellbeing hub | /wellbeing | ✓ | Button, Card, Goal, Group, Icon, InlineLink |
 | Y-07 | P1 | Goal editor | /wellbeing/goal/[type] | ✓ | Button, Icon, Sheet, Step, ToggleRow |
-| Y-08 | P2 | Nicotine dashboard | /nicotine | ✓ | Button, Card, EmptyState, Screen, StatTile |
-| Y-09 | P1 | Achievements | /achievements | ✓ | Card, Icon, Screen |
+| Y-08 | P2 | Nicotine dashboard | /nicotine | ✓ | Card, Chip, DrinkGlyph, EmptyState, Screen, StatTile |
+| Y-09 | P1 | Achievements | /achievements | ✓ | Card, Icon, LevelBar, Screen, Stagger |
 | Y-10 | P0 | Get home safe | /safety | ✓ | Action, Button, Card, Chip, Glow, Icon |
 | Y-11 | P1 | Bar passport (shared with D-05) | /passport | ✓ | Card, EmptyState, Icon, Screen |
-| Y-12 | P2 | Wrapped | /wrapped/[year] | ✓ | Aurora, Button, Card |
+| Y-12 | P2 | Wrapped | /wrapped/[year] | ✓ | Aurora, Button, UpgradeSlide |
 | S-01 | P0 | Settings home | /settings | ✓ | Button, Group, NavRow, Screen |
-| S-02 | P2 | Appearance | /settings/appearance | ✓ | Card, Group, Screen, ToggleRow |
-| S-03 | P0 | Units & region | /settings/units | ✓ | Card, Screen, Segmented |
+| S-02 | P2 | Appearance | /settings/appearance | ✓ | Card, Group, Icon, Screen, ToggleRow |
+| S-03 | P0 | Units & region | /settings/units | ✓ | Card, Group, Screen, Segmented, ToggleRow |
 | S-04 | P1 | Modules | /settings/modules | ✓ | Card, Group, Screen, ToggleRow |
 | S-05 | P0 | Notifications | /settings/notifications | ✓ | Card, Group, Screen, ToggleRow |
 | S-06 | P0 | Privacy | /settings/privacy | ✓ | Card, Group, Screen, Segmented, ToggleRow |
 | S-07 | P1 | Safety | /settings/safety | ✓ | Card, Field, Group, NavRow, Screen |
-| S-08 | P1 | Subscription | /settings/subscription | ✓ | Button, Card, InlineLink, Screen |
+| S-08 | P1 | Subscription | /settings/subscription | ✓ | Subscription |
 | S-09 | P1 | Trusted contacts | /safety/contacts | ✓ | Button, Card, EmptyState, Field, Icon, Screen |
 | S-10 | P1 | Arm safe arrival | /safety/arm | ✓ | Button, Card, Chip, Field, Sheet |
 | S-11 | P0 | Blocked users | /settings/blocked | ✓ | Avatar, Button, Card, EmptyState, Screen |
 | S-12 | P0 | Data & account | /settings/data | ✓ | Button, Card, Field, Screen |
 | S-13 | P0 | Help & legal | /settings/help | ✓ | Card, Group, NavRow, Screen |
-| S-14 | P1 | ROUNDS+ paywall | /paywall | ✓ | ActivityIndicator, Button, Card, Icon, InlineLink, Screen |
+| S-14 | P1 | ROUNDS+ paywall | /paywall | ✓ | Paywall |
 | S-15 | P0 | Report | /report/[targetType]/[targetId] | ✓ | Button, Card, Field, Icon, Report, Screen |
