@@ -20,7 +20,8 @@
     "check": "npm run typecheck && npm test && npm run db:test && npm run store:check",
     "store:check": "node scripts/store-check.mjs",
     "store:shots": "node scripts/store-shots.mjs",
-    "invite": "node scripts/build-invite.mjs"
+    "invite": "node scripts/build-invite.mjs",
+    "tester": "npx expo export --platform web && node scripts/pack-app.mjs && node scripts/build-tester.mjs"
   },
   "jest": {
     "preset": "jest-expo",

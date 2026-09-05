@@ -262,10 +262,19 @@ export function Screen({
                   transformOrigin: 'left center',
                 }}
               >
-                <Text variant="largeTitle" numberOfLines={1}>{title}</Text>
+                {/*
+                  Two lines, not one.
+
+                  `numberOfLines={1}` clipped every title longer than the
+                  screen — "When were you born?" rendered as "When were you
+                  bor…" on a 393pt iPhone, which is most of them. The collapsed
+                  row above still gets one line, because that one has a fixed
+                  44pt height and genuinely cannot grow.
+                */}
+                <Text variant="largeTitle" numberOfLines={2}>{title}</Text>
                 {subtitle ? (
                   <Animated.View style={{ opacity: subtitleOpacity }}>
-                    <Text variant="subheadline" tone="secondary" numberOfLines={1}>{subtitle}</Text>
+                    <Text variant="subheadline" tone="secondary" numberOfLines={2}>{subtitle}</Text>
                   </Animated.View>
                 ) : null}
               </Animated.View>
