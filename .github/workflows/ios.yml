@@ -25,7 +25,7 @@ concurrency:
 jobs:
   app:
     name: The app compiles for iOS
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -33,8 +33,26 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
 
+      # The newest Xcode on the runner, not whichever one is selected by
+      # default, and the list is printed because images change under you.
+      #
+      # Xcode 16.4 carries Swift 6.1, and this dependency stack does not build
+      # with it: the ExpoModulesJSI script phase resolves a SwiftPM package that
+      # declares swift-tools-version 6.2 and the build stops at
+      #
+      #   package 'apple' is using Swift tools version 6.2.0 but the installed
+      #   version is 6.1.0
+      #
+      # which has nothing to do with this repository's own code. Pinning 16.2
+      # here, as this job used to, made it worse and made the two macOS jobs
+      # compile the same commit with two different compilers.
       - name: Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app || xcodebuild -version
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version
+          swift --version
 
       # ROUNDS_ALLOW_NO_WIDGETS is the deliberate escape hatch from
       # modules/rounds-native/plugin/withRoundsNative.js. It builds the app
@@ -54,9 +72,14 @@ jobs:
       # No signing: this proves the code compiles and links, which is the part
       # that has never been checked. Signing needs an Apple Developer account
       # and belongs in EAS, not here.
+      # The raw log is kept, not just xcpretty's rendering of it. The first
+      # time this job ran it failed and printed no error line whatsoever —
+      # xcpretty drops whole classes of failure, and a red build you cannot
+      # read is a second problem on top of the first.
       - name: Build
         run: |
           set -o pipefail
+          if command -v xcpretty >/dev/null; then filter=xcpretty; else filter=cat; fi
           xcodebuild \
             -workspace ios/ROUNDS.xcworkspace \
             -scheme ROUNDS \
@@ -64,17 +87,55 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build 2>&1 | xcpretty || (echo "::error::iOS build failed" && exit 1)
+            build 2>&1 | tee xcodebuild-app.log | $filter || {
+              echo "::group::what xcodebuild actually said"
+              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 6 xcodebuild-app.log | head -80 || echo "(no error line — see the tail below)"
+              echo "::endgroup::"
+              echo "::group::the last 200 lines"
+              tail -200 xcodebuild-app.log
+              echo "::endgroup::"
+              echo "::error::iOS build failed"
+              exit 1
+            }
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-app
+          path: xcodebuild-app.log
+          retention-days: 7
 
   widgets:
     name: The Live Activity and widgets are in the app
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+
+      # The newest Xcode on the runner, not whichever one is selected by
+      # default, and the list is printed because images change under you.
+      #
+      # Xcode 16.4 carries Swift 6.1, and this dependency stack does not build
+      # with it: the ExpoModulesJSI script phase resolves a SwiftPM package that
+      # declares swift-tools-version 6.2 and the build stops at
+      #
+      #   package 'apple' is using Swift tools version 6.2.0 but the installed
+      #   version is 6.1.0
+      #
+      # which has nothing to do with this repository's own code. Pinning 16.2
+      # here, as this job used to, made it worse and made the two macOS jobs
+      # compile the same commit with two different compilers.
+      - name: Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version
+          swift --version
 
       # Deliberately WITHOUT the escape hatch: the plugin creates the widget
       # extension target here, or the job fails.
@@ -99,6 +160,7 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
+          if command -v xcpretty >/dev/null; then filter=xcpretty; else filter=cat; fi
           xcodebuild \
             -workspace ios/ROUNDS.xcworkspace \
             -scheme ROUNDS \
@@ -106,7 +168,24 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build 2>&1 | xcpretty
+            build 2>&1 | tee xcodebuild-widgets.log | $filter || {
+              echo "::group::what xcodebuild actually said"
+              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 6 xcodebuild-widgets.log | head -80 || echo "(no error line — see the tail below)"
+              echo "::endgroup::"
+              echo "::group::the last 200 lines"
+              tail -200 xcodebuild-widgets.log
+              echo "::endgroup::"
+              echo "::error::the widget build failed"
+              exit 1
+            }
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-widgets
+          path: xcodebuild-widgets.log
+          retention-days: 7
 
       # The build succeeding is not the check. A widget extension that is
       # created but never embedded produces a perfectly green build and an app

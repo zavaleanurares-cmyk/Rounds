@@ -4,13 +4,32 @@ apply plugin: 'kotlin-android'
 group = 'app.rounds.nativemodule'
 version = '1.0.0'
 
+/**
+ * The app's SDK levels, not this library's own.
+ *
+ * `minSdk 29` was hardcoded here, and the app's floor is 24. The manifest
+ * merger does not warn about that — it fails the whole Android build:
+ *
+ *   uses-sdk:minSdkVersion 24 cannot be smaller than version 29
+ *   declared in library [:rounds-native]
+ *
+ * Nothing in the repository could see it until CI assembled an APK for the
+ * first time. Every API above the app's floor is already guarded at runtime:
+ * RoundsTileService is @RequiresApi(N), the tile subtitle is behind a check
+ * for Q, the notification channel behind one for O, and startForeground is the
+ * two-argument call. So the floor belongs to the app, and this library follows
+ * it — the same safeExtGet fallbacks Expo's own modules use, so a bump in one
+ * place moves everything.
+ */
+def sdk = { prop, fallback -> rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback }
+
 android {
   namespace 'app.rounds.nativemodule'
-  compileSdk 35
+  compileSdk sdk('compileSdkVersion', 36)
 
   defaultConfig {
-    minSdk 29                 // Android 10+, per the platform target
-    targetSdk 35
+    minSdk sdk('minSdkVersion', 24)
+    targetSdk sdk('targetSdkVersion', 36)
   }
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17

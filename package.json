@@ -22,7 +22,8 @@
     "store:shots": "node scripts/store-shots.mjs",
     "invite": "node scripts/build-invite.mjs",
     "tester": "npx expo export --platform web && node scripts/pack-app.mjs && node scripts/build-tester.mjs",
-    "verify:deploy": "node scripts/verify-deploy.mjs"
+    "verify:deploy": "node scripts/verify-deploy.mjs",
+    "verify:ios": "node scripts/verify-ios-target.mjs"
   },
   "jest": {
     "preset": "jest-expo",

@@ -1041,6 +1041,92 @@ describe('the native build', () => {
     expect(sources).toContain('RoundsNativeModule.swift');
   });
 
+  it('imports the framework each symbol it uses comes from', () => {
+    // `LiveActivityIntent` is an AppIntents type, and RoundsLiveActivityView
+    // imported SwiftUI, WidgetKit and ActivityKit but not AppIntents. It cost a
+    // macOS CI round to find — the first time any of this Swift had ever been
+    // compiled — and one grep would have found it. RoundsWidgets.swift had the
+    // same hole: its "Same again" is Button(intent:).
+    //
+    // Not a Swift compiler. A short table of the symbols these seven files
+    // actually use and the framework each one comes from, which is the part
+    // that has been wrong.
+    const NEEDS: Record<string, RegExp> = {
+      AppIntents: /\bLiveActivityIntent\b|\bAppIntent\b|Button\(intent:|\bIntentResult\b|\bAppShortcutsProvider\b/,
+      ActivityKit: /\bActivityConfiguration\b|\bActivityAttributes\b|\bActivity</,
+      WidgetKit: /:\s*Widget\b|\bWidgetBundle\b|\bTimelineProvider\b|\bControlWidget\b|\bWidgetCenter\b/,
+    };
+
+    const dir = 'modules/rounds-native/ios';
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.swift'))) {
+      const source = readFileSync(join(dir, file), 'utf8');
+      // Comments name these types constantly — RoundsNativeModule explains
+      // AppShortcutsProvider in one — so the check reads the code only.
+      const body = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      for (const [framework, uses] of Object.entries(NEEDS)) {
+        if (!uses.test(body)) continue;
+        const imported = new RegExp(`^import ${framework}$`, 'm').test(source);
+        expect({ file, framework, imported }).toEqual({ file, framework, imported: true });
+      }
+    }
+  });
+
+  it('gives expo-splash-screen an image to generate', () => {
+    // Configured without `image`, the plugin still writes
+    // windowSplashScreenAnimatedIcon="@drawable/splashscreen_logo" into
+    // styles.xml and generates no such drawable, and aapt2 fails the Android
+    // build outright: "resource drawable/splashscreen_logo not found".
+    //
+    // The top-level `splash` key does not feed this plugin, which is what made
+    // it look configured when it was not.
+    const entry = config.match(/\[\s*'expo-splash-screen',\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(entry).toBeTruthy();
+    expect(entry).toMatch(/image:\s*'\.\/assets\/[\w.-]+'/);
+    const image = entry.match(/image:\s*'\.\/(assets\/[\w.-]+)'/)?.[1] ?? '';
+    expect(existsSync(image)).toBe(true);
+  });
+
+  it('does not declare its own Android SDK floor', () => {
+    // `minSdk 29` in the library and 24 in the app is not a warning, it is a
+    // failed build: "uses-sdk:minSdkVersion 24 cannot be smaller than version
+    // 29 declared in library [:rounds-native]". Nothing here could see it until
+    // CI assembled an APK for the first time.
+    //
+    // One floor, owned by the app. The library reads it the way Expo's own
+    // modules do, so a bump moves everything at once.
+    const gradle = readFileSync('modules/rounds-native/android/build.gradle', 'utf8');
+    const body = gradle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(body).not.toMatch(/\b(minSdk|minSdkVersion)\s+\d+/);
+    expect(body).not.toMatch(/\bcompileSdk\s+\d+/);
+    expect(body).not.toMatch(/\btargetSdk\s+\d+/);
+    expect(body).toMatch(/rootProject\.ext\.has\(/);
+    for (const prop of ['minSdkVersion', 'compileSdkVersion', 'targetSdkVersion']) {
+      expect(body).toContain(prop);
+    }
+  });
+
+  it('runs the script the widgets job calls', () => {
+    // `ios / widgets` ran `npm run verify:ios` against a package.json that had
+    // no such script, so the job that holds the whole requirement failed in
+    // four seconds on a typo rather than on anything about the build.
+    const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
+    for (const script of [...workflow.matchAll(/npm run ([\w:-]+)/g)].map((m) => m[1])) {
+      expect({ script, defined: Boolean(pkg.scripts[script]) }).toEqual({ script, defined: true });
+    }
+  });
+
+  it('gives both macOS jobs the same toolchain', () => {
+    // One job pinned Xcode 16.2 and the other took the runner default, so the
+    // same commit compiled with two different compilers and a failure in one
+    // and not the other meant nothing. And 16.4 is Swift 6.1, which cannot
+    // resolve the swift-tools-version 6.2 package ExpoModulesJSI pulls.
+    const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
+    expect(workflow).not.toContain('Xcode_16.2.app');
+    expect(workflow.match(/runs-on: macos-\d+/g)).toEqual(['runs-on: macos-26', 'runs-on: macos-26']);
+    // Both select the newest Xcode present rather than whatever is default.
+    expect(workflow.match(/xcode-select -s/g)).toHaveLength(2);
+  });
+
   it('CI proves the extension is embedded, rather than reporting that it is not', () => {
     const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
     const job = workflow.match(/\n  widgets:\n([\s\S]*?)(?=\n  [a-z])/)?.[1] ?? '';
