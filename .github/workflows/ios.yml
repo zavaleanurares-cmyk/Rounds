@@ -70,20 +70,26 @@ jobs:
     name: The Live Activity and widgets are in the app
     runs-on: macos-15
     timeout-minutes: 45
-    # TODO: drop continue-on-error once the widget extension target is created.
-    # Until then this job is the standing, visible record that an iOS build
-    # ships without its system surfaces — see docs/ios-widget-target.md.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
 
-      # Deliberately WITHOUT the escape hatch. While the target is missing the
-      # plugin throws here with an explanation, and that is the correct result.
+      # Deliberately WITHOUT the escape hatch: the plugin creates the widget
+      # extension target here, or the job fails.
       - name: Prebuild, widgets required
         run: npx expo prebuild --platform ios --no-install --clean
+
+      # The cheap half of the check, and the one that says which part is wrong.
+      # It parses the generated project and asserts the whole contract from
+      # docs/ios-widget-target.md — including the copy-files phase with
+      # dstSubfolderSpec 13, which is the difference between an app with
+      # widgets and a green build without them. Runs on Linux in seconds; it is
+      # here on macOS only because this is where the project gets generated
+      # without the escape hatch.
+      - name: The target matches the contract
+        run: npm run verify:ios
 
       - name: Pods
         run: |

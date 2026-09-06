@@ -1000,21 +1000,60 @@ describe('the native build', () => {
     }
   });
 
-  it('does not silently produce an iOS build with no system surfaces', () => {
+  it('creates the widget extension target instead of describing one', () => {
     // withXcodeProject assigned `__roundsTargets` and nothing ever read it, so
     // six Swift files — the Live Activity, three widget families and the
     // Control Center control — were never compiled into anything, and every
     // check in this repository passed anyway because none of them build iOS.
-    //
-    // Until the target is really created, prebuild must fail rather than hand
-    // back an app that looks complete and has no widgets in it.
     const plugin = readFileSync('modules/rounds-native/plugin/withRoundsNative.js', 'utf8');
     expect(plugin).not.toMatch(/__roundsTargets\s*=/);
-    const creates = /addTarget\(|PBXNativeTarget|apple-targets/.test(plugin);
-    if (!creates) {
-      expect(plugin).toMatch(/throw new Error\(/);
-      expect(plugin).toContain('ROUNDS_ALLOW_NO_WIDGETS');
+
+    // A real PBXNativeTarget. `app_extension` is what makes the product a
+    // .appex, and what makes the xcode package add the PlugIns copy-files
+    // phase that is the whole point.
+    expect(plugin).toMatch(/addTarget\(name, 'app_extension'/);
+    expect(plugin).toMatch(/addSourceFile\(`\$\{name\}\/\$\{file\}`/);
+
+    // The escape hatch stays: `ios / app` builds with it so a break in the app
+    // itself is not hidden behind the extension.
+    expect(plugin).toContain('ROUNDS_ALLOW_NO_WIDGETS');
+  });
+
+  it('does not compile the extension sources into the app as well', () => {
+    // The podspec globbed `**/*.{h,m,swift}`, which swept RoundsWidgetBundle's
+    // @main and every widget type into the app's static framework as well as
+    // the extension: duplicate @main, duplicate symbols, and a Control Center
+    // control compiled against the pod's 15.1 deployment target.
+    const podspec = readFileSync('modules/rounds-native/ios/RoundsNative.podspec', 'utf8');
+    const sources = podspec.match(/s\.source_files\s*=\s*(.+)/)?.[1] ?? '';
+    expect(sources).toBeTruthy();
+    expect(sources).not.toContain('**');
+
+    const { WIDGET_EXTENSION } = require('../../modules/rounds-native/plugin/withRoundsNative.js');
+    // Deliberately in both: separate processes sharing an App Group suite and
+    // an ActivityAttributes type, not a shared library.
+    const inBoth = ['RoundsShared.swift', 'RoundsActivityAttributes.swift'];
+    for (const file of WIDGET_EXTENSION.sources as string[]) {
+      if (inBoth.includes(file)) continue;
+      expect([file, sources.includes(file)]).toEqual([file, false]);
     }
+    // And the Expo module itself, without which nothing autolinks.
+    expect(sources).toContain('RoundsNativeModule.swift');
+  });
+
+  it('CI proves the extension is embedded, rather than reporting that it is not', () => {
+    const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
+    const job = workflow.match(/\n  widgets:\n([\s\S]*?)(?=\n  [a-z])/)?.[1] ?? '';
+    expect(job).toBeTruthy();
+
+    // While the target was missing this job was advisory. It is the
+    // requirement now, and a green `ios / widgets` is what "done" means.
+    expect(job).not.toContain('continue-on-error');
+
+    // The cheap check runs first and says which part of the contract is wrong;
+    // the expensive one is the only proof that survives a green build.
+    expect(job).toContain('verify:ios');
+    expect(job).toContain('PlugIns/RoundsWidgets.appex');
   });
 });
 

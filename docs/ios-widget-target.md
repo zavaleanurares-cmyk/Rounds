@@ -1,9 +1,10 @@
 # The iOS widget extension target
 
-**Status: not created. This is the last piece of native work before an iOS
-build is complete.**
+**Status: created.** `expo prebuild --platform ios` now produces a project with
+two native targets, and `npm run verify:ios` asserts the contract below against
+the generated `project.pbxproj`. What remains is step 4 — a real device.
 
-## What is wrong
+## What was wrong
 
 `modules/rounds-native/plugin/withRoundsNative.js` used to do this:
 
@@ -12,24 +13,21 @@ cfg.modResults.__roundsTargets = { widgetExtension: {...}, watchApp: {...} };
 ```
 
 Nothing ever read `__roundsTargets`. It described a target rather than creating
-one. Confirmed by running `expo prebuild --platform ios` and parsing the result:
-
-- the generated Xcode project contains **exactly one** `PBXNativeTarget` — the app
-- **none** of the Swift files in `modules/rounds-native/ios/` are copied into `ios/`
-
-So the Live Activity, the three home-screen widget families and the Control
-Center control **do not exist in an iOS build**, while the app is configured as
-though they do: `NSSupportsLiveActivities` and
-`NSSupportsLiveActivitiesFrequentUpdates` are set in `Info.plist`, the app
-target is entitled for `group.app.rounds.client`, and the JS calls into the
-native module. The app would install, run, and silently have no system surfaces.
+one, so the generated Xcode project contained **exactly one** `PBXNativeTarget`
+— the app — and none of the Swift files in `modules/rounds-native/ios/` were
+compiled into anything. The Live Activity, the three home-screen widget families
+and the Control Center control **did not exist in an iOS build**, while the app
+was configured as though they did: `NSSupportsLiveActivities` and
+`NSSupportsLiveActivitiesFrequentUpdates` set in `Info.plist`, the app target
+entitled for `group.app.rounds.client`, and the JS calling into the native
+module. The app would install, run, and silently have no system surfaces.
 
 Nothing in this repository could catch it. The JS suite, the typecheck,
 `store:check` and every Linux CI job pass without compiling a line of Swift.
 
-Prebuild now **throws** rather than producing a widget-less project.
-`ROUNDS_ALLOW_NO_WIDGETS=1` builds without them deliberately, which is what the
-`ios / app` CI job uses.
+`ROUNDS_ALLOW_NO_WIDGETS=1` still builds without them deliberately, which is
+what the `ios / app` CI job uses so that a break in the app itself is not hidden
+behind the extension.
 
 ## The contract
 
@@ -75,30 +73,59 @@ has no widgets. That is why the CI check is not "did it build" but:
 ROUNDS.app/PlugIns/RoundsWidgets.appex exists
 ```
 
-## How to do it
+## How it is done
 
-**Recommended: `@bacons/apple-targets`.** Purpose-built for this, and what most
-Expo apps with widgets use. Roughly: add the dependency, add an
-`expo-target.config.js` describing the extension, and let it generate the
-target — then keep `withRoundsNative.js` for the Info.plist, entitlements,
-Android manifest and privacy-manifest copy it already handles well.
+By hand, against the `xcode` package that `withXcodeProject` exposes — no new
+dependency, and every part of it asserted by a command rather than trusted.
+`withWidgetExtensionFiles` copies the seven sources into `ios/RoundsWidgets/`
+and writes the `Info.plist` and `.entitlements` there, the same way
+`PrivacyInfo.xcprivacy` is copied. `withWidgetExtensionTarget` then calls
+`addTarget(name, 'app_extension', ...)`, which creates the target, the `.appex`
+product, the app → extension dependency and the PlugIns copy-files phase
+together, and adds the sources, the frameworks and the build settings to it.
 
-**By hand**, against the `xcode` package that `withXcodeProject` exposes:
-`addTarget`, `addBuildPhase` (Sources / Frameworks / Resources),
-`addXCConfigurationList`, `addTargetDependency`,
-`addToPbxCopyfilesBuildPhase` for the embed, plus a `PBXGroup` for the sources.
-Fiddlier, no new dependency, and easier to get subtly wrong.
+**One thing to know if you touch this.** `addTargetDependency` in the `xcode`
+package guards on the `PBXTargetDependency` and `PBXContainerItemProxy` sections
+already existing, and *returns having done nothing* when they do not. An Expo
+project with a single target has neither. So `addTarget` appeared to wire the
+app to the extension and silently did not. The plugin creates both sections
+before calling it. This was found by running `npm run verify:ios` on the first
+attempt, not by reading the library — the project looked complete, and the
+dependency was simply absent.
 
-Either way, write the extension's `Info.plist` and `.entitlements` into `ios/`
-from a `withDangerousMod`, the same way `PrivacyInfo.xcprivacy` is copied today.
+The sources are copied into `ios/` rather than referenced in place because
+`ios/` is disposable: `prebuild --clean` deletes it, and a project whose sources
+point up and out of the project directory breaks the first time somebody moves
+the module.
 
 ## How to verify — in this order
 
-1. `npx expo prebuild --platform ios --clean` — must no longer throw
-2. `node -e "const x=require('xcode');const p=x.project('ios/ROUNDS.xcodeproj/project.pbxproj').parseSync();console.log(Object.values(p.pbxNativeTargetSection()).filter(t=>t.name).map(t=>t.name))"` — must print **two** targets
-3. Push. The `ios / widgets` CI job compiles it on a free macOS runner and fails
-   unless the `.appex` is embedded. Then remove `continue-on-error` from that
-   job — that is what makes this done.
+```bash
+npx expo prebuild --platform ios --no-install --clean   # 1 · must not throw
+npm run verify:ios                                      # 2 · the contract above
+```
+
+Step 2 is `scripts/verify-ios-target.mjs`. It reads `WIDGET_EXTENSION` out of
+the plugin, so the contract has one source, and asserts every row of it against
+the generated `project.pbxproj`: two native targets, the app-extension product
+type, the `.appex` product, the app → extension dependency, a copy-files phase
+on the *app* target with `dstSubfolderSpec = 13` containing that `.appex`, the
+seven sources and nothing else, the four frameworks, the deployment target, the
+bundle id, the entitlements path, and the two files on disk. It names which part
+is wrong rather than saying the build has no PlugIns directory.
+
+It asserts the **number** 13, not the phase's name: Xcode calls that phase
+"Embed App Extensions", the `xcode` package calls it "Copy Files", and the name
+is decoration. Ten mutations of the generated project — dropping the `.appex`
+from the phase, retargeting the phase to Resources, removing the dependency,
+removing `RoundsWidgetBundle.swift`, raising the deployment target, unlinking
+ActivityKit, pointing at the app's entitlements, deleting the target, deleting
+the `Info.plist`, changing the app group — each turn it red.
+
+3. `ios / widgets` in `.github/workflows/ios.yml` runs both of those on a free
+   macOS runner, then builds and fails unless
+   `ROUNDS.app/PlugIns/RoundsWidgets.appex` exists. `continue-on-error` is gone
+   from that job: it is the requirement now, not a report.
 4. Only then, on hardware: start a night and confirm the Live Activity appears
    on the Lock Screen, place each widget size, and add the Control Center
    control.
@@ -109,13 +136,18 @@ Steps 1–3 need no Apple Developer account and no Mac. Step 4 needs both.
 
 - Do not chase a green build as the finish line. The embed phase is the trap.
 - Do not add the extension's sources to the app target as well. Duplicate
-  `@main`, duplicate symbols.
+  `@main`, duplicate symbols. `RoundsNative.podspec` used to glob
+  `**/*.{h,m,swift}`, which did exactly that — every widget type and the `@main`
+  bundle went into the app's static framework as well. It now names the three
+  files the app needs, and a test holds it there.
 - Do not raise the extension's deployment target above 17.0 for the Control
   Center control — it is behind `if #available(iOS 18.0, *)` in the bundle for
   exactly that reason.
 
-## While it is unfinished
+## What is left
 
-`ios / widgets` is `continue-on-error: true`, so it reports without blocking
-merges. It is the standing, visible record that an iOS build ships without its
-system surfaces. Delete neither the job nor this file until step 3 is done.
+Step 4, and only step 4. Nothing about the Live Activity actually appearing on a
+Lock Screen, a widget rendering at each size, or the Control Center control
+being addable can be proven by a compiler. That needs an Apple Developer
+account, a device, and somebody watching it — see `npm run store:check` for the
+rest of that list.
