@@ -30,12 +30,23 @@ that has never failed is not known to work.
 ## Verify like this
 
 ```bash
-npm run typecheck && npm test -- --ci   # 233 tests
+npm run typecheck && npm test -- --ci   # 237 tests
 bash supabase/tests/run.sh              # 269 assertions, needs PGHOST/PGUSER/PGDATABASE
 npm run manifest                        # every screen still has a route
 npm run store:check                     # metadata, privacy manifest, permissions
 npm run tester                          # one self-contained HTML with the whole app
 ```
+
+Against a deployed project, after `supabase db push`:
+
+```bash
+SUPABASE_DB_URL=postgresql://... npm run verify:deploy
+```
+
+That one checks the things `docs/deploy.md` warns are silent when skipped —
+`pg_cron` present, all seven jobs scheduled, the outbound drain actually
+delivering. A document that tells you to check something is weaker than a
+command that checks it.
 
 CI additionally compiles iOS on a macOS runner and assembles the Android APK —
 `.github/workflows/ios.yml`. That job exists because nothing else here compiles
@@ -77,7 +88,7 @@ src/domain/             pure logic — pace, catalogue, nicotine, stats
 src/services/           the outside world — auth, sync, push, purchases
 src/ui/  src/features/  design system, then screen-level composition
 src/i18n/locales/       en · ro · es · fr, 1228 keys each, all four in step
-supabase/migrations/    51 files, applied in order, never edited after landing
+supabase/migrations/    41 files, applied in order, never edited after landing
 supabase/tests/         RLS matrix · escalation · RPC rules, plain psql
 modules/rounds-native/  Live Activity, widgets, Control Center, Quick Settings
 ```

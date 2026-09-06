@@ -26,8 +26,12 @@ Verify afterwards — this is worth actually looking at:
 select jobname, schedule from cron.job order by jobname;
 ```
 
-Expect six: `safety-escalation`, `morning-recaps`, `plan-reminders`,
-`weekly-recaps`, `purge-locations`, `purge-accounts`.
+Expect seven: `morning-recaps`, `plan-reminders`, `purge-accounts`,
+`purge-locations`, `purge-outbound`, `safety-escalation`, `weekly-recaps`.
+
+Or don't count them by hand — `npm run verify:deploy` checks this and everything
+else on this page against the live project, and reads the expected list out of
+the migration so it cannot drift from it the way this paragraph did.
 
 ## 2 · The outbound drain — the step everything else depends on
 

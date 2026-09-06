@@ -1017,3 +1017,38 @@ describe('the native build', () => {
     }
   });
 });
+
+describe('the scheduled jobs are described consistently', () => {
+  // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
+  // six while the migration scheduled seven — purge-outbound was missing — so
+  // anyone counting by hand against the doc would have concluded a correct
+  // deployment was wrong, or an incomplete one was right.
+  const migration = readFileSync('supabase/migrations/00049_schedules.sql', 'utf8');
+  const jobs = [...new Set([...migration.matchAll(/cron\.schedule\(\s*'([a-z-]+)'/g)].map((m) => m[1]))].sort();
+
+  it('schedules a known, non-empty set', () => {
+    expect(jobs.length).toBeGreaterThan(0);
+  });
+
+  it('the supabase workflow expects exactly those jobs', () => {
+    const wf = readFileSync('.github/workflows/supabase.yml', 'utf8');
+    const line = wf.match(/expected="([^"]+)"/)?.[1] ?? '';
+    expect(line.split(/\s+/).filter(Boolean).sort()).toEqual(jobs);
+  });
+
+  it('docs/deploy.md names exactly those jobs', () => {
+    const deploy = readFileSync('docs/deploy.md', 'utf8');
+    const para = deploy.match(/Expect \w+:([\s\S]*?)\.\n/)?.[1] ?? '';
+    const named = [...new Set([...para.matchAll(/`([a-z-]+)`/g)].map((m) => m[1]))].sort();
+    expect(named).toEqual(jobs);
+  });
+
+  it('verify:deploy reads the list from the migration rather than repeating it', () => {
+    // A fourth hand-maintained copy of this list would drift like the third did.
+    const script = readFileSync('scripts/verify-deploy.mjs', 'utf8');
+    expect(script).toContain('00049_schedules.sql');
+    for (const job of jobs) {
+      expect(script.includes(`'${job}'`)).toBe(false);
+    }
+  });
+});
