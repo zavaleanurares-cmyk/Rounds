@@ -1,6 +1,9 @@
 import SwiftUI
 #if canImport(WidgetKit)
 import WidgetKit
+// The medium widget's "Same again" is Button(intent:), which comes from
+// AppIntents — the same import RoundsLiveActivityView was missing.
+import AppIntents
 
 /// X-03 / X-04 / X-05 · Home Screen widgets.
 ///

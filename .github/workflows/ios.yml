@@ -57,6 +57,12 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
+          # xcpretty is a filter, and a filter that swallows the compiler's own
+          # words is worse than no filter. The first run of this job failed in
+          # 28 seconds and printed nothing but "iOS build failed" — the whole
+          # log was resource-bundle chatter and the error was gone. So keep the
+          # raw output and print the part that matters when it goes wrong.
+          if command -v xcpretty >/dev/null; then filter=xcpretty; else filter=cat; fi
           xcodebuild \
             -workspace ios/ROUNDS.xcworkspace \
             -scheme ROUNDS \
@@ -64,7 +70,17 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build 2>&1 | xcpretty || (echo "::error::iOS build failed" && exit 1)
+            build 2>&1 | tee xcodebuild-app.log | $filter || {
+              echo "::group::what xcodebuild actually said"
+              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 6 xcodebuild-app.log | head -80 || echo "(no error line — see the tail below)"
+              echo "::endgroup::"
+              echo "::group::the last 200 lines"
+              tail -200 xcodebuild-app.log
+              echo "::endgroup::"
+              echo "::error::iOS build failed"
+              exit 1
+            }
 
   widgets:
     name: The Live Activity and widgets are in the app
@@ -99,6 +115,12 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
+          # xcpretty is a filter, and a filter that swallows the compiler's own
+          # words is worse than no filter. The first run of this job failed in
+          # 28 seconds and printed nothing but "iOS build failed" — the whole
+          # log was resource-bundle chatter and the error was gone. So keep the
+          # raw output and print the part that matters when it goes wrong.
+          if command -v xcpretty >/dev/null; then filter=xcpretty; else filter=cat; fi
           xcodebuild \
             -workspace ios/ROUNDS.xcworkspace \
             -scheme ROUNDS \
@@ -106,7 +128,17 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build 2>&1 | xcpretty
+            build 2>&1 | tee xcodebuild-widgets.log | $filter || {
+              echo "::group::what xcodebuild actually said"
+              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 6 xcodebuild-widgets.log | head -80 || echo "(no error line — see the tail below)"
+              echo "::endgroup::"
+              echo "::group::the last 200 lines"
+              tail -200 xcodebuild-widgets.log
+              echo "::endgroup::"
+              echo "::error::iOS build failed"
+              exit 1
+            }
 
       # The build succeeding is not the check. A widget extension that is
       # created but never embedded produces a perfectly green build and an app

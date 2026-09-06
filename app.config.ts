@@ -100,7 +100,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-font',
-    ['expo-splash-screen', { backgroundColor: '#06070B', imageWidth: 200 }],
+    // `image` is not optional in practice: without it the plugin still writes
+    // windowSplashScreenAnimatedIcon="@drawable/splashscreen_logo" into
+    // styles.xml and generates no such drawable, and aapt2 fails the Android
+    // build on the dangling reference. The top-level `splash` key below does
+    // not feed this plugin.
+    [
+      'expo-splash-screen',
+      { image: './assets/splash.png', backgroundColor: '#06070B', imageWidth: 200 },
+    ],
     [
       'expo-location',
       {
