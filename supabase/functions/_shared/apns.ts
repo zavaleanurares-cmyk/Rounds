@@ -23,7 +23,17 @@ function b64url(bytes: ArrayBuffer | Uint8Array): string {
 }
 
 /** The .p8 file is PKCS#8 PEM. Strip the armour and decode. */
-function pemToPkcs8(pem: string): Uint8Array {
+/**
+ * The `<ArrayBuffer>` is load-bearing, not decoration.
+ *
+ * Bare `Uint8Array` means `Uint8Array<ArrayBufferLike>`, and `ArrayBufferLike`
+ * includes `SharedArrayBuffer`, which `BufferSource` does not accept. So
+ * `crypto.subtle.importKey('pkcs8', ...)` refuses the value this returns and
+ * `deno check` fails on the APNs provider token — the one that signs every
+ * Live Activity update. Nothing here type-checked the edge functions until
+ * now, so it had never been said out loud.
+ */
+function pemToPkcs8(pem: string): Uint8Array<ArrayBuffer> {
   const body = pem
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
