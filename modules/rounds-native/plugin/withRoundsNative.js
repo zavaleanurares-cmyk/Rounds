@@ -202,8 +202,13 @@ function withWidgetExtensionTarget(config) {
       }
     }
 
+    // The file name alone. The group above carries `path = RoundsWidgets`, so a
+    // reference of `RoundsWidgets/RoundsWidgetBundle.swift` resolves to
+    // ios/RoundsWidgets/RoundsWidgets/RoundsWidgetBundle.swift and the build
+    // stops at "Build input files cannot be found". The verifier now resolves
+    // every source through its group chain for exactly this reason.
     for (const file of WIDGET_EXTENSION.sources) {
-      proj.addSourceFile(`${name}/${file}`, { target: target.uuid }, groupKey);
+      proj.addSourceFile(file, { target: target.uuid }, groupKey);
     }
 
     for (const framework of WIDGET_EXTENSION.frameworks) {

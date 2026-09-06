@@ -1012,7 +1012,16 @@ describe('the native build', () => {
     // .appex, and what makes the xcode package add the PlugIns copy-files
     // phase that is the whole point.
     expect(plugin).toMatch(/addTarget\(name, 'app_extension'/);
-    expect(plugin).toMatch(/addSourceFile\(`\$\{name\}\/\$\{file\}`/);
+
+    // The sources go in by name, because the group above them already carries
+    // `path = RoundsWidgets`. This assertion used to require the opposite —
+    // `addSourceFile(\`${name}/${file}\`)` — which is a reference that resolves
+    // to ios/RoundsWidgets/RoundsWidgets/x.swift, and Xcode stops with "Build
+    // input files cannot be found" after compiling everything else first. It
+    // pinned the bug in place. `npm run verify:ios` now resolves each source
+    // through its group chain, which is the check that can actually tell.
+    expect(plugin).toMatch(/addSourceFile\(file,/);
+    expect(plugin).not.toMatch(/addSourceFile\(`\$\{name\}\/\$\{file\}`/);
 
     // The escape hatch stays: `ios / app` builds with it so a break in the app
     // itself is not hidden behind the extension.

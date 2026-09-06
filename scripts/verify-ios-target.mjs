@@ -26,6 +26,7 @@
  * says which part is missing rather than "no PlugIns directory".
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -132,6 +133,46 @@ if (ext) {
 
   for (const source of WIDGET_EXTENSION.sources) {
     if (!compiled.includes(source)) fail(`${name} does not compile ${source}.`);
+  }
+
+  /**
+   * And each of those references points at a file that is really there.
+   *
+   * A reference resolves the way Xcode resolves it: a `"<group>"` file is its
+   * own path with the path of every group above it in front. Comparing
+   * basenames — which is all this script used to do — cannot see the difference
+   * between `RoundsWidgets/x.swift` inside a group with no path and the same
+   * reference inside a group whose path is already `RoundsWidgets`. The second
+   * resolves to ios/RoundsWidgets/RoundsWidgets/x.swift, which does not exist,
+   * and the build fails with "Build input files cannot be found" after five
+   * minutes of compiling everything else first.
+   */
+  const parentOf = new Map();
+  for (const [key, group] of Object.entries(objects.PBXGroup ?? {})) {
+    if (key.endsWith('_comment')) continue;
+    for (const child of group.children ?? []) parentOf.set(child.value, key);
+  }
+  const resolveRef = (fileRefUuid) => {
+    const ref = objects.PBXFileReference?.[fileRefUuid];
+    if (!ref || unquote(ref.sourceTree) !== '<group>') return null;
+    const parts = [unquote(ref.path)];
+    for (let cursor = parentOf.get(fileRefUuid); cursor; cursor = parentOf.get(cursor)) {
+      const groupPath = objects.PBXGroup?.[cursor]?.path;
+      if (groupPath) parts.unshift(unquote(groupPath));
+    }
+    return join('ios', ...parts);
+  };
+
+  for (const entryRef of objects.PBXSourcesBuildPhase?.[sourcesPhaseUuid]?.files ?? []) {
+    const fileRef = objects.PBXBuildFile?.[entryRef.value]?.fileRef;
+    const resolved = resolveRef(fileRef);
+    if (resolved && !existsSync(resolved)) {
+      fail(
+        `${name} compiles ${unquote(objects.PBXFileReference[fileRef].path)}, which resolves to ` +
+          `${resolved} — and there is no file there. Xcode reports this as "Build input files ` +
+          'cannot be found", at the end of a five-minute build.'
+      );
+    }
   }
   const extra = compiled.filter((f) => !WIDGET_EXTENSION.sources.includes(f));
   if (extra.length) fail(`${name} compiles files that are not in its source list: ${extra.join(', ')}.`);
