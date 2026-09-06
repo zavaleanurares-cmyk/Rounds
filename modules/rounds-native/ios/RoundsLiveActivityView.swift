@@ -2,6 +2,9 @@ import SwiftUI
 #if canImport(WidgetKit) && canImport(ActivityKit)
 import WidgetKit
 import ActivityKit
+// LiveActivityIntent and Button(intent:) are AppIntents, not SwiftUI. Leaving
+// this out is what the first macOS build of this file failed on.
+import AppIntents
 
 /// X-01 · The Live Activity and Dynamic Island presentations.
 ///
@@ -61,7 +64,9 @@ public struct RoundsLiveActivity: Widget {
   }
 
   private func sameAgainTitle(_ s: RoundsNightAttributes.ContentState) -> String {
-    s.lastDrinkName.map { "Same again" } ?? "Log a drink"
+    // Not `.map { "Same again" }`: Optional.map hands the closure the unwrapped
+    // value, and Swift refuses a closure that drops an argument it was given.
+    s.lastDrinkName == nil ? "Log a drink" : "Same again"
   }
 }
 

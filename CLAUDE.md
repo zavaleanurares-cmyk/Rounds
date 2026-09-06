@@ -5,10 +5,11 @@ around a night out: keep your pace, keep your group together, get home.
 
 ## Before you start
 
-- `docs/ios-widget-target.md` — the widget extension target, now created. Read
-  it before touching `modules/rounds-native/`; it carries the contract, the
-  embed phase that is the whole trap, and the one library behaviour that makes
-  the dependency silently not happen.
+- `docs/ios-widget-target.md` — the widget extension target, created and now
+  built: the `.appex` is inside `ROUNDS.app`. Read it before touching
+  `modules/rounds-native/`; it carries the contract, the embed phase that is the
+  whole trap, the one library behaviour that makes the dependency silently not
+  happen, and what five rounds of the macOS job found after all of that passed.
 - `docs/deploy.md` — the deployment steps, two of which are silent if skipped.
 - `npm run store:check` — the live list of what is blocked on accounts.
 
@@ -25,6 +26,9 @@ found by running something, not by reading it:
 | Diffing a clone against the tree | `.gitignore` patterns without a leading slash excluded the entire native module |
 | Running `expo prebuild` once | Two hard build failures and a crash-on-launch dependency, in a repository that was fully green |
 | Parsing the project prebuild produced | `addTargetDependency` returns having done nothing when the `PBXTargetDependency` section does not exist yet, so the app → extension dependency was silently never wired |
+| Compiling the Swift for the first time | Two files used `LiveActivityIntent` and `Button(intent:)` without importing AppIntents, and an `Optional.map` closure dropped the argument it was handed |
+| Assembling an APK for the first time | The native library declared `minSdk 29` against an app floor of 24 — a failed manifest merge, not a warning — and `expo-splash-screen` with no `image` left `styles.xml` pointing at a drawable nothing generated |
+| Building after the contract verifier passed | The extension's sources were referenced one directory too deep; both verifiers compared basenames, which cannot see it |
 
 So: prefer the check that executes. When you add an assertion, **mutation-test
 it** — break the thing it claims to protect and watch it go red. An assertion
@@ -90,8 +94,9 @@ green build. `ios / widgets` is no longer advisory: it fails unless
 
 ## Still unproven
 
-Every system surface compiles and is embedded, and nothing beyond that can be
-checked without hardware: the Live Activity appearing on a real Lock Screen,
+Every system surface compiles and is embedded — `ios / widgets` builds the
+extension and finds `ROUNDS.app/PlugIns/RoundsWidgets.appex` in the product —
+and nothing beyond that can be checked without hardware: the Live Activity appearing on a real Lock Screen,
 each widget size rendering, the Control Center control being addable. Those wait
 on an Apple Developer account — `npm run store:check` prints the live list.
 
