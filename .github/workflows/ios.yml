@@ -33,19 +33,18 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
 
-      # The newest Xcode on the runner, not whichever one is selected by
-      # default, and the list is printed because images change under you.
+      # Pinning Xcode_16.2 pinned Swift 6.1, and the build died on
       #
-      # Xcode 16.4 carries Swift 6.1, and this dependency stack does not build
-      # with it: the ExpoModulesJSI script phase resolves a SwiftPM package that
-      # declares swift-tools-version 6.2 and the build stops at
+      #   xcodebuild: error: Could not resolve package dependencies:
+      #     package 'apple' is using Swift tools version 6.2.0
+      #     but the installed version is 6.1.0
       #
-      #   package 'apple' is using Swift tools version 6.2.0 but the installed
-      #   version is 6.1.0
-      #
-      # which has nothing to do with this repository's own code. Pinning 16.2
-      # here, as this job used to, made it worse and made the two macOS jobs
-      # compile the same commit with two different compilers.
+      # A pinned toolchain that is older than what the dependency graph asks
+      # for is not a stable build, it is a broken one. Take the newest Xcode
+      # the runner image actually has, and print it, so a future failure of
+      # this kind names the version in the log instead of being inferred.
+      # The full list is printed too: when an image changes under you, what
+      # was on offer is the thing you want to read, not just what was picked.
       - name: Xcode
         run: |
           ls -d /Applications/Xcode*.app || true
@@ -98,8 +97,8 @@ jobs:
               # this fired the reason was in a group nobody opened. The tail
               # stays collapsed; the error lines do not.
               echo "--- what xcodebuild actually said ---"
-              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
-                -A 6 xcodebuild-app.log | head -80 || echo "(no error line — see the tail below)"
+              grep -nE "error:|\\.swift:[0-9]+:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 8 xcodebuild-app.log | head -200 || echo "(no error line — see the tail below)"
               echo "--- end ---"
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-app.log
@@ -188,8 +187,8 @@ jobs:
               # this fired the reason was in a group nobody opened. The tail
               # stays collapsed; the error lines do not.
               echo "--- what xcodebuild actually said ---"
-              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
-                -A 6 xcodebuild-widgets.log | head -80 || echo "(no error line — see the tail below)"
+              grep -nE "error:|\\.swift:[0-9]+:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 8 xcodebuild-widgets.log | head -200 || echo "(no error line — see the tail below)"
               echo "--- end ---"
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-widgets.log

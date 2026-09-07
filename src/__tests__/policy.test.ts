@@ -1231,6 +1231,66 @@ describe('CI only calls scripts that exist', () => {
   });
 });
 
+describe('a workflow you can run by hand actually runs', () => {
+  /**
+   * `Supabase / Apply to production` was gated on
+   * `github.event_name == 'push'` while the workflow also offered
+   * workflow_dispatch — and docs/deploy.md tells you to use it. Pressing "Run
+   * workflow" therefore ran the two verify jobs, skipped the deploy, and
+   * finished GREEN: a job skipped by its own `if` is not a failure.
+   *
+   * A run named "Apply to production" that reports success having applied
+   * nothing is worse than a red one. If a workflow can be started by hand, no
+   * job in it may exclude that.
+   */
+  const workflows = readdirSync('.github/workflows').filter((f) => f.endsWith('.yml'));
+
+  it.each(workflows)('%s', (file) => {
+    const yaml = readFileSync(`.github/workflows/${file}`, 'utf8');
+    if (!/^\s*workflow_dispatch:/m.test(yaml)) return;
+
+    const conditions = [...yaml.matchAll(/^\s*if:\s*(.+)$/gm)].map((m) => m[1]);
+    for (const condition of conditions) {
+      expect({ file, condition, excludesManualRuns: /event_name\s*==\s*'push'/.test(condition) }).toEqual({
+        file,
+        condition,
+        excludesManualRuns: false,
+      });
+    }
+  });
+});
+
+describe('the deploy path does not float on someone else\'s latest', () => {
+  /**
+   * `supabase/setup-cli@v1` was pinned to `version: latest`, so the deploy took
+   * an unreviewed upgrade on every run. One of them removed `supabase db
+   * execute`, and the step failed by printing the CLI's own help text, having
+   * applied nothing to the database.
+   *
+   * A tool that can change between two runs of the same commit is not a
+   * dependency that should float in the path that touches production.
+   */
+  it('pins the Supabase CLI to a version somebody chose', () => {
+    const workflow = readFileSync('.github/workflows/supabase.yml', 'utf8');
+    const version = workflow.match(/setup-cli@v1\s*\n\s*with:\s*\{\s*version:\s*([^\s}]+)/)?.[1];
+    expect(version).toBeTruthy();
+    expect(version).not.toBe('latest');
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('does not call the CLI subcommand that was removed', () => {
+    // Comment lines stripped first: the workflow explains the breakage in
+    // prose, and an assertion that reads the explanation as if it were the
+    // command is how a test fails on its own documentation.
+    const workflow = readFileSync('.github/workflows/supabase.yml', 'utf8')
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    expect(workflow).not.toContain('db execute');
+    expect(workflow).toContain('db query --linked');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so
