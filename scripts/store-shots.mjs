@@ -16,8 +16,23 @@
  *   node scripts/store-shots.mjs [baseUrl]
  * Expects the web export to be served (npx expo export --platform web && npx serve -s dist).
  */
-import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
+
+/**
+ * Playwright is deliberately not a dependency: installing it downloads a
+ * browser bundle on every `npm ci`, and five CI jobs pay for that so this one
+ * script — run by hand, occasionally — can render six PNGs. The cost of that
+ * choice is this import failing, so it fails in words rather than in a
+ * module-resolution stack trace.
+ */
+let chromium;
+try {
+  ({ chromium } = await import('playwright'));
+} catch {
+  console.error('store-shots needs Playwright, which this repo does not install:\n');
+  console.error('  npm i --no-save playwright && npx playwright install chromium\n');
+  process.exit(1);
+}
 
 const BASE = process.argv[2] ?? 'http://localhost:4173';
 const OUT = 'store/screenshots';

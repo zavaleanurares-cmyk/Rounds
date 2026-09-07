@@ -1185,6 +1185,41 @@ describe('CI only calls scripts that exist', () => {
    * added `verify:ios`; git accepted both hunks, and package.json carried the
    * key twice with the whole suite still green.
    */
+  /**
+   * A script CI calls must own the packages it imports. `verify:ios` — the gate
+   * the whole widget-extension requirement rests on — did `require('xcode')`,
+   * and `xcode` was in node_modules only as a transitive dependency of
+   * `expo-splash-screen`, whose configuration this repository edits. Nothing
+   * declared it, so nothing would notice it leaving; the job would fail on a
+   * macOS runner, minutes in, on a module that was never ours to rely on.
+   */
+  it('every script CI calls declares the packages it imports', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    const declared = new Set([
+      ...Object.keys(pkg.dependencies ?? {}),
+      ...Object.keys(pkg.devDependencies ?? {}),
+    ]);
+    const called = new Set(
+      workflows.flatMap((f) => [
+        ...readFileSync(`.github/workflows/${f}`, 'utf8').matchAll(/npm run ([a-zA-Z][\w:-]*)/g),
+      ].map((m) => m[1])),
+    );
+
+    const undeclared: string[] = [];
+    for (const name of called) {
+      for (const m of (scripts[name] ?? '').matchAll(/(scripts\/[\w.-]+\.mjs)/g)) {
+        const source = readFileSync(m[1], 'utf8');
+        for (const i of source.matchAll(/(?:^import .*?from\s*|require\()\s*['"]([^'"]+)['"]/gms)) {
+          const spec = i[1];
+          if (spec.startsWith('node:') || spec.startsWith('.') || spec.startsWith('/')) continue;
+          const top = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+          if (!declared.has(top)) undeclared.push(`${m[1]} imports ${top}`);
+        }
+      }
+    }
+    expect(undeclared).toEqual([]);
+  });
+
   it('package.json defines each script exactly once', () => {
     const raw = readFileSync('package.json', 'utf8');
     const block = raw.slice(raw.indexOf('"scripts"'));
