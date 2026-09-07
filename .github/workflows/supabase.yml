@@ -75,7 +75,15 @@ jobs:
   deploy:
     name: Apply to production
     needs: [verify, functions]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # `!= 'pull_request'`, not `== 'push'`.
+    #
+    # This workflow offers workflow_dispatch — "Run workflow" in the Actions
+    # tab — and the deploy step of docs/deploy.md tells you to use it. With
+    # `== 'push'` that button ran the two verify jobs, SKIPPED the deploy, and
+    # GitHub reported the run as Success, because a job skipped by its own `if`
+    # is not a failure. A green tick on a workflow named "Apply to production"
+    # that applied nothing to production is the worst kind of check there is.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: production
     env:

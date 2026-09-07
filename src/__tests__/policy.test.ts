@@ -1092,6 +1092,35 @@ describe('CI only calls scripts that exist', () => {
   });
 });
 
+describe('a workflow you can run by hand actually runs', () => {
+  /**
+   * `Supabase / Apply to production` was gated on
+   * `github.event_name == 'push'` while the workflow also offered
+   * workflow_dispatch — and docs/deploy.md tells you to use it. Pressing "Run
+   * workflow" therefore ran the two verify jobs, skipped the deploy, and
+   * finished GREEN: a job skipped by its own `if` is not a failure.
+   *
+   * A run named "Apply to production" that reports success having applied
+   * nothing is worse than a red one. If a workflow can be started by hand, no
+   * job in it may exclude that.
+   */
+  const workflows = readdirSync('.github/workflows').filter((f) => f.endsWith('.yml'));
+
+  it.each(workflows)('%s', (file) => {
+    const yaml = readFileSync(`.github/workflows/${file}`, 'utf8');
+    if (!/^\s*workflow_dispatch:/m.test(yaml)) return;
+
+    const conditions = [...yaml.matchAll(/^\s*if:\s*(.+)$/gm)].map((m) => m[1]);
+    for (const condition of conditions) {
+      expect({ file, condition, excludesManualRuns: /event_name\s*==\s*'push'/.test(condition) }).toEqual({
+        file,
+        condition,
+        excludesManualRuns: false,
+      });
+    }
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so
