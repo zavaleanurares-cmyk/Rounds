@@ -42,6 +42,9 @@ bash supabase/tests/run.sh              # 269 assertions, needs PGHOST/PGUSER/PG
 npm run manifest                        # every screen still has a route
 npm run store:check                     # metadata, privacy manifest, permissions
 npm run tester                          # one self-contained HTML with the whole app
+
+# the edge functions run on Deno, so tsc does not see them
+deno check --config supabase/functions/deno.json supabase/functions/*/index.ts
 ```
 
 The native project, on Linux, in seconds and with no Xcode:

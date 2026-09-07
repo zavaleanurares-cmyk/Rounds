@@ -53,9 +53,28 @@ jobs:
       - name: Every migration, then the RLS matrix, the escalation and the RPC rules
         run: bash supabase/tests/run.sh
 
+  functions:
+    name: The edge functions type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+
+      # Nothing here had ever type-checked the functions. `tsc` skips them —
+      # they run on Deno, not on the app's TypeScript config — so four files
+      # that talk to APNs, FCM, the SMS provider and the store webhook were
+      # checked by nothing at all. The first one that ran found a real error in
+      # the APNs provider token, which signs every Live Activity update.
+      #
+      # This resolves the same esm.sh imports Supabase's own runtime does, so a
+      # green check here is a statement about what will actually be deployed.
+      - name: deno check
+        run: deno check --config supabase/functions/deno.json supabase/functions/*/index.ts
+
   deploy:
     name: Apply to production
-    needs: verify
+    needs: [verify, functions]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: production

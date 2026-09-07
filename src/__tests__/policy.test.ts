@@ -1152,6 +1152,48 @@ describe('the native build', () => {
   });
 });
 
+describe('CI only calls scripts that exist', () => {
+  /**
+   * `ios / widgets` failed in 27 seconds on `npm error Missing script:
+   * "verify:ios"`. The script had been written, run and mutation-tested — and
+   * then lost to a `git checkout package.json` that was meant to undo a line
+   * prebuild had added. Everything downstream passed: the workflow referenced
+   * the right name, the test asserted the workflow referenced it, and nothing
+   * asserted the name resolved to anything.
+   *
+   * A macOS runner is an expensive place to find a typo.
+   */
+  const scripts = JSON.parse(readFileSync('package.json', 'utf8')).scripts as Record<string, string>;
+  const workflows = readdirSync('.github/workflows').filter((f) => f.endsWith('.yml'));
+
+  it.each(workflows)('%s', (file) => {
+    const yaml = readFileSync(`.github/workflows/${file}`, 'utf8');
+    const called = [...new Set([...yaml.matchAll(/npm run ([a-z][\w:-]*)/g)].map((m) => m[1]))];
+    for (const name of called) {
+      expect({ file, script: name, defined: name in scripts }).toEqual({
+        file,
+        script: name,
+        defined: true,
+      });
+    }
+  });
+
+  /**
+   * `JSON.parse` keeps the last of two identical keys and says nothing about
+   * the first, so a script defined twice reads as correct to every check
+   * above — including the one directly overhead. This branch and `main` each
+   * added `verify:ios`; git accepted both hunks, and package.json carried the
+   * key twice with the whole suite still green.
+   */
+  it('package.json defines each script exactly once', () => {
+    const raw = readFileSync('package.json', 'utf8');
+    const block = raw.slice(raw.indexOf('"scripts"'));
+    const body = block.slice(0, block.indexOf('\n  }'));
+    const names = [...body.matchAll(/^ {4}"([^"]+)":/gm)].map((m) => m[1]);
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

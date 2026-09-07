@@ -79,6 +79,11 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
+          # xcpretty is a filter, and a filter that swallows the compiler's own
+          # words is worse than no filter. The first run of this job failed in
+          # 28 seconds and printed nothing but "iOS build failed" — the whole
+          # log was resource-bundle chatter and the error was gone. So keep the
+          # raw output and print the part that matters when it goes wrong.
           if command -v xcpretty >/dev/null; then filter=xcpretty; else filter=cat; fi
           xcodebuild \
             -workspace ios/ROUNDS.xcworkspace \
@@ -160,6 +165,11 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
+          # xcpretty is a filter, and a filter that swallows the compiler's own
+          # words is worse than no filter. The first run of this job failed in
+          # 28 seconds and printed nothing but "iOS build failed" — the whole
+          # log was resource-bundle chatter and the error was gone. So keep the
+          # raw output and print the part that matters when it goes wrong.
           if command -v xcpretty >/dev/null; then filter=xcpretty; else filter=cat; fi
           xcodebuild \
             -workspace ios/ROUNDS.xcworkspace \
