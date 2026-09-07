@@ -1121,6 +1121,37 @@ describe('a workflow you can run by hand actually runs', () => {
   });
 });
 
+describe('the deploy path does not float on someone else\'s latest', () => {
+  /**
+   * `supabase/setup-cli@v1` was pinned to `version: latest`, so the deploy took
+   * an unreviewed upgrade on every run. One of them removed `supabase db
+   * execute`, and the step failed by printing the CLI's own help text, having
+   * applied nothing to the database.
+   *
+   * A tool that can change between two runs of the same commit is not a
+   * dependency that should float in the path that touches production.
+   */
+  it('pins the Supabase CLI to a version somebody chose', () => {
+    const workflow = readFileSync('.github/workflows/supabase.yml', 'utf8');
+    const version = workflow.match(/setup-cli@v1\s*\n\s*with:\s*\{\s*version:\s*([^\s}]+)/)?.[1];
+    expect(version).toBeTruthy();
+    expect(version).not.toBe('latest');
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('does not call the CLI subcommand that was removed', () => {
+    // Comment lines stripped first: the workflow explains the breakage in
+    // prose, and an assertion that reads the explanation as if it were the
+    // command is how a test fails on its own documentation.
+    const workflow = readFileSync('.github/workflows/supabase.yml', 'utf8')
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    expect(workflow).not.toContain('db execute');
+    expect(workflow).toContain('db query --linked');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

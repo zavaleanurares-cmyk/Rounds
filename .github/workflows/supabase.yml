@@ -92,8 +92,19 @@ jobs:
       PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
+      # Pinned, and this is why. `version: latest` meant the deploy path took
+      # an unreviewed upgrade on every run, and one of them removed
+      # `supabase db execute` outright — the step failed printing the CLI's own
+      # help text, having applied nothing. A tool that can change under a
+      # deployment between two runs of the same commit is not a dependency that
+      # should float. Bumping this is a deliberate act; check `db query`,
+      # `db push`, `secrets set` and `functions deploy` still mean what they
+      # mean here when you do.
       - uses: supabase/setup-cli@v1
-        with: { version: latest }
+        with: { version: 2.117.0 }
+
+      - name: Which CLI
+        run: supabase --version
 
       - name: Link
         run: supabase link --project-ref "$PROJECT_REF"
@@ -105,10 +116,10 @@ jobs:
       # is the difference between a working deployment and a silent one.
       - name: Enable pg_cron
         run: |
-          supabase db execute --linked \
-            --command "create extension if not exists pg_cron with schema extensions;" \
-          || supabase db execute --linked \
-            --command "create extension if not exists pg_cron;"
+          supabase db query --linked \
+            "create extension if not exists pg_cron with schema extensions;" \
+          || supabase db query --linked \
+            "create extension if not exists pg_cron;"
 
       - name: Apply migrations
         run: supabase db push
@@ -119,15 +130,15 @@ jobs:
         run: |
           set -euo pipefail
           expected="morning-recaps plan-reminders purge-accounts purge-locations purge-outbound safety-escalation weekly-recaps"
-          got=$(supabase db execute --linked \
-            --command "select string_agg(jobname, ' ' order by jobname) from cron.job;" \
-            | tr -d '\r' | grep -oE '[a-z-]+( [a-z-]+)*' | tail -1 || true)
-          echo "scheduled: $got"
+          # One row per job, and a word-match per name. Deliberately not parsing
+          # the CLI's output shape: the previous version scraped a single
+          # aggregated string with a regex, which is exactly the kind of thing
+          # that keeps working until the tool reformats its table.
+          got=$(supabase db query --linked "select jobname from cron.job order by jobname;")
+          echo "$got"
           for job in $expected; do
-            case " $got " in
-              *" $job "*) ;;
-              *) echo "::error::$job is not scheduled. See docs/deploy.md."; exit 1 ;;
-            esac
+            echo "$got" | grep -qw -- "$job" \
+              || { echo "::error::$job is not scheduled. See docs/deploy.md."; exit 1; }
           done
 
       - name: Push the function secrets
@@ -157,7 +168,7 @@ jobs:
           fi
 
       - name: Deploy the functions
-        run: supabase functions deploy send-outbound store-webhook sync-entitlement invite
+        run: supabase functions deploy --use-api send-outbound store-webhook sync-entitlement invite
 
       # The drain cannot be scheduled from SQL: send-outbound is an edge
       # function and needs a key. It is the one step nothing here can do, and
