@@ -71,10 +71,14 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build 2>&1 | tee xcodebuild-app.log | $filter || {
-              echo "::group::what xcodebuild actually said"
+              # NOT inside a ::group::. A collapsed group is one more click
+              # between a red build and the reason for it, and the first time
+              # this fired the reason was in a group nobody opened. The tail
+              # stays collapsed; the error lines do not.
+              echo "--- what xcodebuild actually said ---"
               grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
                 -A 6 xcodebuild-app.log | head -80 || echo "(no error line — see the tail below)"
-              echo "::endgroup::"
+              echo "--- end ---"
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-app.log
               echo "::endgroup::"
@@ -129,10 +133,14 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build 2>&1 | tee xcodebuild-widgets.log | $filter || {
-              echo "::group::what xcodebuild actually said"
+              # NOT inside a ::group::. A collapsed group is one more click
+              # between a red build and the reason for it, and the first time
+              # this fired the reason was in a group nobody opened. The tail
+              # stays collapsed; the error lines do not.
+              echo "--- what xcodebuild actually said ---"
               grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
                 -A 6 xcodebuild-widgets.log | head -80 || echo "(no error line — see the tail below)"
-              echo "::endgroup::"
+              echo "--- end ---"
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-widgets.log
               echo "::endgroup::"

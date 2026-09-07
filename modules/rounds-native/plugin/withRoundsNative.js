@@ -202,8 +202,17 @@ function withWidgetExtensionTarget(config) {
       }
     }
 
+    // The basename, NOT `${name}/${file}`. The group above already carries
+    // `path = RoundsWidgets`, and Xcode resolves a file reference against its
+    // parent group — so a path here made it look for
+    // ios/RoundsWidgets/RoundsWidgets/RoundsWidgetBundle.swift and the build
+    // died with "Build input files cannot be found" on all seven.
+    //
+    // The first verifier could not see it: it compared basenames, and the
+    // basename was right. It resolves the reference through its group and
+    // checks the file is on disk now, which is the thing the compiler does.
     for (const file of WIDGET_EXTENSION.sources) {
-      proj.addSourceFile(`${name}/${file}`, { target: target.uuid }, groupKey);
+      proj.addSourceFile(file, { target: target.uuid }, groupKey);
     }
 
     for (const framework of WIDGET_EXTENSION.frameworks) {

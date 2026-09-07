@@ -1012,7 +1012,15 @@ describe('the native build', () => {
     // .appex, and what makes the xcode package add the PlugIns copy-files
     // phase that is the whole point.
     expect(plugin).toMatch(/addTarget\(name, 'app_extension'/);
-    expect(plugin).toMatch(/addSourceFile\(`\$\{name\}\/\$\{file\}`/);
+
+    // The basename, and nothing else. This assertion used to require
+    // `addSourceFile(`${name}/${file}`, ...)` — it was pinning the bug. A
+    // PBXFileReference resolves against its parent group, whose path is
+    // already the target name, so the prefixed form sent xcodebuild looking
+    // for ios/RoundsWidgets/RoundsWidgets/… and every source went missing.
+    // `npm run verify:ios` is what actually holds this now: it resolves each
+    // reference through its group and checks the file exists.
+    expect(plugin).toMatch(/addSourceFile\(file, \{ target: target\.uuid \}, groupKey\)/);
 
     // The escape hatch stays: `ios / app` builds with it so a break in the app
     // itself is not hidden behind the extension.
