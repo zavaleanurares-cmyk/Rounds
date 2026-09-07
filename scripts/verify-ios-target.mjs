@@ -125,57 +125,64 @@ if (ext) {
   const sourcesPhaseUuid = (ext.target.buildPhases ?? [])
     .map((p) => p.value)
     .find((uuid) => objects.PBXSourcesBuildPhase?.[uuid]);
-  const compiled = (objects.PBXSourcesBuildPhase?.[sourcesPhaseUuid]?.files ?? []).map((f) => {
-    const buildFile = objects.PBXBuildFile?.[f.value];
-    const filePath = unquote(objects.PBXFileReference?.[buildFile?.fileRef]?.path ?? '');
-    return filePath.split('/').pop();
-  });
-
-  for (const source of WIDGET_EXTENSION.sources) {
-    if (!compiled.includes(source)) fail(`${name} does not compile ${source}.`);
-  }
 
   /**
-   * And each of those references points at a file that is really there.
+   * Where the compiler will actually look for a file reference.
    *
-   * A reference resolves the way Xcode resolves it: a `"<group>"` file is its
-   * own path with the path of every group above it in front. Comparing
-   * basenames — which is all this script used to do — cannot see the difference
-   * between `RoundsWidgets/x.swift` inside a group with no path and the same
-   * reference inside a group whose path is already `RoundsWidgets`. The second
-   * resolves to ios/RoundsWidgets/RoundsWidgets/x.swift, which does not exist,
-   * and the build fails with "Build input files cannot be found" after five
-   * minutes of compiling everything else first.
+   * A PBXFileReference with sourceTree "<group>" is resolved against its
+   * PARENT GROUP's path, not against the project root. The first version of
+   * this script compared basenames, which were correct, while every reference
+   * carried the group's path a second time — so xcodebuild looked for
+   * ios/RoundsWidgets/RoundsWidgets/RoundsWidgetBundle.swift and failed with
+   * "Build input files cannot be found" on all seven sources.
+   *
+   * Comparing names proves nothing a compiler cares about. This resolves the
+   * reference the way Xcode does and then checks the file is on disk.
    */
   const parentOf = new Map();
   for (const [key, group] of Object.entries(objects.PBXGroup ?? {})) {
     if (key.endsWith('_comment')) continue;
     for (const child of group.children ?? []) parentOf.set(child.value, key);
   }
-  const resolveRef = (fileRefUuid) => {
+  const resolve = (fileRefUuid) => {
     const ref = objects.PBXFileReference?.[fileRefUuid];
-    if (!ref || unquote(ref.sourceTree) !== '<group>') return null;
-    const parts = [unquote(ref.path)];
-    for (let cursor = parentOf.get(fileRefUuid); cursor; cursor = parentOf.get(cursor)) {
-      const groupPath = objects.PBXGroup?.[cursor]?.path;
-      if (groupPath) parts.unshift(unquote(groupPath));
+    if (!ref) return null;
+    const parts = [unquote(ref.path ?? '')];
+    let cursor = parentOf.get(fileRefUuid);
+    while (cursor) {
+      const group = objects.PBXGroup?.[cursor];
+      if (!group) break;
+      if (group.path) parts.unshift(unquote(group.path));
+      cursor = parentOf.get(cursor);
     }
-    return join('ios', ...parts);
+    return parts.filter(Boolean).join('/');
   };
 
-  for (const entryRef of objects.PBXSourcesBuildPhase?.[sourcesPhaseUuid]?.files ?? []) {
-    const fileRef = objects.PBXBuildFile?.[entryRef.value]?.fileRef;
-    const resolved = resolveRef(fileRef);
-    if (resolved && !existsSync(resolved)) {
+  const compiled = (objects.PBXSourcesBuildPhase?.[sourcesPhaseUuid]?.files ?? []).map((f) => {
+    const fileRef = objects.PBXBuildFile?.[f.value]?.fileRef;
+    const resolved = resolve(fileRef);
+    return { resolved, basename: (resolved ?? '').split('/').pop() };
+  });
+
+  for (const source of WIDGET_EXTENSION.sources) {
+    const entry = compiled.find((c) => c.basename === source);
+    if (!entry) {
+      fail(`${name} does not compile ${source}.`);
+      continue;
+    }
+    // The check the compiler makes, and the one that name-matching missed.
+    const onDisk = `ios/${entry.resolved}`;
+    if (!existsSync(onDisk)) {
       fail(
-        `${name} compiles ${unquote(objects.PBXFileReference[fileRef].path)}, which resolves to ` +
-          `${resolved} — and there is no file there. Xcode reports this as "Build input files ` +
-          'cannot be found", at the end of a five-minute build.'
+        `${name} compiles ${source}, but its reference resolves to ${onDisk}, which does not ` +
+          'exist. xcodebuild fails with "Build input files cannot be found".'
       );
     }
   }
-  const extra = compiled.filter((f) => !WIDGET_EXTENSION.sources.includes(f));
-  if (extra.length) fail(`${name} compiles files that are not in its source list: ${extra.join(', ')}.`);
+  const extra = compiled.filter((c) => !WIDGET_EXTENSION.sources.includes(c.basename));
+  if (extra.length) {
+    fail(`${name} compiles files that are not in its source list: ${extra.map((c) => c.resolved).join(', ')}.`);
+  }
 
   // Without @main the extension has no executable entry point, and the five
   // surfaces are types nothing instantiates.

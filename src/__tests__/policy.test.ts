@@ -1013,14 +1013,16 @@ describe('the native build', () => {
     // phase that is the whole point.
     expect(plugin).toMatch(/addTarget\(name, 'app_extension'/);
 
-    // The sources go in by name, because the group above them already carries
-    // `path = RoundsWidgets`. This assertion used to require the opposite —
-    // `addSourceFile(\`${name}/${file}\`)` — which is a reference that resolves
-    // to ios/RoundsWidgets/RoundsWidgets/x.swift, and Xcode stops with "Build
-    // input files cannot be found" after compiling everything else first. It
-    // pinned the bug in place. `npm run verify:ios` now resolves each source
-    // through its group chain, which is the check that can actually tell.
-    expect(plugin).toMatch(/addSourceFile\(file,/);
+    // The basename, and nothing else. This assertion used to require
+    // `addSourceFile(`${name}/${file}`, ...)` — it was pinning the bug. A
+    // PBXFileReference resolves against its parent group, whose path is
+    // already the target name, so the prefixed form sent xcodebuild looking
+    // for ios/RoundsWidgets/RoundsWidgets/… and every source went missing.
+    // `npm run verify:ios` is what actually holds this now: it resolves each
+    // reference through its group and checks the file exists.
+    expect(plugin).toMatch(/addSourceFile\(file, \{ target: target\.uuid \}, groupKey\)/);
+    // And the prefixed form stays gone, named exactly, so reintroducing it is
+    // red here as well as in verify:ios.
     expect(plugin).not.toMatch(/addSourceFile\(`\$\{name\}\/\$\{file\}`/);
 
     // The escape hatch stays: `ios / app` builds with it so a break in the app
