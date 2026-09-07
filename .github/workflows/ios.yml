@@ -33,8 +33,22 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
 
+      # Pinning Xcode_16.2 pinned Swift 6.1, and the build died on
+      #
+      #   xcodebuild: error: Could not resolve package dependencies:
+      #     package 'apple' is using Swift tools version 6.2.0
+      #     but the installed version is 6.1.0
+      #
+      # A pinned toolchain that is older than what the dependency graph asks
+      # for is not a stable build, it is a broken one. Take the newest Xcode
+      # the runner image actually has, and print it, so a future failure of
+      # this kind names the version in the log instead of being inferred.
       - name: Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app || xcodebuild -version
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version
+          swift --version
 
       # ROUNDS_ALLOW_NO_WIDGETS is the deliberate escape hatch from
       # modules/rounds-native/plugin/withRoundsNative.js. It builds the app
@@ -76,8 +90,8 @@ jobs:
               # this fired the reason was in a group nobody opened. The tail
               # stays collapsed; the error lines do not.
               echo "--- what xcodebuild actually said ---"
-              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
-                -A 6 xcodebuild-app.log | head -80 || echo "(no error line — see the tail below)"
+              grep -nE "error:|\\.swift:[0-9]+:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 8 xcodebuild-app.log | head -200 || echo "(no error line — see the tail below)"
               echo "--- end ---"
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-app.log
@@ -138,8 +152,8 @@ jobs:
               # this fired the reason was in a group nobody opened. The tail
               # stays collapsed; the error lines do not.
               echo "--- what xcodebuild actually said ---"
-              grep -nE "error:|The following build commands failed|Command .+ failed|fatal error" \
-                -A 6 xcodebuild-widgets.log | head -80 || echo "(no error line — see the tail below)"
+              grep -nE "error:|\\.swift:[0-9]+:|The following build commands failed|Command .+ failed|fatal error" \
+                -A 8 xcodebuild-widgets.log | head -200 || echo "(no error line — see the tail below)"
               echo "--- end ---"
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-widgets.log
