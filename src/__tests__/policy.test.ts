@@ -1152,6 +1152,45 @@ describe('the deploy path does not float on someone else\'s latest', () => {
   });
 });
 
+describe('a sheet scrolls, and only once', () => {
+  /**
+   * `Sheet` clips — `overflow: 'hidden'`, `maxHeight: '92%'` — and for a long
+   * time nothing inside it scrolled. Two screens hit that in different ways:
+   * `log/edit/[logId]` rendered all 165 drink chips with no scroller at all,
+   * putting most of the picker and the price and time fields below it out of
+   * reach entirely; `log/index` hand-rolled `<ScrollView maxHeight: 540>`, a
+   * device-independent constant taller than 92% of an SE-sized screen once the
+   * drag handle, title and bottom inset are counted.
+   *
+   * Sixteen screens use this component. Each was one forgotten wrapper away
+   * from the same bug, so the scroller belongs to the component.
+   */
+  it('Sheet scrolls its own body', () => {
+    // `code`, not `read`: the comment above this component explains the whole
+    // fix and names `flexShrink: 1` in prose. Asserting against the file with
+    // comments left in passes on the explanation while the code says
+    // something else — which is exactly what happened the first time this was
+    // written, and the mutation survived.
+    const sheet = code('src/ui/Sheet.tsx');
+    expect(sheet).toMatch(/<ScrollView/);
+    // flexShrink, not flex: a two-field sheet must still hug its content
+    // rather than becoming a full-height panel.
+    expect(sheet).toContain('flexShrink: 1');
+  });
+
+  it('no screen nests a second vertical scroller inside a Sheet', () => {
+    // Two vertical scrollers inside one another fight on Android and the
+    // inner one swallows the fling.
+    for (const file of APP.filter((f) => /<Sheet[\s>]/.test(read(f)))) {
+      const nested = [...read(file).matchAll(/<ScrollView(?![^>]*horizontal)/g)].length;
+      expect({ file, nestedVerticalScrollViews: nested }).toEqual({
+        file,
+        nestedVerticalScrollViews: 0,
+      });
+    }
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

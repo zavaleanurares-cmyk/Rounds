@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -11,6 +11,24 @@ import { color, radius, space, blur } from '@/design/tokens';
  * Bottom sheet chrome. On Android the system back gesture dismisses it, which
  * expo-router handles by popping the modal route — so there is nothing to do
  * here beyond making the backdrop tappable.
+ *
+ * THE BODY SCROLLS, and it scrolls here rather than in each screen.
+ *
+ * This container clips — `overflow: 'hidden'` and `maxHeight: '92%'` — and for
+ * a long time nothing inside it scrolled. `log/edit/[logId]` rendered all 165
+ * drink chips straight into it, so most of the picker AND the price field and
+ * time chips below it could not be reached at all; `log/index` hand-rolled its
+ * own `<ScrollView style={{ maxHeight: 540 }}>`, a device-independent constant
+ * that overflows 92% of an SE-sized screen once the handle, title and bottom
+ * inset are counted. Sixteen screens use this component and each was one
+ * forgotten wrapper away from the same bug.
+ *
+ * `flexShrink: 1` rather than `flex: 1`: the sheet must still hug its content
+ * when the content is short — a two-field sheet should not become a
+ * full-height panel — and only give way once it would exceed the clip.
+ *
+ * The footer stays OUTSIDE the scroller on purpose. Save and Delete are why
+ * the sheet is open; they do not scroll away.
  */
 export function Sheet({
   children,
@@ -57,7 +75,14 @@ export function Sheet({
             ) : null}
           </View>
         ) : null}
-        <View style={{ paddingHorizontal: space.lg, paddingTop: space.md }}>{children}</View>
+        <ScrollView
+          style={{ flexShrink: 1 }}
+          contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.md }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
         {footer ? <View style={{ paddingHorizontal: space.lg, paddingTop: space.md }}>{footer}</View> : null}
       </View>
     </View>

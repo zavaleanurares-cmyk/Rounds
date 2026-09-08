@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Pressable, TextInput, ScrollView } from 'react-native';
+import { View, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { feedback } from '@/services/feedback';
 import { Sheet, Text, Button, Chip, Segmented, Icon, useToast, DrinkGlyph } from '@/ui';
@@ -98,7 +98,11 @@ export default function LogSheet() {
 
   return (
     <Sheet title={t('log.title')} onClose={() => router.back()}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 540 }} keyboardShouldPersistTaps="handled">
+      {/* No scroller here any more. Sheet's body scrolls, so a second one
+          nested inside it would fight the outer one on Android and swallow
+          the fling. The `maxHeight: 540` this used to carry was a constant
+          taller than 92% of an SE-sized screen. */}
+      <>
         {/* the one-tap path */}
         {lastLog ? (
           <Button
@@ -255,7 +259,7 @@ export default function LogSheet() {
         <Text variant="footnote" tone="quaternary" center style={{ marginBottom: space.lg, marginTop: space.m }}>
           {t('log.savedLocally')}
         </Text>
-      </ScrollView>
+      </>
     </Sheet>
   );
 }
