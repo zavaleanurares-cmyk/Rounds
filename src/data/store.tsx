@@ -531,6 +531,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           settings: { ...DEFAULT_SETTINGS, ...settings },
         },
       });
+
+      /**
+       * Adopt a session the app did not ask for.
+       *
+       * A web redirect sign-in finishes inside supabase-js: the client parses
+       * the session out of the URL as the page loads, and nothing in this store
+       * is listening, so the person arrives back holding a valid session and
+       * looking at the sign-in screen. Everything here flows through
+       * `signInWithProvider`, which the redirect never gets to call — the page
+       * navigated away before it could.
+       *
+       * Only when the local state has nobody signed in. A stored account is the
+       * one the person chose and must not be overwritten by whatever happens to
+       * be in the auth client.
+       */
+      if (!auth.userId) {
+        const remoteSession = await remote.currentSession().catch(() => null);
+        const user = remoteSession?.user;
+        if (user) {
+          dispatch({
+            type: 'set',
+            payload: {
+              auth: {
+                ...auth,
+                status: 'signed_in',
+                userId: user.id,
+                email: user.email ?? null,
+                pendingEmail: null,
+              },
+            },
+          });
+          const name = (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | undefined;
+          if (name) dispatch({ type: 'patchProfile', payload: { displayName: name } });
+        }
+      }
     })();
     return logQueue.subscribe(setQueue);
   }, []);

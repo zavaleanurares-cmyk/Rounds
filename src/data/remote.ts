@@ -12,6 +12,7 @@ import {
   createClient, type RealtimeChannel, type Session as AuthSession, type SupabaseClient,
 } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { logQueue, type QueueItem } from './queue';
 import type {
   Log, Profile, Session, Person, Crew, Plan, Venue, Goal, TrustedContact,
@@ -31,7 +32,19 @@ export function getClient(): SupabaseClient | null {
       storage: AsyncStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      /**
+       * True on web ONLY, and it is load-bearing there.
+       *
+       * A redirect sign-in comes back with the session in the URL. With this
+       * false the client throws that away, so `signInWithOAuth` completes at
+       * Supabase and the app never learns about it — the person lands back on
+       * the sign-in screen holding a valid session they cannot use.
+       *
+       * It must stay false on native: there is no URL bar, the app is opened
+       * by a deep link, and letting the client parse arbitrary launch URLs for
+       * tokens is a footgun rather than a feature.
+       */
+      detectSessionInUrl: Platform.OS === 'web',
     },
     realtime: { params: { eventsPerSecond: 4 } },
   });
@@ -946,6 +959,50 @@ export async function signInWithIdToken(
   });
   if (error) throw error;
   return data.session;
+}
+
+/**
+ * The web sign-in path: a full-page redirect, not a pop-up.
+ *
+ * `expo-auth-session` opens a pop-up, and on the web that is a coin toss. It
+ * builds the authorisation URL asynchronously — the nonce is hashed first — so
+ * `window.open` runs a tick after the click and every browser treats it as
+ * unrequested. Allow-listing the origin usually rescues it; being on a
+ * different origin than the one allow-listed, or a stricter default, does not.
+ * The failure is silent and it is the user's browser, not something this
+ * repository can test or fix.
+ *
+ * A redirect has none of those properties. It cannot be blocked, it needs no
+ * permission, it works the same in every browser, and Supabase handles the
+ * whole exchange — no id_token, no nonce, no `aud` to match.
+ *
+ * `redirectTo` must be listed in Supabase under Authentication → URL
+ * Configuration → Redirect URLs, or Supabase silently sends the person to the
+ * Site URL instead, which looks exactly like the sign-in failing.
+ */
+export async function signInWithOAuthRedirect(provider: 'apple' | 'google', redirectTo: string) {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo },
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Whatever session the client is currently holding, however it got one.
+ *
+ * After a redirect the session exists inside supabase-js before anything in
+ * this app knows a sign-in happened, because nothing here listens for it. This
+ * is how the store finds out.
+ */
+export async function currentSession(): Promise<AuthSession | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session ?? null;
 }
 
 /** Age is verified and stored SERVER-side, so a reinstall cannot reset it. */

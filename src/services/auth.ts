@@ -207,6 +207,36 @@ function popupWasBlocked(err: unknown): boolean {
 }
 
 /**
+ * Web takes the redirect road; native keeps the id_token one.
+ *
+ * On native, `useIdTokenAuthRequest` is right: the system browser opens, there
+ * is no pop-up blocker, and the token comes straight back. On the web the same
+ * call depends on a pop-up surviving a browser's judgement about whether a
+ * click caused it, which is not something this app can guarantee or test.
+ *
+ * Nothing is returned because nothing comes back — the page navigates away and
+ * the session is picked up on the way in. See `remote.currentSession`.
+ */
+export function providerRedirectSupported(): boolean {
+  return Platform.OS === 'web' && GOOGLE_CONFIGURED;
+}
+
+export async function signInWithGoogleRedirect(): Promise<SignInResult> {
+  if (Platform.OS !== 'web') return { ok: false, reason: 'common.authGoogleNotConfigured' };
+  try {
+    // Back to the page they left, not to a hard-coded route: the sign-in screen
+    // can be reached from a deep link and dumping people at "/" loses that.
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : '';
+    await remote.signInWithOAuthRedirect('google', redirectTo);
+    // The browser is navigating. Anything after this line is a race with it.
+    return { ok: true };
+  } catch (err: unknown) {
+    if (__DEV__) console.warn('[auth] Google redirect failed', err);
+    return { ok: false, reason: 'common.authDidNotGoThrough' };
+  }
+}
+
+/**
  * The hook the sign-in screen uses to build Google's request. Kept here so the
  * screen has one import and no knowledge of AuthSession.
  */

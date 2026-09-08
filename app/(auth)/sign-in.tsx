@@ -4,7 +4,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Text, Button, Card, useToast } from '@/ui';
 import { useStore } from '@/data/store';
 import {
-  appleAvailable, signInWithApple, signInWithGoogle, useGoogleAuthRequest,
+  appleAvailable, signInWithApple, signInWithGoogle, signInWithGoogleRedirect,
+  providerRedirectSupported, useGoogleAuthRequest,
 } from '@/services/auth';
 import { track } from '@/services/analytics';
 import { useT } from '@/i18n';
@@ -60,7 +61,11 @@ export default function SignIn() {
     const result =
       which === 'apple'
         ? await signInWithApple()
-        : await signInWithGoogle(google.promptAsync, google.nonce);
+        // On the web this navigates away and never resolves to a session here;
+        // the redirect brings one back and the store adopts it on load.
+        : providerRedirectSupported()
+          ? await signInWithGoogleRedirect()
+          : await signInWithGoogle(google.promptAsync, google.nonce);
     setBusy(null);
 
     // A dismissed sheet is not an error. Say nothing.
@@ -86,7 +91,7 @@ export default function SignIn() {
                 onPress={() => void provider('apple')}
               />
             ) : null}
-            {google.ready ? (
+            {google.ready || providerRedirectSupported() ? (
               <Button
                 title={t('auth.continueWithGoogle')}
                 kind="glass"
