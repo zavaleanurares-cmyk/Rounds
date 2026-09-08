@@ -1354,6 +1354,28 @@ describe('the provider token exchange carries its nonce', () => {
     expect(remote).toContain('...(nonce ? { nonce } : {})');
   });
 
+  it('the web popup is told to hand its result back', () => {
+    /**
+     * `expo-auth-session`'s docs for this exact hook: "In order to close the
+     * popup window on web, you need to invoke
+     * `WebBrowser.maybeCompleteAuthSession()`." Nothing called it.
+     *
+     * With no listener for the redirect, `promptAsync()` resolves as `dismiss`
+     * — and `dismiss` is mapped to cancelled, which the screen deliberately
+     * reports as nothing at all, because somebody who closes a sheet does not
+     * need telling. So a successful Google sign-in and changing your mind
+     * produced identical behaviour: back to the sign-in screen, no error,
+     * nothing in the console.
+     *
+     * It has to be module scope. The redirect is handled as the page loads, so
+     * a call inside a component runs too late to catch it.
+     */
+    const auth = code('src/services/auth.ts');
+    expect(auth).toContain('maybeCompleteAuthSession()');
+    const beforeFirstHook = auth.slice(0, auth.indexOf('export function useGoogleAuthRequest'));
+    expect(beforeFirstHook).toContain('maybeCompleteAuthSession()');
+  });
+
   it('the request nonce reaches the exchange rather than being dropped', () => {
     const auth = code('src/services/auth.ts');
     // The hook must surface it — the library keeps it on the request object.

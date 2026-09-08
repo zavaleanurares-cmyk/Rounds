@@ -99,6 +99,33 @@ export async function signInWithApple(): Promise<SignInResult> {
  * process runs — which is what lets the hook below decide whether to call
  * another hook at all without ever changing hook order.
  */
+/**
+ * Hand the popup's result back to the window that opened it.
+ *
+ * `expo-auth-session`'s own docs, on the hook this file uses: "In order to
+ * close the popup window on web, you need to invoke
+ * `WebBrowser.maybeCompleteAuthSession()`." Nothing in this app called it.
+ *
+ * The consequence was the worst shape a bug can take. Google authenticated you,
+ * you picked an account, the popup redirected back — and with nobody listening
+ * for that redirect, `promptAsync()` resolved as `dismiss`. `signInWithGoogle`
+ * maps `dismiss` to cancelled, and the screen says nothing at all when you
+ * cancel, because a person who closes a sheet does not need to be told they
+ * closed it. So a successful sign-in and changing your mind produced byte-for-
+ * byte identical behaviour: back to the sign-in screen, no error, nothing in
+ * the console.
+ *
+ * Module scope, and before any hook runs: the redirect is processed as the page
+ * loads, so registering the handler inside a component is already too late.
+ * `optional()` because expo-web-browser is a native module that a web-only
+ * bundle can be missing, and a missing module must cost the Google button, not
+ * the screen.
+ */
+optional(() => {
+  const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
+  WebBrowser.maybeCompleteAuthSession();
+});
+
 const GOOGLE_CONFIGURED: boolean = (() => {
   const web = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
   if (Platform.OS === 'web') return Boolean(web);
