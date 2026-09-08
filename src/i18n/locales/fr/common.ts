@@ -71,6 +71,7 @@ export const common = {
   'common.authAppleNoToken': "Apple n'a pas renvoyé de jeton d'identité.",
   'common.authGoogleNotConfigured': "La connexion Google n'est pas configurée dans ce build.",
   'common.authGoogleNoToken': "Google n'a pas renvoyé de jeton d'identité.",
+  'common.authPopupBlocked': "Votre navigateur a bloqué la fenêtre Google. Autorisez les fenêtres pop-up pour ce site, puis réessayez.",
   'common.authDidNotGoThrough': "Ça n'a pas marché. Rien n'a été modifié.",
 
   // Same trick as pushMorningBody: "tu y as été" does not gender the reader.

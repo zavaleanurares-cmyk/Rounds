@@ -70,6 +70,7 @@ export const common = {
   'common.authAppleNoToken': 'Apple did not return an identity token.',
   'common.authGoogleNotConfigured': 'Google sign-in is not configured in this build.',
   'common.authGoogleNoToken': 'Google did not return an identity token.',
+  'common.authPopupBlocked': 'Your browser blocked the Google window. Allow pop-ups for this site, then try again.',
   'common.authDidNotGoThrough': 'That did not go through. Nothing was changed.',
 
   // The map pin. A venue name is a proper noun; only the "been here" part is copy.

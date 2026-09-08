@@ -172,9 +172,38 @@ export async function signInWithGoogle(
       email: session.user.email ?? null,
       displayName: (session.user.user_metadata?.full_name as string) ?? null,
     };
-  } catch {
+  } catch (err: unknown) {
+    // The third failure on this path, and the first two were invisible for the
+    // same reason this line used to be `catch {}`: the error was caught,
+    // discarded, and reported as one generic sentence. Somebody debugging saw
+    // an empty console and a toast that named no cause.
+    //
+    // It costs nothing to keep the error in development, and the Apple branch
+    // above already reads `code` off it, so this is the pattern this file
+    // already uses rather than a new one.
+    if (__DEV__) console.warn('[auth] Google sign-in failed', err);
+    if (popupWasBlocked(err)) return { ok: false, reason: 'common.authPopupBlocked' };
     return { ok: false, reason: 'common.authDidNotGoThrough' };
   }
+}
+
+/**
+ * A blocked pop-up is the one failure here the person can actually fix, so it
+ * is the one that must not be folded into "that did not go through".
+ *
+ * `expo-web-browser` throws exactly this code when `window.open` comes back
+ * null — `ExpoWebBrowser.web.ts`, `openAuthSessionAsync`:
+ *
+ *     throw new CodedError('ERR_WEB_BROWSER_BLOCKED', 'Popup window was
+ *     blocked by the browser or failed to open. ...')
+ *
+ * It throws *before* the account chooser, so nothing downstream runs: no
+ * redirect, no token, no exchange. Any diagnostic further down the path —
+ * anything inside `signInWithIdToken` — prints nothing at all, which is
+ * precisely how this presents as "I click the button and nothing happens".
+ */
+function popupWasBlocked(err: unknown): boolean {
+  return (err as { code?: string })?.code === 'ERR_WEB_BROWSER_BLOCKED';
 }
 
 /**

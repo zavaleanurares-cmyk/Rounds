@@ -70,6 +70,7 @@ export const common = {
   'common.authGoogleNotConfigured':
     'El inicio de sesión con Google no está configurado en esta build.',
   'common.authGoogleNoToken': 'Google no ha devuelto un token de identidad.',
+  'common.authPopupBlocked': 'Tu navegador ha bloqueado la ventana de Google. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
   'common.authDidNotGoThrough': 'No ha funcionado. No se ha cambiado nada.',
 
   'common.mapPinVisited': '{name}, ya has estado aquí',

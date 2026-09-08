@@ -73,6 +73,7 @@ export const common = {
   'common.authAppleNoToken': 'Apple nu a returnat un token de identitate.',
   'common.authGoogleNotConfigured': 'Conectarea cu Google nu e configurată în buildul ăsta.',
   'common.authGoogleNoToken': 'Google nu a returnat un token de identitate.',
+  'common.authPopupBlocked': 'Browserul a blocat fereastra Google. Permite ferestrele pop-up pentru acest site și încearcă din nou.',
   'common.authDidNotGoThrough': 'Nu a mers. Nu s-a schimbat nimic.',
 
   'common.mapPinVisited': '{name}, ai fost aici',
