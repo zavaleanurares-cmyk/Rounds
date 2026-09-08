@@ -34,6 +34,22 @@ export type Cue =
 type Haptic = 'selection' | 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'failure' | null;
 
 /**
+ * The combo ladder, as playback rates.
+ *
+ * Rate is pitch here — `shouldCorrectPitch` is off deliberately — so one sample
+ * gives the whole climb and the bundle does not grow by five more files. The
+ * ratios are the D-flat major pentatonic the sounds were synthesised in
+ * (scripts/make-sounds.py), so a climbing log cue stays in tune with every
+ * other cue it might overlap:
+ *
+ *   Db 1.000 · Eb 1.122 · F 1.260 · Ab 1.498 · Bb 1.682 · Db' 2.000
+ *
+ * Rate also shortens the sample, which is the right direction: the climb gets
+ * tighter as it rises instead of dragging.
+ */
+const RATE = [1, 1.1225, 1.2599, 1.4983, 1.6818, 2] as const;
+
+/**
  * The pairing table. A cue is a MEANING, not a sound file — screens name what
  * happened and this decides how it feels.
  */
@@ -79,7 +95,14 @@ export function configureFeedback(next: { sound: boolean; haptics: boolean }) {
 
 /* --------------------------------------------------------------- audio */
 
-type Player = { play: () => void; seekTo: (s: number) => Promise<void>; volume: number; remove: () => void };
+type Player = {
+  play: () => void;
+  seekTo: (s: number) => Promise<void>;
+  volume: number;
+  playbackRate?: number;
+  shouldCorrectPitch?: boolean;
+  remove: () => void;
+};
 
 const players = new Map<Cue, Player>();
 let audioReady: Promise<void> | null = null;
@@ -129,11 +152,18 @@ export async function warm(): Promise<void> {
   return audioReady;
 }
 
-async function playCue(cue: Cue) {
+async function playCue(cue: Cue, step = 0) {
   await warm();
   const p = players.get(cue);
   if (!p) return;
   try {
+    // A step outside the ladder would be an undefined rate, which silences the
+    // player on some backends rather than throwing. Clamp instead.
+    const rate = RATE[Math.min(Math.max(step, 0), RATE.length - 1)];
+    if (p.playbackRate !== undefined && rate !== undefined) {
+      p.shouldCorrectPitch = false;
+      p.playbackRate = rate;
+    }
     // Restart rather than overlap: two taps in quick succession should sound
     // like two taps, not like a chord.
     await p.seekTo(0);
@@ -178,12 +208,17 @@ function playHaptic(kind: Haptic) {
 
 /* ---------------------------------------------------------------- api */
 
-/** Fire a cue. Safe to call from anywhere, never throws, never awaits. */
-export function feedback(cue: Cue) {
+/**
+ * Fire a cue. Safe to call from anywhere, never throws, never awaits.
+ *
+ * `step` climbs the ladder in RATE — see src/domain/combo.ts for where the
+ * number comes from. Cues with no run behind them simply pass nothing.
+ */
+export function feedback(cue: Cue, opts?: { step?: number }) {
   const spec = CUES[cue];
   if (!spec) return;
   if (enabled.haptics) playHaptic(spec.haptic);
-  if (enabled.sound && spec.sound) void playCue(cue);
+  if (enabled.sound && spec.sound) void playCue(cue, opts?.step ?? 0);
 }
 
 /** Plays a cue's sound regardless of the setting — used by the preview button. */

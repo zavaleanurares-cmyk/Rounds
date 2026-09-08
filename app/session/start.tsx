@@ -42,6 +42,7 @@ export default function StartNight() {
       footer={
         <Button
           title={t('session.start')}
+          cue="start"
           onPress={() => {
             startSession({
               title: title.trim() || null,

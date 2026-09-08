@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { feedback } from '@/services/feedback';
+import { comboStep, isComboResolution } from '@/domain/combo';
 import { Sheet, Text, Button, Chip, Segmented, Icon, useToast, DrinkGlyph } from '@/ui';
 import { useStore } from '@/data/store';
 import { CATALOG, WATER, byId, searchDrinks, CATEGORY_LABEL, CATEGORY_ORDER } from '@/domain/catalog';
@@ -39,7 +40,7 @@ export default function LogSheet() {
   const { locale } = useI18n();
   const toast = useToast();
   const store = useStore();
-  const { lastLog, favourites, profile, venues, activeSession } = store;
+  const { lastLog, favourites, profile, venues, activeSession, logs } = store;
   const [size, setSize] = useState<(typeof SIZES)[number]['value']>('regular');
   const [price, setPrice] = useState('');
   const [at, setAt] = useState(() => Date.now());
@@ -66,7 +67,17 @@ export default function LogSheet() {
       scale && drink.category !== 'water' && factor !== 1
         ? { ...drink, volumeMl: Math.round(drink.volumeMl * factor), ethanolG: drink.ethanolG * factor }
         : drink;
-    feedback('log');
+    // The cue climbs the run this drink is part of, and the run resolves on
+    // `round` rather than repeating the top note. comboStep is derived from the
+    // times already in the session, so the drink being logged is appended here
+    // rather than counted separately.
+    const run = logs
+      .filter((l) => l.sessionId !== null && l.sessionId === activeSession?.id)
+      .map((l) => l.at)
+      .concat(at)
+      .sort((a, b) => a - b);
+    const step = comboStep(run);
+    feedback(isComboResolution(step) ? 'round' : 'log', { step });
     store.addLog({ drink: scaled, priceMinor: drink.category === 'water' ? 0 : priceMinor, at });
     router.back();
     // The undo toast is what makes closing optimistically safe.

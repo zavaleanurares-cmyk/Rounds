@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { feedback } from '@/services/feedback';
+import { comboStep, isComboResolution } from '@/domain/combo';
 import {
   Screen, Card, Text, PaceRing, PaceEstimate, Icon, Avatar, Glass, useToast, Button, DrinkGlyph,
 } from '@/ui';
@@ -70,17 +71,29 @@ export function TonightLive({ session }: { session: Session }) {
   const hour = new Date(now).getHours();
   const lateNight = hour >= 1 && hour < 6; // after 01:00 dim and promote safety
   const showWater = !waterDismissed && shouldPromptWater(paceLogs, now);
+
+  // `nudge` is the app checking in on you, and this prompt appearing is the
+  // only moment that is. Keyed on the transition rather than on the render, so
+  // the tick that recomputes pace every few seconds cannot repeat it.
+  useEffect(() => {
+    if (showWater) feedback('nudge');
+  }, [showWater]);
   // In this night, beside this night's join code — not "out somewhere". The
   // card is headed "LIVE WITH" and used to list any friend with a night open.
   const liveWith = people.filter((p) => p.hereNow);
 
   const quickLog = (kind: 'water' | 'again') => {
-    feedback('log');
+    // The cue fires on the outcome, not on the press. This used to play the
+    // log sound first and then discover there was nothing to repeat, so a
+    // failure sounded exactly like a success.
     const log = kind === 'water' ? store.logWater() : store.repeatLast();
     if (!log) {
+      feedback('error');
       toast.show({ message: t('tonight.nothingToRepeat') });
       return;
     }
+    const step = comboStep(sessionLogs.map((l) => l.at).concat(log.at).sort((a, b) => a - b));
+    feedback(isComboResolution(step) ? 'round' : 'log', { step });
     toast.show({
       message: t('tonight.drinkLogged', { drink: log.drinkName }),
       actionLabel: t('ui.undo'),

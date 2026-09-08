@@ -35,6 +35,7 @@ export default function EndNight() {
       footer={
         <Button
           title={t('session.endIt')}
+          cue="end"
           onPress={() => {
             endSession(session.id, { mood, safeHome });
             router.replace(`/session/${session.id}` as never);

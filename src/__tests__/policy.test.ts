@@ -1166,6 +1166,57 @@ describe('the native build', () => {
   });
 });
 
+describe('every sound the app ships is a sound the app plays', () => {
+  /**
+   * Ten cues were synthesised, bundled and paired with haptics. Five of them
+   * had no call site anywhere: `round`, `start`, `end`, `nudge` and `error`
+   * were shipped in every build and could not be heard. `Button` even took a
+   * `cue` prop for "this button means something bigger" and not one caller
+   * passed it, so every button in the app fired the same light tap.
+   *
+   * Nothing caught it because nothing was wrong — the table was complete, the
+   * files existed, the tests passed. A sound with no caller is the same shape
+   * of bug as a widget extension that is built and never embedded.
+   */
+  const service = readFileSync('src/services/feedback.ts', 'utf8');
+
+  /** The Cue union, read from the service rather than repeated here. */
+  const cues = [...(service.match(/export type Cue =([\s\S]*?);/)?.[1] ?? '').matchAll(/'([a-z]+)'/g)]
+    .map((m) => m[1]);
+
+  const sources = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const full = `${dir}/${e.name}`;
+      if (e.isDirectory()) return sources(full);
+      return /\.tsx?$/.test(e.name) ? [full] : [];
+    });
+
+  /**
+   * Everything except the service itself and the settings screen, whose cue
+   * list is a preview button — naming a cue there is not playing it in anger.
+   */
+  const callers = [...sources('app'), ...sources('src')].filter(
+    (f) => !f.endsWith('services/feedback.ts') && !f.endsWith('settings/appearance.tsx')
+  );
+  const code = callers.map((f) => readFileSync(f, 'utf8')).join('\n');
+
+  it('defines at least one cue', () => {
+    expect(cues.length).toBeGreaterThan(0);
+  });
+
+  it.each(cues)('%s is fired by something', (cue) => {
+    // Either passed to feedback(), including inside a ternary, or handed to a
+    // Button through the prop that exists for exactly this.
+    // `[^;]` rather than `[^)]`: a cue chosen by a ternary sits behind a call
+    // of its own — feedback(isComboResolution(step) ? 'round' : 'log') — and a
+    // pattern that stops at the first bracket never reaches it.
+    const fired =
+      new RegExp(`feedback\\([^;]*'${cue}'`).test(code) ||
+      new RegExp(`cue=(?:"${cue}"|'${cue}'|\\{'${cue}'\\})`).test(code);
+    expect({ cue, fired }).toEqual({ cue, fired: true });
+  });
+});
+
 describe('CI only calls scripts that exist', () => {
   /**
    * `ios / widgets` failed in 27 seconds on `npm error Missing script:
