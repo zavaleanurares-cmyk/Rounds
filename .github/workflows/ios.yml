@@ -43,6 +43,17 @@ jobs:
       # for is not a stable build, it is a broken one. Take the newest Xcode
       # the runner image actually has, and print it, so a future failure of
       # this kind names the version in the log instead of being inferred.
+      # macos-26, not macos-15. The 15 image tops out at Xcode 16.4, which is
+      # Swift 6.1, and the dependency graph asks for 6.2:
+      #
+      #   package 'apple' is using Swift tools version 6.2.0
+      #   but the installed version is 6.1.0
+      #
+      # Selecting "the newest Xcode on the runner" was necessary and not
+      # sufficient — it faithfully picked the newest thing on an image that
+      # never had a new enough one. macos-26 has been generally available
+      # since February.
+      #
       # The full list is printed too: when an image changes under you, what
       # was on offer is the thing you want to read, not just what was picked.
       - name: Xcode
@@ -52,6 +63,19 @@ jobs:
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
           xcodebuild -version
           swift --version
+
+          # Say it here, in one line, rather than two minutes later inside a
+          # package-resolution error. SWIFT_FLOOR is the version the graph
+          # actually demanded; raise it when something demands more.
+          SWIFT_FLOOR=6.2
+          have=$(swift --version 2>&1 | grep -oE 'Swift version [0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          if [ -z "$have" ]; then
+            echo "::error::could not read the Swift version from this toolchain"; exit 1
+          fi
+          if [ "$(printf '%s\n%s\n' "$SWIFT_FLOOR" "$have" | sort -V | head -1)" != "$SWIFT_FLOOR" ]; then
+            echo "::error::this runner has Swift $have; the dependency graph needs $SWIFT_FLOOR or newer. Use a newer macOS runner image."
+            exit 1
+          fi
 
       # ROUNDS_ALLOW_NO_WIDGETS is the deliberate escape hatch from
       # modules/rounds-native/plugin/withRoundsNative.js. It builds the app

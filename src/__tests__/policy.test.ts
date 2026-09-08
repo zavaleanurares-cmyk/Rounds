@@ -1316,6 +1316,18 @@ describe('the scheduled jobs are described consistently', () => {
     expect(named).toEqual(jobs);
   });
 
+  it('no workflow states the job count in prose', () => {
+    // The deploy summary said "six jobs scheduled" while the step above it
+    // verified seven. docs/deploy.md had the identical drift and was fixed;
+    // the summary is the one a person actually reads after a deploy, and it
+    // was still wrong. A count written by hand is a fourth copy of this list.
+    for (const file of readdirSync('.github/workflows').filter((f) => f.endsWith('.yml'))) {
+      const yaml = readFileSync(`.github/workflows/${file}`, 'utf8');
+      const prose = yaml.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+jobs?\b/i);
+      expect({ file, countInProse: prose?.[0] ?? null }).toEqual({ file, countInProse: null });
+    }
+  });
+
   it('verify:deploy reads the list from the migration rather than repeating it', () => {
     // A fourth hand-maintained copy of this list would drift like the third did.
     const script = readFileSync('scripts/verify-deploy.mjs', 'utf8');
