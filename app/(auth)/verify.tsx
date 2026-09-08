@@ -1,12 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TextInput, Animated, Pressable } from 'react-native';
+import { View, TextInput, Animated, Pressable, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, Text, Card, InlineLink } from '@/ui';
 import { useStore } from '@/data/store';
 import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
 
-/** A-03 · OTP verify. Six boxes, auto-advance, paste, 60s resend timer. */
+/**
+ * How many digits the code has — a Supabase project setting, not a constant of
+ * the universe. The dashboard allows 6 to 10 and defaults to 6; this project
+ * uses 8. It was hard-coded as 6 in five places here, so a project configured
+ * for anything else produced a screen that could not accept its own code: you
+ * type the eighth digit, nothing submits, and the app looks broken while the
+ * code in your inbox is perfectly valid.
+ *
+ * Read from the environment so the two cannot drift, clamped to the range the
+ * dashboard actually offers, because a typo here would be another screen that
+ * silently refuses to work.
+ */
+const CODE_LENGTH = Math.min(10, Math.max(6, Number(process.env.EXPO_PUBLIC_OTP_LENGTH) || 6));
+
+/** A-03 · OTP verify. Auto-advance, paste, 60s resend timer. */
 export default function Verify() {
   const router = useRouter();
   const t = useT();
@@ -16,6 +30,16 @@ export default function Verify() {
   const [seconds, setSeconds] = useState(60);
   const shake = useRef(new Animated.Value(0)).current;
   const input = useRef<TextInput>(null);
+  /**
+   * Eight boxes at the old fixed 46pt overflow a 375pt screen once the gaps and
+   * the card's padding are counted. The width is derived instead, so the row
+   * fits whatever length the project is set to and on the narrowest phone.
+   */
+  const { width: screenW } = useWindowDimensions();
+  const boxW = Math.max(
+    30,
+    Math.min(46, Math.floor((screenW - 88 - space.sm * (CODE_LENGTH - 1)) / CODE_LENGTH))
+  );
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -50,11 +74,11 @@ export default function Verify() {
         <Animated.View style={{ transform: [{ translateX: shake }] }}>
           <Pressable onPress={() => input.current?.focus()} accessibilityLabel={t('auth.verificationCode')}>
             <View style={{ flexDirection: 'row', gap: space.sm, justifyContent: 'center' }}>
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: CODE_LENGTH }).map((_, i) => (
                 <View
                   key={i}
                   style={{
-                    width: 46,
+                    width: boxW,
                     height: 58,
                     borderRadius: radius.control,
                     backgroundColor: color.surface.secondary,
@@ -79,16 +103,16 @@ export default function Verify() {
           ref={input}
           value={code}
           onChangeText={(t) => {
-            const digits = t.replace(/\D/g, '').slice(0, 6);
+            const digits = t.replace(/\D/g, '').slice(0, CODE_LENGTH);
             setCode(digits);
             setError(false);
-            if (digits.length === 6) void submit(digits);
+            if (digits.length === CODE_LENGTH) void submit(digits);
           }}
           keyboardType="number-pad"
           inputMode="numeric"
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={CODE_LENGTH}
           style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
         />
 
