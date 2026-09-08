@@ -139,6 +139,10 @@ const EN: Record<string, LegalDoc> = {
         body: 'Your profile (display name, username, avatar) so friends can find you — necessary to perform the contract. What you log, your nights, your plans and your settings — necessary to provide the service. Body basics (sex and weight), only if you give them, and only to compute the pace estimate on your device — this is health-related data and we process it solely on your explicit consent, which you can withdraw by clearing those fields. Date of birth, to verify legal drinking age — a legal obligation. Diagnostic events, which carry counts and categories and never the name of a drink, a venue or a person.',
       },
       {
+        heading: 'Signing in with Google or Apple',
+        body: 'If you sign in with Google, Google sends us your name, your email address, your profile picture and your Google account identifier. If you sign in with Apple, Apple sends us your name and an email address, which is a private relay address if you chose to hide yours. We use this only to create your account, to sign you back in, and to contact you about that account — never for anything else. It is held in our authentication database at Supabase, in the EU, for as long as your account exists, and it is deleted when your account is. We do not sell it, we do not pass it to data brokers, we do not use it for advertising or ad targeting, and we do not use it to train generalised artificial-intelligence or machine-learning models. We never receive your Google or Apple password, and we never ask for one.',
+      },
+      {
         heading: 'What never leaves your phone',
         body: 'The blood-alcohol estimate is computed on your device and is never stored on our servers or transmitted anywhere. Contact matching hashes phone numbers on your device with a salt; only the hashes are sent, and we do not keep your contact list. Your home address, used to pre-fill a ride home, is stored on the device only.',
       },
