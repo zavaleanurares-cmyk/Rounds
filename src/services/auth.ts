@@ -116,7 +116,14 @@ export function googleAvailable(): boolean {
  * because that is what Supabase wants and it avoids handling a code exchange.
  */
 export async function signInWithGoogle(
-  promptAsync?: () => Promise<{ type: string; params?: Record<string, string> }>
+  promptAsync?: () => Promise<{ type: string; params?: Record<string, string> }>,
+  /**
+   * The raw nonce the request was built with. `expo-auth-session` mints one for
+   * every `id_token` request whether or not you ask, so the token always
+   * carries the claim — and GoTrue refuses a token whose nonce claim has no
+   * matching raw value. See `remote.signInWithIdToken`.
+   */
+  nonce?: string
 ): Promise<SignInResult> {
   if (!promptAsync) {
     return { ok: false, reason: 'common.authGoogleNotConfigured' };
@@ -128,7 +135,7 @@ export async function signInWithGoogle(
     if (result.type !== 'success' || !idToken) {
       return { ok: false, reason: 'common.authGoogleNoToken' };
     }
-    const session = await remote.signInWithIdToken('google', idToken);
+    const session = await remote.signInWithIdToken('google', idToken, nonce);
     // No backend configured — the token was real, there is just nothing to
     // exchange it with. Sign in locally rather than reporting a failure.
     if (!session) return { ok: true };
@@ -150,6 +157,8 @@ export async function signInWithGoogle(
 export function useGoogleAuthRequest(): {
   ready: boolean;
   promptAsync?: () => Promise<{ type: string; params?: Record<string, string> }>;
+  /** Whatever nonce the library put in the request, so the exchange can match it. */
+  nonce?: string;
 } {
   /**
    * Not called at all when Google is not configured for this platform.
@@ -178,7 +187,7 @@ export function useGoogleAuthRequest(): {
       androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
     });
-    return { ready: Boolean(request), promptAsync };
+    return { ready: Boolean(request), promptAsync, nonce: request?.nonce };
   } catch {
     // Belt and braces: a misconfiguration must cost the Google button, never
     // the screen. Nothing about signing in with an email depends on Google.

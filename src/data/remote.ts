@@ -916,10 +916,34 @@ export async function verifyOtp(email: string, token: string): Promise<AuthSessi
   return data.session;
 }
 
-export async function signInWithIdToken(provider: 'apple' | 'google', idToken: string) {
+/**
+ * `nonce` is not optional decoration when the provider used one.
+ *
+ * `expo-auth-session`'s Google provider generates a nonce automatically for an
+ * `id_token` request — `if (responseType === IdToken && !extraParams.nonce)` —
+ * so every token it returns carries a `nonce` claim. GoTrue then requires the
+ * raw value alongside it and rejects the exchange outright when it is missing:
+ * "Passed nonce and nonce in id_token should either both be missing or both be
+ * provided."
+ *
+ * Without it, Google sign-in got all the way through the account chooser and
+ * then failed silently at the last hop — the one step with no UI of its own.
+ * Nothing in this repository could catch it either: the exchange is skipped
+ * entirely when no Supabase client is configured, which is every test run and
+ * every offline demo, so the path only executes against a real project.
+ */
+export async function signInWithIdToken(
+  provider: 'apple' | 'google',
+  idToken: string,
+  nonce?: string
+) {
   const supabase = getClient();
   if (!supabase) return null;
-  const { data, error } = await supabase.auth.signInWithIdToken({ provider, token: idToken });
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider,
+    token: idToken,
+    ...(nonce ? { nonce } : {}),
+  });
   if (error) throw error;
   return data.session;
 }

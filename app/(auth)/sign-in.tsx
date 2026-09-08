@@ -58,7 +58,9 @@ export default function SignIn() {
     setBusy(which);
     track('onboarding_step', { step: `signin_${which}` });
     const result =
-      which === 'apple' ? await signInWithApple() : await signInWithGoogle(google.promptAsync);
+      which === 'apple'
+        ? await signInWithApple()
+        : await signInWithGoogle(google.promptAsync, google.nonce);
     setBusy(null);
 
     // A dismissed sheet is not an error. Say nothing.

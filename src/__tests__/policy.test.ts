@@ -1330,6 +1330,40 @@ describe('a place you add is a place that exists', () => {
   });
 });
 
+describe('the provider token exchange carries its nonce', () => {
+  /**
+   * Google sign-in reached the account chooser, the user picked an account,
+   * and then nothing happened. The failure was at the last hop, which is the
+   * one step with no UI of its own.
+   *
+   * `expo-auth-session`'s Google provider mints a nonce for every `id_token`
+   * request whether or not you ask for one —
+   * `if (config.responseType === ResponseType.IdToken && !extraParams.nonce)` —
+   * so the token always carries the claim. GoTrue then rejects the exchange
+   * outright unless the raw value comes with it: "Passed nonce and nonce in
+   * id_token should either both be missing or both be provided."
+   *
+   * Nothing here could have caught it. `signInWithIdToken` returns null early
+   * when no Supabase client is configured, which is every test run and every
+   * offline demo, so the failing line only executes against a real project.
+   * That is what a test asserting source shape is for.
+   */
+  it('remote accepts a nonce and passes it to Supabase', () => {
+    const remote = code('src/data/remote.ts');
+    expect(remote).toMatch(/signInWithIdToken\(\s*provider: 'apple' \| 'google',\s*idToken: string,\s*nonce\?: string/);
+    expect(remote).toContain('...(nonce ? { nonce } : {})');
+  });
+
+  it('the request nonce reaches the exchange rather than being dropped', () => {
+    const auth = code('src/services/auth.ts');
+    // The hook must surface it — the library keeps it on the request object.
+    expect(auth).toContain('nonce: request?.nonce');
+    // and the sign-in path must forward it
+    expect(auth).toContain("remote.signInWithIdToken('google', idToken, nonce)");
+    expect(code('app/(auth)/sign-in.tsx')).toContain('google.nonce');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so
