@@ -48,6 +48,7 @@ import { KEYS, readJson, writeJson, remove } from './storage';
 import { logQueue, type QueueState } from './queue';
 import { uuid } from './uuid';
 import * as remote from './remote';
+import { OTP_LENGTH } from '@/services/auth';
 import * as analytics from '@/services/analytics';
 import * as push from '@/services/push';
 import * as locationShare from '@/services/locationShare';
@@ -976,11 +977,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await remote.signInWithOtp(email);
     },
     async verifyOtp(code) {
-      if (!/^\d{6}$/.test(code)) return false;
+      // The length is the project's, not this function's. It used to be a
+      // hard-coded six here as well as in the screen, so a project configured
+      // for eight had its codes rejected before they ever reached Supabase —
+      // by the one check with no error, no log and no way to see it.
+      if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(code)) return false;
 
       let userId = stateRef.current.auth.userId ?? 'me';
       if (remote.isRemoteEnabled() && stateRef.current.auth.pendingEmail) {
-        const session = await remote.verifyOtp(stateRef.current.auth.pendingEmail, code).catch(() => null);
+        const session = await remote
+          .verifyOtp(stateRef.current.auth.pendingEmail, code)
+          .catch((err: unknown) => {
+            // A wrong code and a wrong OTP `type` look identical from the
+            // screen — both are "that code didn't work" — and only one of them
+            // is the person's fault.
+            if (__DEV__) console.warn('[auth] verifyOtp failed', err);
+            return null;
+          });
         if (!session) return false;
         userId = session.user.id;
       }

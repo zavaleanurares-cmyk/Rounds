@@ -1386,6 +1386,35 @@ describe('the provider token exchange carries its nonce', () => {
   });
 });
 
+describe('the code length lives in one place', () => {
+  /**
+   * It was in two, and the second one was invisible. The verify screen had six
+   * hard-coded in five spots; the store had a sixth, `/^\\d{6}$/`, guarding the
+   * same value. Fixing the screen alone made it worse rather than better: the
+   * boxes accepted eight digits and the store discarded them before Supabase
+   * ever saw the code, silently, with no error and no log — so a correct code
+   * came back as "that code didn't work".
+   *
+   * The length is a Supabase project setting. Anything here that thinks it
+   * knows the number is a copy waiting to disagree with the dashboard.
+   */
+  it('no screen or store hard-codes a digit count for the code', () => {
+    const suspects = [...APP, ...SRC].filter((f) => !f.includes('__tests__')).filter((f) => {
+      const src = code(f);
+      // A digit-count regex, or a comparison against a bare 6, near OTP words.
+      return /\\d\{\s*\d+\s*\}/.test(src) && /otp|code|verify/i.test(src);
+    });
+    expect({ filesHardCodingTheCodeLength: suspects }).toEqual({
+      filesHardCodingTheCodeLength: [],
+    });
+  });
+
+  it('and both callers read it from the same export', () => {
+    expect(code('app/(auth)/verify.tsx')).toMatch(/OTP_LENGTH/);
+    expect(code('src/data/store.tsx')).toMatch(/OTP_LENGTH/);
+  });
+});
+
 describe('pgcrypto is reachable from every function that calls it', () => {
   /**
    * Signup was broken on the deployed project from the first day, and this

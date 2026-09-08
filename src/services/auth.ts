@@ -206,6 +206,17 @@ function popupWasBlocked(err: unknown): boolean {
   return (err as { code?: string })?.code === 'ERR_WEB_BROWSER_BLOCKED';
 }
 
+/**
+ * How many digits the emailed code has.
+ *
+ * A Supabase project setting — the dashboard offers 6 to 10 and defaults to 6.
+ * It lives here rather than in the screen because the screen is not the only
+ * place that knows: the store validated the length too, with its own hard-coded
+ * six, and quietly discarded anything else before it ever reached Supabase.
+ * Two copies of a number that must agree is one copy too many.
+ */
+export const OTP_LENGTH = Math.min(10, Math.max(6, Number(process.env.EXPO_PUBLIC_OTP_LENGTH) || 6));
+
 /** Short enough to be memorable, long enough to be worth having. */
 export const MIN_PASSWORD = 8;
 

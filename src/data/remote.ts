@@ -921,12 +921,36 @@ export async function signInWithOtp(email: string) {
   return { ok: true, local: false as const };
 }
 
+/**
+ * The same six digits are verified under a different `type` depending on
+ * whether the address already had an account.
+ *
+ * `signInWithOtp` sends the "Magic Link" template to somebody who exists and
+ * the "Confirm signup" template to somebody who does not, and their tokens
+ * verify as `email` and `signup` respectively. Nothing on the client knows
+ * which happened — deliberately, since telling a stranger whether an address
+ * has an account here is exactly what account enumeration is — so a client
+ * that picks one type is right about half the time, and wrong in the way that
+ * reads as "that code didn't work" for a code that is perfectly good.
+ *
+ * So try the common one, and fall back rather than guess. The second attempt
+ * only runs when the first fails, and a genuinely wrong code fails both and
+ * raises the first error, which is the accurate one to show.
+ */
 export async function verifyOtp(email: string, token: string): Promise<AuthSession | null> {
   const supabase = getClient();
   if (!supabase) return null;
-  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-  if (error) throw error;
-  return data.session;
+
+  const attempt = async (type: 'email' | 'signup') =>
+    supabase.auth.verifyOtp({ email, token, type });
+
+  const first = await attempt('email');
+  if (!first.error) return first.data.session;
+
+  const second = await attempt('signup');
+  if (!second.error) return second.data.session;
+
+  throw first.error;
 }
 
 /**

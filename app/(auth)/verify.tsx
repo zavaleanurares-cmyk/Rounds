@@ -5,20 +5,8 @@ import { Screen, Text, Card, InlineLink } from '@/ui';
 import { useStore } from '@/data/store';
 import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
+import { OTP_LENGTH as CODE_LENGTH } from '@/services/auth';
 
-/**
- * How many digits the code has — a Supabase project setting, not a constant of
- * the universe. The dashboard allows 6 to 10 and defaults to 6; this project
- * uses 8. It was hard-coded as 6 in five places here, so a project configured
- * for anything else produced a screen that could not accept its own code: you
- * type the eighth digit, nothing submits, and the app looks broken while the
- * code in your inbox is perfectly valid.
- *
- * Read from the environment so the two cannot drift, clamped to the range the
- * dashboard actually offers, because a typo here would be another screen that
- * silently refuses to work.
- */
-const CODE_LENGTH = Math.min(10, Math.max(6, Number(process.env.EXPO_PUBLIC_OTP_LENGTH) || 6));
 
 /** A-03 · OTP verify. Auto-advance, paste, 60s resend timer. */
 export default function Verify() {
