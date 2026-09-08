@@ -16,9 +16,10 @@ version = '1.0.0'
  * Nothing in the repository could see it until CI assembled an APK for the
  * first time. Every API above the app's floor is already guarded at runtime:
  * RoundsTileService is @RequiresApi(N), the tile subtitle is behind a check
- * for Q, the notification channel behind one for O. So the floor belongs to
- * the app, and this library follows it — the same safeExtGet fallbacks Expo's
- * own modules use, so a bump in one place moves everything.
+ * for Q, the notification channel behind one for O, and startForeground is the
+ * two-argument call. So the floor belongs to the app, and this library follows
+ * it — the same safeExtGet fallbacks Expo's own modules use, so a bump in one
+ * place moves everything.
  */
 def sdk = { prop, fallback -> rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback }
 

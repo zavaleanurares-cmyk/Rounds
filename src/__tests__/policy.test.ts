@@ -1021,6 +1021,9 @@ describe('the native build', () => {
     // `npm run verify:ios` is what actually holds this now: it resolves each
     // reference through its group and checks the file exists.
     expect(plugin).toMatch(/addSourceFile\(file, \{ target: target\.uuid \}, groupKey\)/);
+    // And the prefixed form stays gone, named exactly, so reintroducing it is
+    // red here as well as in verify:ios.
+    expect(plugin).not.toMatch(/addSourceFile\(`\$\{name\}\/\$\{file\}`/);
 
     // The escape hatch stays: `ios / app` builds with it so a break in the app
     // itself is not hidden behind the extension.
@@ -1047,6 +1050,104 @@ describe('the native build', () => {
     }
     // And the Expo module itself, without which nothing autolinks.
     expect(sources).toContain('RoundsNativeModule.swift');
+  });
+
+  it('imports the framework each symbol it uses comes from', () => {
+    // `LiveActivityIntent` is an AppIntents type, and RoundsLiveActivityView
+    // imported SwiftUI, WidgetKit and ActivityKit but not AppIntents. It cost a
+    // macOS CI round to find — the first time any of this Swift had ever been
+    // compiled — and one grep would have found it. RoundsWidgets.swift had the
+    // same hole: its "Same again" is Button(intent:).
+    //
+    // Not a Swift compiler. A short table of the symbols these seven files
+    // actually use and the framework each one comes from, which is the part
+    // that has been wrong.
+    const NEEDS: Record<string, RegExp> = {
+      AppIntents: /\bLiveActivityIntent\b|\bAppIntent\b|Button\(intent:|\bIntentResult\b|\bAppShortcutsProvider\b/,
+      ActivityKit: /\bActivityConfiguration\b|\bActivityAttributes\b|\bActivity</,
+      WidgetKit: /:\s*Widget\b|\bWidgetBundle\b|\bTimelineProvider\b|\bControlWidget\b|\bWidgetCenter\b/,
+    };
+
+    const dir = 'modules/rounds-native/ios';
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.swift'))) {
+      const source = readFileSync(join(dir, file), 'utf8');
+      // Comments name these types constantly — RoundsNativeModule explains
+      // AppShortcutsProvider in one — so the check reads the code only.
+      const body = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      for (const [framework, uses] of Object.entries(NEEDS)) {
+        if (!uses.test(body)) continue;
+        const imported = new RegExp(`^import ${framework}$`, 'm').test(source);
+        expect({ file, framework, imported }).toEqual({ file, framework, imported: true });
+      }
+    }
+  });
+
+  it('gives expo-splash-screen an image to generate', () => {
+    // Configured without `image`, the plugin still writes
+    // windowSplashScreenAnimatedIcon="@drawable/splashscreen_logo" into
+    // styles.xml and generates no such drawable, and aapt2 fails the Android
+    // build outright: "resource drawable/splashscreen_logo not found".
+    //
+    // The top-level `splash` key does not feed this plugin, which is what made
+    // it look configured when it was not.
+    const entry = config.match(/\[\s*'expo-splash-screen',\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(entry).toBeTruthy();
+    expect(entry).toMatch(/image:\s*'\.\/assets\/[\w.-]+'/);
+    const image = entry.match(/image:\s*'\.\/(assets\/[\w.-]+)'/)?.[1] ?? '';
+    expect(existsSync(image)).toBe(true);
+  });
+
+  it('does not declare its own Android SDK floor', () => {
+    // `minSdk 29` in the library and 24 in the app is not a warning, it is a
+    // failed build: "uses-sdk:minSdkVersion 24 cannot be smaller than version
+    // 29 declared in library [:rounds-native]". Nothing here could see it until
+    // CI assembled an APK for the first time.
+    //
+    // One floor, owned by the app. The library reads it the way Expo's own
+    // modules do, so a bump moves everything at once.
+    const gradle = readFileSync('modules/rounds-native/android/build.gradle', 'utf8');
+    const body = gradle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(body).not.toMatch(/\b(minSdk|minSdkVersion)\s+\d+/);
+    expect(body).not.toMatch(/\bcompileSdk\s+\d+/);
+    expect(body).not.toMatch(/\btargetSdk\s+\d+/);
+    expect(body).toMatch(/rootProject\.ext\.has\(/);
+    for (const prop of ['minSdkVersion', 'compileSdkVersion', 'targetSdkVersion']) {
+      expect(body).toContain(prop);
+    }
+  });
+
+  it('runs the script the widgets job calls', () => {
+    // `ios / widgets` ran `npm run verify:ios` against a package.json that had
+    // no such script, so the job that holds the whole requirement failed in
+    // four seconds on a typo rather than on anything about the build.
+    const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
+    for (const script of [...workflow.matchAll(/npm run ([\w:-]+)/g)].map((m) => m[1])) {
+      expect({ script, defined: Boolean(pkg.scripts[script]) }).toEqual({ script, defined: true });
+    }
+  });
+
+  it('gives both macOS jobs the same toolchain', () => {
+    // One job pinned Xcode 16.2 and the other took the runner default, so the
+    // same commit compiled with two different compilers and a failure in one
+    // and not the other meant nothing. And 16.4 is Swift 6.1, which cannot
+    // resolve the swift-tools-version 6.2 package ExpoModulesJSI pulls.
+    const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
+    expect(workflow).not.toContain('Xcode_16.2.app');
+    expect(workflow.match(/runs-on: macos-\d+/g)).toEqual(['runs-on: macos-26', 'runs-on: macos-26']);
+
+    // Counting keywords is not the check. This assertion used to require two
+    // `runs-on: macos-26` and two `xcode-select -s`, and it passed on a tree
+    // where one job asserted a Swift floor and the other did not — the two
+    // jobs differed by the guard that exists to make the failure legible,
+    // and the
+    // assertion named after their sameness said nothing. Compare the steps.
+    const steps = [...workflow.matchAll(/\n      - name: Xcode\n        run: \|\n([\s\S]*?)(?=\n      (?:- |# ))/g)]
+      .map((m) => m[1]);
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toEqual(steps[1]);
+    // And what they contain is a selection and a floor, not just a print.
+    expect(steps[0]).toContain('xcode-select -s');
+    expect(steps[0]).toContain('SWIFT_FLOOR=');
   });
 
   it('CI proves the extension is embedded, rather than reporting that it is not', () => {
@@ -1089,6 +1190,56 @@ describe('CI only calls scripts that exist', () => {
         defined: true,
       });
     }
+  });
+
+  /**
+   * `JSON.parse` keeps the last of two identical keys and says nothing about
+   * the first, so a script defined twice reads as correct to every check
+   * above — including the one directly overhead. This branch and `main` each
+   * added `verify:ios`; git accepted both hunks, and package.json carried the
+   * key twice with the whole suite still green.
+   */
+  /**
+   * A script CI calls must own the packages it imports. `verify:ios` — the gate
+   * the whole widget-extension requirement rests on — did `require('xcode')`,
+   * and `xcode` was in node_modules only as a transitive dependency of
+   * `expo-splash-screen`, whose configuration this repository edits. Nothing
+   * declared it, so nothing would notice it leaving; the job would fail on a
+   * macOS runner, minutes in, on a module that was never ours to rely on.
+   */
+  it('every script CI calls declares the packages it imports', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    const declared = new Set([
+      ...Object.keys(pkg.dependencies ?? {}),
+      ...Object.keys(pkg.devDependencies ?? {}),
+    ]);
+    const called = new Set(
+      workflows.flatMap((f) => [
+        ...readFileSync(`.github/workflows/${f}`, 'utf8').matchAll(/npm run ([a-zA-Z][\w:-]*)/g),
+      ].map((m) => m[1])),
+    );
+
+    const undeclared: string[] = [];
+    for (const name of called) {
+      for (const m of (scripts[name] ?? '').matchAll(/(scripts\/[\w.-]+\.mjs)/g)) {
+        const source = readFileSync(m[1], 'utf8');
+        for (const i of source.matchAll(/(?:^import .*?from\s*|require\()\s*['"]([^'"]+)['"]/gms)) {
+          const spec = i[1];
+          if (spec.startsWith('node:') || spec.startsWith('.') || spec.startsWith('/')) continue;
+          const top = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+          if (!declared.has(top)) undeclared.push(`${m[1]} imports ${top}`);
+        }
+      }
+    }
+    expect(undeclared).toEqual([]);
+  });
+
+  it('package.json defines each script exactly once', () => {
+    const raw = readFileSync('package.json', 'utf8');
+    const block = raw.slice(raw.indexOf('"scripts"'));
+    const body = block.slice(0, block.indexOf('\n  }'));
+    const names = [...body.matchAll(/^ {4}"([^"]+)":/gm)].map((m) => m[1]);
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
   });
 });
 

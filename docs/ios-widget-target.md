@@ -1,8 +1,19 @@
 # The iOS widget extension target
 
-**Status: created.** `expo prebuild --platform ios` now produces a project with
-two native targets, and `npm run verify:ios` asserts the contract below against
-the generated `project.pbxproj`. What remains is step 4 — a real device.
+**Status: built.** `expo prebuild --platform ios` produces a project with two
+native targets, `npm run verify:ios` asserts the contract below against the
+generated `project.pbxproj`, and — as of the run on 6 September 2026 — the
+`ios / widgets` job compiles the extension on a macOS runner and finds
+`ROUNDS.app/PlugIns/RoundsWidgets.appex` inside the built app. Steps 1 to 3 are
+done. What remains is step 4, a real device, which needs an Apple Developer
+account.
+
+Getting there took five rounds of that job, and every one of them found
+something no check in this repository could have: two Swift files that had
+never been compiled and did not import AppIntents, an `Optional.map` closure
+that dropped its argument, a runner whose Swift was a version behind what Expo
+57 requires, and — after the contract verifier had passed — extension sources
+referenced one directory too deep, which is the failure below.
 
 ## What was wrong
 
@@ -129,6 +140,26 @@ the `Info.plist`, changing the app group — each turn it red.
 4. Only then, on hardware: start a night and confirm the Live Activity appears
    on the Lock Screen, place each widget size, and add the Control Center
    control.
+
+### What step 3 caught that step 2 could not
+
+`verify:ios` passed, and the build then stopped with
+
+```
+error: Build input files cannot be found:
+'.../ios/RoundsWidgets/RoundsWidgets/RoundsWidgetBundle.swift', ...
+```
+
+RoundsWidgets twice. The extension's group carries `path = RoundsWidgets` and
+each source was added as `RoundsWidgets/<file>`, so every reference resolved one
+directory too deep. Both verifiers compared basenames — `path.split('/').pop()`
+— which cannot tell that string apart from the same string in a group with no
+path, and only one of the two exists on disk.
+
+The verifier resolves each source the way Xcode does now: its own path with the
+path of every group above it in front, then checks the file is there. That is
+the difference between a two-second failure on Linux and a five-minute one that
+compiles the whole pod graph before noticing.
 
 Steps 1–3 need no Apple Developer account and no Mac. Step 4 needs both.
 

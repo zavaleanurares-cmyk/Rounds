@@ -53,8 +53,12 @@ jobs:
       # sufficient — it faithfully picked the newest thing on an image that
       # never had a new enough one. macos-26 has been generally available
       # since February.
+      #
+      # The full list is printed too: when an image changes under you, what
+      # was on offer is the thing you want to read, not just what was picked.
       - name: Xcode
         run: |
+          ls -d /Applications/Xcode*.app || true
           latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
           xcodebuild -version
@@ -91,6 +95,10 @@ jobs:
       # No signing: this proves the code compiles and links, which is the part
       # that has never been checked. Signing needs an Apple Developer account
       # and belongs in EAS, not here.
+      # The raw log is kept, not just xcpretty's rendering of it. The first
+      # time this job ran it failed and printed no error line whatsoever —
+      # xcpretty drops whole classes of failure, and a red build you cannot
+      # read is a second problem on top of the first.
       - name: Build
         run: |
           set -o pipefail
@@ -123,6 +131,13 @@ jobs:
               exit 1
             }
 
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-app
+          path: xcodebuild-app.log
+          retention-days: 7
+
   widgets:
     name: The Live Activity and widgets are in the app
     runs-on: macos-26
@@ -132,6 +147,40 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+
+      # The newest Xcode on the runner, not whichever one is selected by
+      # default, and the list is printed because images change under you.
+      #
+      # Xcode 16.4 carries Swift 6.1, and this dependency stack does not build
+      # with it: the ExpoModulesJSI script phase resolves a SwiftPM package that
+      # declares swift-tools-version 6.2 and the build stops at
+      #
+      #   package 'apple' is using Swift tools version 6.2.0 but the installed
+      #   version is 6.1.0
+      #
+      # which has nothing to do with this repository's own code. Pinning 16.2
+      # here, as this job used to, made it worse and made the two macOS jobs
+      # compile the same commit with two different compilers.
+      - name: Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version
+          swift --version
+
+          # Say it here, in one line, rather than two minutes later inside a
+          # package-resolution error. SWIFT_FLOOR is the version the graph
+          # actually demanded; raise it when something demands more.
+          SWIFT_FLOOR=6.2
+          have=$(swift --version 2>&1 | grep -oE 'Swift version [0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          if [ -z "$have" ]; then
+            echo "::error::could not read the Swift version from this toolchain"; exit 1
+          fi
+          if [ "$(printf '%s\n%s\n' "$SWIFT_FLOOR" "$have" | sort -V | head -1)" != "$SWIFT_FLOOR" ]; then
+            echo "::error::this runner has Swift $have; the dependency graph needs $SWIFT_FLOOR or newer. Use a newer macOS runner image."
+            exit 1
+          fi
 
       # Deliberately WITHOUT the escape hatch: the plugin creates the widget
       # extension target here, or the job fails.
@@ -181,9 +230,16 @@ jobs:
               echo "::group::the last 200 lines"
               tail -200 xcodebuild-widgets.log
               echo "::endgroup::"
-              echo "::error::iOS build failed"
+              echo "::error::the widget build failed"
               exit 1
             }
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-widgets
+          path: xcodebuild-widgets.log
+          retention-days: 7
 
       # The build succeeding is not the check. A widget extension that is
       # created but never embedded produces a perfectly green build and an app
