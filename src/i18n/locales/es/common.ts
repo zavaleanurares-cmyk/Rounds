@@ -164,4 +164,5 @@ export const common = {
   'common.demoPlanNote': 'Empezamos en Roots y el resto lo decidimos allí.',
   'common.you': 'Tú',
   'common.categoryNicotine': 'Nicotina',
+  'common.mapCluster': { one: '{count} sitio aquí', other: '{count} sitios aquí' },
 } satisfies Record<string, Message>;

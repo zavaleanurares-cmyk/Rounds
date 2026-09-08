@@ -1232,6 +1232,59 @@ describe('the nicotine module is reachable and counted', () => {
   });
 });
 
+describe('the map shows everywhere you can drink', () => {
+  /**
+   * `CATEGORY_MAP` carried `restaurant`, `cafe` and `wine_bar` while both
+   * queries asked for bars, pubs and clubs only — three entries that could
+   * never be returned by either provider, sitting there looking implemented.
+   */
+  const venues = code('src/services/venues.ts');
+
+  it('asks both providers for restaurants and cafés, not only bars', () => {
+    expect(venues).toContain('PLACE_TYPES');
+    for (const type of ['restaurant', 'cafe']) {
+      expect({ type, inGoogleTypes: venues.includes(`'${type}'`) }).toEqual({
+        type,
+        inGoogleTypes: true,
+      });
+    }
+    expect(venues).toMatch(/OSM_AMENITIES = '[^']*restaurant[^']*'/);
+    expect(venues).toMatch(/OSM_AMENITIES = '[^']*cafe[^']*'/);
+  });
+
+  it('does not append "bar" to whatever you typed', () => {
+    // `textQuery: `${q.term} bar`` meant searching "Sushi" asked Google for
+    // "Sushi bar", so a restaurant could not be found by its own name.
+    expect(venues).not.toMatch(/textQuery: `\$\{q\.term\} bar`/);
+  });
+
+  it('queries ways and relations, not only nodes', () => {
+    // A pub mapped as a building outline is a `way`; a large venue with
+    // several parts is a `relation`. `node` alone made both invisible, which
+    // is most of the older pubs in a European city centre.
+    expect(venues).toMatch(/nwr\$\{filter\}/);
+    expect(venues).toContain('out center');
+    expect(venues).not.toMatch(/;node\$\{filter\}/);
+  });
+
+  it('the map folds density instead of dropping it', () => {
+    const map = code('src/features/discover/VenueMap.tsx');
+    expect(map).toContain('clusterByGrid');
+    expect(map).toContain('cellForSpan');
+    // and Discover no longer throws away the 41st nearest place
+    expect(code('app/(tabs)/discover.tsx')).not.toContain('.slice(0, 40)');
+  });
+
+  it('a pin says what kind of place it is', () => {
+    const map = code('src/features/discover/VenueMap.tsx');
+    expect(map).toContain('venueKind(venue.category)');
+    expect(map).toContain('KIND_ICON');
+    // Colour per kind lives in the tokens, not as a hex in the component —
+    // "product code references the SEMANTIC names only, never a raw hex".
+    expect(map).toContain('color.venue[kind]');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

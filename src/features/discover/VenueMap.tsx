@@ -4,6 +4,8 @@ import { Text, Icon } from '@/ui';
 import { capabilities, optional } from '@/services/optional';
 import { useT } from '@/i18n';
 import type { Venue } from '@/domain/types';
+import { venueKind, type VenueKind } from '@/domain/venueKind';
+import { clusterByGrid, cellForSpan } from '@/domain/cluster';
 import { color } from '@/design/tokens';
 import { MAP_STYLE } from './mapStyle';
 
@@ -41,6 +43,9 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
   const Maps = optional(() => require('react-native-maps'));
   const ref = useRef<any>(null);
   const [ready, setReady] = useState(false);
+  // Matches `initialRegion` below, so the first frame clusters at the zoom the
+  // map actually opens at rather than at a placeholder.
+  const [span, setSpan] = useState(0.02);
 
   /**
    * The camera move has to wait for the map to be ready.
@@ -73,12 +78,28 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
    */
   const provider = Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined;
 
+  /**
+   * Clustered at the current zoom, not at a fixed radius: two bars a street
+   * apart should merge when the whole city is on screen and separate when it
+   * is one street. `span` follows the camera, and until the map reports a
+   * region it is the initial delta rather than a guess.
+   */
+  const clusters = useMemo(
+    () => clusterByGrid(venues.map((v) => v.venue), cellForSpan(span)),
+    [venues, span]
+  );
+
+  const zoomTo = (c: { lat: number; lng: number }) => {
+    ref.current?.animateCamera({ center: { latitude: c.lat, longitude: c.lng }, zoom: 16.5 }, { duration: 320 });
+  };
+
   return (
     <MapView
       ref={ref}
       style={StyleSheet.absoluteFill}
       provider={provider}
       onMapReady={() => setReady(true)}
+      onRegionChangeComplete={(r: { latitudeDelta: number }) => setSpan(r.latitudeDelta)}
       // The night styling is not decoration: a white map at 1am in a dark app
       // is a flashbang, and this screen is used in exactly that situation.
       // Google-only; Apple Maps takes `userInterfaceStyle` below instead.
@@ -96,19 +117,40 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
         longitudeDelta: 0.02,
       }}
     >
-      {venues.map(({ venue }) => {
-        if (venue.lat == null || venue.lng == null) return null;
-        const been = visited.has(venue.id);
-        const selected = venue.id === selectedId;
+      {clusters.map((c) => {
+        // A cluster of one is a pin. Anything else is a count, and tapping it
+        // zooms rather than guessing which of the places under it you meant.
+        if (c.items.length === 1) {
+          const venue = c.items[0];
+          const been = visited.has(venue.id);
+          const selected = venue.id === selectedId;
+          return (
+            <Marker
+              key={venue.id}
+              coordinate={{ latitude: c.lat, longitude: c.lng }}
+              onPress={() => onSelect(venue)}
+              tracksViewChanges={false}
+              accessibilityLabel={been ? t('common.mapPinVisited', { name: venue.name }) : venue.name}
+            >
+              <Pin
+                name={venue.name}
+                kind={venueKind(venue.category)}
+                been={been}
+                selected={selected}
+              />
+            </Marker>
+          );
+        }
+        const anyVisited = c.items.some((v) => visited.has(v.id));
         return (
           <Marker
-            key={venue.id}
-            coordinate={{ latitude: venue.lat, longitude: venue.lng }}
-            onPress={() => onSelect(venue)}
+            key={c.key}
+            coordinate={{ latitude: c.lat, longitude: c.lng }}
+            onPress={() => zoomTo(c)}
             tracksViewChanges={false}
-            accessibilityLabel={been ? t('common.mapPinVisited', { name: venue.name }) : venue.name}
+            accessibilityLabel={t('common.mapCluster', { count: c.items.length })}
           >
-            <Pin name={venue.name} been={been} selected={selected} />
+            <ClusterPin count={c.items.length} anyVisited={anyVisited} />
           </Marker>
         );
       })}
@@ -156,7 +198,12 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset 
             accessibilityLabel={venue.name}
             style={{ position: 'absolute', left: p.x - 30, top: p.y - 22, width: 60, alignItems: 'center' }}
           >
-            <Pin name={venue.name} been={visited.has(venue.id)} selected={venue.id === selectedId} />
+            <Pin
+              name={venue.name}
+              kind={venueKind(venue.category)}
+              been={visited.has(venue.id)}
+              selected={venue.id === selectedId}
+            />
           </Pressable>
         );
       })}
@@ -166,17 +213,54 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset 
 
 /* ------------------------------------------------------------------- pin */
 
-function Pin({ name, been, selected }: { name: string; been: boolean; selected: boolean }) {
+const KIND_ICON: Record<VenueKind, 'wineglass' | 'moon.stars' | 'fork.knife' | 'cup'> = {
+  bar: 'wineglass',
+  club: 'moon.stars',
+  wine: 'wineglass',
+  restaurant: 'fork.knife',
+  cafe: 'cup',
+};
+
+/**
+ * Three sizes, and only one of them carries a name.
+ *
+ * Every pin used to be the same 28px circle with the venue's name printed
+ * under it. With bars only and a `.slice(0, 40)` that was busy; with
+ * restaurants and cafés on the map too it is a wall of text, and the labels
+ * collide with each other long before the pins do.
+ *
+ * So the name appears on the selected pin and nowhere else, and size carries
+ * the hierarchy instead: somewhere you have been is bigger than somewhere you
+ * have not. That is the right emphasis for this app — the venue screen is
+ * headed "YOUR HISTORY HERE", not a directory listing — and it means a screen
+ * full of unknown places reads as texture rather than as a demand.
+ *
+ * Colour carries the kind. A restaurant should not look like a nightclub.
+ */
+function Pin({
+  name,
+  kind,
+  been,
+  selected,
+}: {
+  name: string;
+  kind: VenueKind;
+  been: boolean;
+  selected: boolean;
+}) {
+  const tint = color.venue[kind];
+  const size = selected ? 34 : been ? 26 : 16;
+
   return (
-    <View style={{ alignItems: 'center', width: 76 }}>
+    <View style={{ alignItems: 'center', width: selected ? 96 : 40 }}>
       <View
         style={{
-          width: selected ? 34 : 28,
-          height: selected ? 34 : 28,
-          borderRadius: 17,
-          backgroundColor: been ? color.brand.tint : color.surface.tertiary,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: been || selected ? tint : color.surface.tertiary,
           borderWidth: 2,
-          borderColor: selected ? '#fff' : been ? color.brand.tintLight : color.separator,
+          borderColor: selected ? '#fff' : been ? 'rgba(255,255,255,0.65)' : tint,
           alignItems: 'center',
           justifyContent: 'center',
           shadowColor: '#000',
@@ -185,17 +269,48 @@ function Pin({ name, been, selected }: { name: string; been: boolean; selected: 
           shadowOffset: { width: 0, height: 2 },
         }}
       >
-        <Icon name="wineglass" size={selected ? 15 : 13} color={been ? '#fff' : color.label.secondary} />
+        {/* Below 26px a glyph is a smudge, so a small pin is just a dot with a
+            coloured ring. The kind still reads; the detail does not fight it. */}
+        {size >= 26 ? (
+          <Icon name={KIND_ICON[kind]} size={selected ? 15 : 13} color="#fff" />
+        ) : null}
       </View>
-      <Text
-        variant="caption2"
-        tone={selected ? 'primary' : 'secondary'}
-        numberOfLines={1}
-        center
-        style={{ marginTop: 3 }}
-      >
-        {name}
-      </Text>
+      {selected ? (
+        <Text variant="caption2" tone="primary" numberOfLines={1} center style={{ marginTop: 3 }}>
+          {name}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * A cluster: how many places are here, without saying which.
+ *
+ * Deliberately neutral in colour. A cluster of a bar, a café and a restaurant
+ * has no single kind, and picking one — the first in the array, say — would be
+ * a confident lie about what is under it.
+ */
+function ClusterPin({ count, anyVisited }: { count: number; anyVisited: boolean }) {
+  const size = count > 20 ? 40 : count > 8 ? 34 : 30;
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: anyVisited ? color.brand.tint : 'rgba(20,22,30,0.92)',
+        borderWidth: 2,
+        borderColor: anyVisited ? 'rgba(255,255,255,0.65)' : color.separator,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+      }}
+    >
+      <Text variant="caption1" tone="primary">{String(count)}</Text>
     </View>
   );
 }

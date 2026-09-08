@@ -174,4 +174,9 @@ export const common = {
   'common.demoPlanNote': 'Începem la Roots, restul îl decidem acolo.',
   'common.you': 'Tu',
   'common.categoryNicotine': 'Nicotină',
+  'common.mapCluster': {
+    one: '{count} loc aici',
+    few: '{count} locuri aici',
+    other: '{count} de locuri aici',
+  },
 } satisfies Record<string, Message>;

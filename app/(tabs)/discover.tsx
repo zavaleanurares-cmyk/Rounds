@@ -91,7 +91,13 @@ export default function Discover() {
             : null,
       }))
       .sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9))
-      .slice(0, 40);
+      // 120, not 40. The old cap existed because forty undifferentiated pins
+      // was already a wall and the map had no way to fold them — so the fix
+      // was to silently drop the forty-first nearest place, which is a real
+      // bar somebody might have been looking for. The map clusters now, so a
+      // dense city centre folds into counts instead of vanishing. Still
+      // bounded: this is a list a person browses, not a dataset.
+      .slice(0, 120);
   }, [found, localVenues, layers.been, layers.open, canAnswerOpen, visited, coords]);
 
   const liveFriends = people.filter((p) => p.liveNow && p.status === 'friend');
