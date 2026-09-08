@@ -3,6 +3,15 @@ import type { Message } from '../../types';
 export const discover = {
   'discover.searchVenues': 'Busca sitios',
   'discover.mapProjected': 'Mapa simplificado — solo puntos. El mapa completo necesita la app en un teléfono.',
+
+  // Choosing a city by hand, when GPS is refused or simply wrong
+  'discover.cityTitle': 'Elige una ciudad',
+  'discover.citySubtitle': 'En cualquier parte del mundo',
+  'discover.cityPlaceholder': 'Nombre de la ciudad',
+  'discover.cityUseMine': 'Usar mi ubicación',
+  'discover.cityNone': 'No hay ninguna ciudad con ese nombre',
+  'discover.cityNoneBody': 'Prueba solo el nombre, sin el país.',
+  'discover.changeCity': 'Cambiar de ciudad',
   'discover.searchPlaceholder': 'Busca bares y discotecas',
   // The three filter chips. "Ya visitados" agrees with the sitios it filters,
   // never with the reader.

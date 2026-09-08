@@ -4,6 +4,15 @@ import type { Message } from '../../types';
 export const discover = {
   'discover.searchVenues': 'Search venues',
   'discover.mapProjected': 'Simplified map — pins only. The full map needs the app on a phone.',
+
+  // Choosing a city by hand, when GPS is refused or simply wrong
+  'discover.cityTitle': 'Choose a city',
+  'discover.citySubtitle': 'Anywhere in the world',
+  'discover.cityPlaceholder': 'City name',
+  'discover.cityUseMine': 'Use my location',
+  'discover.cityNone': 'No city by that name',
+  'discover.cityNoneBody': 'Try the name on its own, without the country.',
+  'discover.changeCity': 'Change city',
   'discover.searchPlaceholder': 'Search bars and clubs',
   'discover.filterFriends': 'Friends out',
   'discover.filterBeen': 'Been here',

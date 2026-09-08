@@ -3,6 +3,15 @@ import type { Message } from '../../types';
 export const discover = {
   'discover.searchVenues': 'Caută localuri',
   'discover.mapProjected': 'Hartă simplificată — doar puncte. Harta completă cere aplicația pe telefon.',
+
+  // Choosing a city by hand, when GPS is refused or simply wrong
+  'discover.cityTitle': 'Alege un oraș',
+  'discover.citySubtitle': 'Oriunde în lume',
+  'discover.cityPlaceholder': 'Numele orașului',
+  'discover.cityUseMine': 'Folosește locația mea',
+  'discover.cityNone': 'Niciun oraș cu numele ăsta',
+  'discover.cityNoneBody': 'Încearcă doar numele, fără țară.',
+  'discover.changeCity': 'Schimbă orașul',
   'discover.searchPlaceholder': 'Caută baruri și cluburi',
   // The three filter chips. "Deja vizitate" agrees with the localuri it
   // filters, never with the reader.

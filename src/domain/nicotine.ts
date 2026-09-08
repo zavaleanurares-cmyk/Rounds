@@ -74,6 +74,14 @@ const TINT = {
   skruf:    ['#2B6E4F', '#12513A'],
   helwit:   ['#7A4FA3', '#3C2455'],
   xqs:      ['#EFC94C', '#A8871F'],
+  zeus:     ['#C9A227', '#7A5F10'],
+  cream:    ['#E8D8C3', '#B39877'],
+  kuma:     ['#8C5A3C', '#4A2C1B'],
+  ace:      ['#D7E3EC', '#9AAAB8'],
+  on:       ['#4C9F70', '#245139'],
+  rogue:    ['#B02E36', '#5E1419'],
+  lundgren: ['#2F5D7C', '#16303F'],
+  volt:     ['#6E44FF', '#33208C'],
   /**
    * Pack colours: one each, and deliberately not anybody's trade dress.
    *
@@ -144,6 +152,31 @@ export const POUCHES: NicotineProduct[] = [
   { id: 'skruf-11',     brand: 'Skruf',         name: 'Skruf Super White',     format: 'pouch', mg: 11,   glass: 'pouch', tint: TINT.skruf },
   { id: 'xqs-4',        brand: 'XQS',           name: 'XQS 4',                 format: 'pouch', mg: 4,    glass: 'pouch', tint: TINT.xqs },
   { id: 'helwit-6',     brand: 'Helwit',        name: 'Helwit 6',              format: 'pouch', mg: 6,    glass: 'pouch', tint: TINT.helwit },
+
+  /**
+   * Added later, and all of them still under the 20 mg ceiling — the test above
+   * this file's own rules will refuse anything that is not.
+   *
+   * ZEUS, C.R.E.A.M and KUMA are listed because they are sold in Romania within
+   * the cap. The rest are mainstream European lines. Strengths follow each
+   * maker's published slim/strong range and should be checked against a current
+   * tin before launch: a number printed here that disagrees with the one on the
+   * product is the same class of mistake the whole file is written to avoid.
+   */
+  { id: 'zeus-11',      brand: 'ZEUS',          name: 'ZEUS Slim',             format: 'pouch', mg: 11,   glass: 'pouch', tint: TINT.zeus },
+  { id: 'zeus-16',      brand: 'ZEUS',          name: 'ZEUS Strong',           format: 'pouch', mg: 16,   glass: 'pouch', tint: TINT.zeus },
+  { id: 'zeus-20',      brand: 'ZEUS',          name: 'ZEUS Extra Strong',     format: 'pouch', mg: 20,   glass: 'pouch', tint: TINT.zeus },
+  { id: 'cream-10',     brand: 'C.R.E.A.M',     name: 'C.R.E.A.M 10',          format: 'pouch', mg: 10,   glass: 'pouch', tint: TINT.cream },
+  { id: 'cream-16',     brand: 'C.R.E.A.M',     name: 'C.R.E.A.M Strong',      format: 'pouch', mg: 16,   glass: 'pouch', tint: TINT.cream },
+  { id: 'kuma-11',      brand: 'KUMA',          name: 'KUMA 11',               format: 'pouch', mg: 11,   glass: 'pouch', tint: TINT.kuma },
+  { id: 'ace-8',        brand: 'Ace',           name: 'Ace Superwhite 8',      format: 'pouch', mg: 8,    glass: 'pouch', tint: TINT.ace },
+  { id: 'ace-14',       brand: 'Ace',           name: 'Ace X-Strong',          format: 'pouch', mg: 14,   glass: 'pouch', tint: TINT.ace },
+  { id: 'on-4',         brand: 'on!',           name: 'on! 4',                 format: 'pouch', mg: 4,    glass: 'pouch', tint: TINT.on },
+  { id: 'on-8',         brand: 'on!',           name: 'on! 8',                 format: 'pouch', mg: 8,    glass: 'pouch', tint: TINT.on },
+  { id: 'rogue-6',      brand: 'Rogue',         name: 'Rogue 6',               format: 'pouch', mg: 6,    glass: 'pouch', tint: TINT.rogue },
+  { id: 'lundgrens-8',  brand: 'Lundgrens',     name: 'Lundgrens 8',           format: 'pouch', mg: 8,    glass: 'pouch', tint: TINT.lundgren },
+  { id: 'volt-10',      brand: 'VOLT',          name: 'VOLT 10',               format: 'pouch', mg: 10,   glass: 'pouch', tint: TINT.volt },
+  { id: 'volt-14',      brand: 'VOLT',          name: 'VOLT Deep Freeze',      format: 'pouch', mg: 14,   glass: 'pouch', tint: TINT.volt },
 ];
 
 /**

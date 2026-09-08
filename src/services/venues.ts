@@ -278,6 +278,50 @@ export async function findVenues(q: VenueQuery): Promise<{ venues: Venue[]; stal
   }
 }
 
+export interface PlaceHit {
+  label: string;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Turn "Lisbon" into a coordinate, so the map can leave the city it was born in.
+ *
+ * Nominatim is OpenStreetMap's own geocoder: free, worldwide, no key, and the
+ * same dataset the venues already come from — so a city it can find is a city
+ * this app can then fill with bars. Their usage policy asks for an identifying
+ * User-Agent and no heavy traffic; this fires once, when a person types a city
+ * name and stops typing.
+ *
+ * Failure returns an empty list rather than throwing. Not finding a city is an
+ * ordinary outcome of typing three letters, not an error worth a red screen.
+ */
+export async function searchCities(term: string): Promise<PlaceHit[]> {
+  const q = term.trim();
+  if (q.length < 2) return [];
+  const url =
+    'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&featureType=city' +
+    `&q=${encodeURIComponent(q)}`;
+  try {
+    const res = await fetchWithTimeout(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'ROUNDS/1.0 (rounds app city search)' },
+    });
+    if (!res.ok) return [];
+    const rows = (await res.json()) as { display_name?: string; lat?: string; lon?: string }[];
+    return rows
+      .filter((r) => r.lat && r.lon && r.display_name)
+      .map((r) => ({
+        // "Cluj-Napoca, Cluj, Romania" reads better than the full postal chain.
+        label: r.display_name!.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 3).join(', '),
+        lat: Number(r.lat),
+        lng: Number(r.lon),
+      }))
+      .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+  } catch {
+    return [];
+  }
+}
+
 /** The provider returns the same pub twice more often than you would think. */
 function dedupe(venues: Venue[]): Venue[] {
   const seen = new Map<string, Venue>();

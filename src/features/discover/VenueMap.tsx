@@ -19,7 +19,13 @@ export interface VenueMapProps {
   venues: MapVenue[];
   visited: Set<string>;
   selectedId: string | null;
-  onSelect: (v: Venue) => void;
+  /**
+   * `null` closes the peek. Tapping the map to dismiss is how every map app
+   * works, and this one used to offer only the small × on the card — a target
+   * you have to aim for, on a screen used one-handed, at night, by somebody
+   * who has been drinking.
+   */
+  onSelect: (v: Venue | null) => void;
   topInset: number;
 }
 
@@ -99,6 +105,7 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
       style={StyleSheet.absoluteFill}
       provider={provider}
       onMapReady={() => setReady(true)}
+      onPress={() => onSelect(null)}
       onRegionChangeComplete={(r: { latitudeDelta: number }) => setSpan(r.latitudeDelta)}
       // The night styling is not decoration: a white map at 1am in a dark app
       // is a flashbang, and this screen is used in exactly that situation.
@@ -162,7 +169,9 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
 
 function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset }: VenueMapProps) {
   const { width, height } = useWindowDimensions();
-  const tProjected = useT()('discover.mapProjected');
+  const t = useT();
+  const tProjected = t('discover.mapProjected');
+  const tDismiss = t('ui.close');
 
   const bounds = useMemo(() => {
     const pts = venues.filter((v) => v.venue.lat != null && v.venue.lng != null);
@@ -189,6 +198,18 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/*
+        The same dismissal as the native map. Rendered first so every pin sits
+        above it, and only while something is actually selected — an always-on
+        transparent layer would swallow taps meant for the screen behind it.
+      */}
+      {selectedId ? (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => onSelect(null)}
+          accessibilityLabel={tDismiss}
+        />
+      ) : null}
+      {/*
         Say what this is.
 
         Without a line of explanation a screen of floating dots reads as a map
@@ -211,6 +232,7 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset 
             onPress={() => onSelect(venue)}
             accessibilityRole="button"
             accessibilityLabel={venue.name}
+            hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
             style={{ position: 'absolute', left: p.x - 30, top: p.y - 22, width: 60, alignItems: 'center' }}
           >
             <Pin

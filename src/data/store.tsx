@@ -92,6 +92,17 @@ export interface Settings {
   locationSharingDefault: boolean;
   contactMatching: boolean;
   nightDimming: boolean;
+  /**
+   * A city chosen by hand, when GPS is refused or wrong.
+   *
+   * The venue provider has always been worldwide — OpenStreetMap covers every
+   * city on earth and needs no key — but the only thing that ever told it WHERE
+   * to look was the device's position, and the fallback for a refused
+   * permission is one hard-coded city. So a browser that blocks geolocation,
+   * or a phone with location off, showed Cluj-Napoca to somebody in Lisbon and
+   * offered no way to say otherwise.
+   */
+  homeCity: { lat: number; lng: number; label: string } | null;
   reduceMotion: boolean;
   /** Sound effects. Off by default — this app gets opened in quiet places. */
   sound: boolean;
@@ -188,8 +199,9 @@ const DEFAULT_SETTINGS: Settings = {
   locationSharingDefault: false,
   contactMatching: false,
   nightDimming: true,
+  homeCity: null,
   reduceMotion: false,
-  sound: false,
+  sound: true,
   haptics: true,
   showEstimate: false,
   accentIndex: 0,

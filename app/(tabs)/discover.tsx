@@ -32,8 +32,15 @@ export default function Discover() {
   const t = useT();
   const { locale } = useI18n();
   const insets = useSafeAreaInsets();
-  const { people, logs, venues: localVenues, mergeVenues } = useStore();
-  const { status, coords, request } = useLocation(true);
+  const { people, logs, venues: localVenues, mergeVenues, settings } = useStore();
+  const { status, coords: gpsCoords, request } = useLocation(true);
+  /**
+   * A hand-picked city wins over GPS. Somebody who has told the app where they
+   * are has answered the question the permission was asking, and overriding
+   * that with a refused-permission fallback would be the app arguing with them.
+   */
+  const homeCity = settings.homeCity;
+  const coords = homeCity ? { lat: homeCity.lat, lng: homeCity.lng } : gpsCoords;
 
   const [peek, setPeek] = useState<Venue | null>(null);
   const [layers, setLayers] = useState({ friends: true, been: true, open: false });
@@ -225,8 +232,11 @@ export default function Discover() {
                 <Button title={t('discover.searchVenues')} kind="glass" compact onPress={() => router.push('/venue/search')} />
               </View>
               <View style={{ flex: 1 }}>
-                <Button title={t('ui.retry')} kind="plain" compact onPress={() => void request()} />
+                <Button title={t('discover.changeCity')} kind="plain" compact onPress={() => router.push('/city')} />
               </View>
+            </View>
+            <View style={{ marginTop: space.sm }}>
+              <Button title={t('ui.retry')} kind="plain" compact onPress={() => void request()} />
             </View>
           </Card>
         ) : layers.friends && liveFriends.length > 0 ? (
