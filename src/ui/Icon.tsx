@@ -16,7 +16,8 @@ export type IconName =
   | 'bell' | 'lock' | 'square.and.arrow.up' | 'trash' | 'checkmark'
   | 'magnifyingglass' | 'photo' | 'creditcard' | 'hand.raised' | 'flag'
   | 'bolt' | 'figure.walk' | 'clock' | 'arrow.up.right' | 'ellipsis'
-  | 'phone' | 'house' | 'star' | 'heart' | 'eye.slash' | 'arrow.left';
+  | 'phone' | 'house' | 'star' | 'heart' | 'eye.slash' | 'arrow.left'
+  | 'cup' | 'fork.knife';
 
 const S = 24;
 
@@ -72,6 +73,12 @@ function glyph(name: IconName, p: P, c: string): React.ReactNode {
     case 'bubble.left': return <Path {...p} d="M20 12.5c0 3.6-3.6 6.5-8 6.5a10 10 0 01-2.6-.35L5 21l1.1-3.3A6.6 6.6 0 014 12.5C4 8.9 7.6 6 12 6s8 2.9 8 6.5z" />;
     case 'location': return <><Path {...p} d="M12 21s6.5-6.1 6.5-10.5a6.5 6.5 0 10-13 0C5.5 14.9 12 21 12 21z" /><Circle {...p} cx="12" cy="10.5" r="2.4" /></>;
     case 'calendar': return <><Rect {...p} x="3.5" y="5" width="17" height="15.5" rx="3.2" /><Line {...p} x1="3.5" y1="10" x2="20.5" y2="10" /><Line {...p} x1="8" y1="3" x2="8" y2="6.5" /><Line {...p} x1="16" y1="3" x2="16" y2="6.5" /></>;
+    // A cup, for cafés. Bowl, handle, and a saucer line so it does not read
+    // as a bucket at 13px — which is the size it is drawn at on a map pin.
+    case 'cup': return <><Path {...p} d="M5 6h11v6a5.5 5.5 0 01-11 0V6z" /><Path {...p} d="M16 7.5h1.6a2.4 2.4 0 010 4.8H16" /><Line {...p} x1="4" y1="20.5" x2="17" y2="20.5" /></>;
+    // Fork and knife, for restaurants. The fork is two tines rather than four:
+    // at pin size, four is a smudge.
+    case 'fork.knife': return <><Line {...p} x1="8" y1="3" x2="8" y2="8" /><Line {...p} x1="11" y1="3" x2="11" y2="8" /><Path {...p} d="M9.5 8v13" /><Path {...p} d="M9.5 8c-1.4 0-2.5-.9-2.5-2" /><Path {...p} d="M16.5 3c1.4 1 2 2.6 2 4.5 0 1.6-.7 2.9-2 3.5v10" /></>;
     case 'wineglass': return <><Path {...p} d="M7.5 3h9l-.7 6.2a3.9 3.9 0 01-7.6 0L7.5 3z" /><Line {...p} x1="12" y1="13.5" x2="12" y2="20" /><Line {...p} x1="8.5" y1="20.5" x2="15.5" y2="20.5" /></>;
     case 'chart.bar': return <><Line {...p} x1="5.5" y1="20" x2="5.5" y2="13" /><Line {...p} x1="12" y1="20" x2="12" y2="7" /><Line {...p} x1="18.5" y1="20" x2="18.5" y2="10" /></>;
     case 'qrcode.viewfinder': return <><Path {...p} d="M4 8.5V6a2 2 0 012-2h2.5M15.5 4H18a2 2 0 012 2v2.5M20 15.5V18a2 2 0 01-2 2h-2.5M8.5 20H6a2 2 0 01-2-2v-2.5" /><Rect {...p} x="9" y="9" width="6" height="6" rx="1" /></>;

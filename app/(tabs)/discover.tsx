@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Pressable, ActivityIndicator } from 'react-native';
+import { View, Pressable, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -91,7 +91,13 @@ export default function Discover() {
             : null,
       }))
       .sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9))
-      .slice(0, 40);
+      // 120, not 40. The old cap existed because forty undifferentiated pins
+      // was already a wall and the map had no way to fold them — so the fix
+      // was to silently drop the forty-first nearest place, which is a real
+      // bar somebody might have been looking for. The map clusters now, so a
+      // dense city centre folds into counts instead of vanishing. Still
+      // bounded: this is a list a person browses, not a dataset.
+      .slice(0, 120);
   }, [found, localVenues, layers.been, layers.open, canAnswerOpen, visited, coords]);
 
   const liveFriends = people.filter((p) => p.liveNow && p.status === 'friend');
@@ -121,12 +127,25 @@ export default function Discover() {
 
       {/* glass search toolbar */}
       <View style={{ position: 'absolute', top: insets.top + space.sm, left: geometry.screenMargin, right: geometry.screenMargin, gap: space.m }}>
+        {/* Adding a place used to be reachable only from the zero-results
+            state of the search sheet — you had to search for something that
+            did not exist before the app would let you say it existed. It is a
+            control on the map now, where you are standing when you notice the
+            bar is missing. */}
         <Pressable onPress={() => router.push('/venue/search')} accessibilityRole="search" accessibilityLabel={t('discover.searchVenues')}>
           <Glass radius={radius.control}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m, height: 48, paddingHorizontal: space.md }}>
               <Icon name="magnifyingglass" size={18} color={color.label.secondary} />
               <Text variant="body" tone="tertiary" style={{ flex: 1 }}>{t('discover.searchPlaceholder')}</Text>
               {loading ? <ActivityIndicator size="small" color={color.label.tertiary} /> : null}
+              <Pressable
+                onPress={() => router.push('/venue/new')}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t('discover.addPlaceTitle')}
+              >
+                <Icon name="plus" size={18} color={color.label.secondary} />
+              </Pressable>
             </View>
           </Glass>
         </Pressable>
@@ -161,6 +180,18 @@ export default function Discover() {
         {peek ? (
           <Card aurora accent={color.brand.tint}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.m }}>
+              {/* Free, and usually absent. OSM carries `image` and
+                  `wikimedia_commons` on a minority of venues — common on
+                  landmarks, rare on bars — and it rides along in a response
+                  already being fetched. So this is a nice surprise where it
+                  exists rather than an empty frame everywhere it does not. */}
+              {peek.photoUrl ? (
+                <Image
+                  source={{ uri: peek.photoUrl }}
+                  style={{ width: 52, height: 52, borderRadius: 12, backgroundColor: color.surface.tertiary }}
+                  accessibilityIgnoresInvertColors
+                />
+              ) : null}
               <View style={{ flex: 1 }}>
                 <Text variant="title3">{peek.name}</Text>
                 <Text variant="subheadline" tone="secondary" style={{ marginTop: 2 }}>

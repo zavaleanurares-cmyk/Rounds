@@ -56,6 +56,23 @@ export const color = {
   /* one accent per night, so history has colour */
   night: ['#3B82F6', '#8B5CF6', '#F43F5E', '#FB923C'] as const,
 
+  /*
+   * One per kind of place on the map.
+   *
+   * The map used to show bars only, so every pin could be the same colour and
+   * carry the same wineglass. With restaurants, cafés and wine bars on it too,
+   * an undifferentiated pin is a worse map: "where can I eat" and "where can I
+   * dance" become the same question. Reused from the night accents rather than
+   * invented, so the map still looks like the rest of the app.
+   */
+  venue: {
+    bar: '#3B82F6',
+    club: '#8B5CF6',
+    wine: '#F43F5E',
+    restaurant: '#FB923C',
+    cafe: '#30D158',
+  },
+
   /* glass recipe parts (functional layer only) */
   glass: {
     fillFrom: 'rgba(255,255,255,0.17)',

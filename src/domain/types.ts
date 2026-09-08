@@ -86,6 +86,13 @@ export interface Venue {
    */
   openNow?: boolean | null;
   category: string | null;
+  /**
+   * Transient, like `openNow`: provider-supplied and never stored. OSM carries
+   * `image` and `wikimedia_commons` on a minority of venues, both free. There
+   * is no photo column server-side and no upload path — when a venue has one
+   * it shows, and when it does not the screen looks exactly as it did.
+   */
+  photoUrl?: string | null;
 }
 
 export interface Drink {

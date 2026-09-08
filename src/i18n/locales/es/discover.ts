@@ -66,8 +66,16 @@ export const discover = {
   'discover.venueName': 'Nombre',
   'discover.venueArea': 'Zona',
   'discover.venueAdded': '{name} añadido',
-  'discover.addPlaceNote':
-    'Los sitios que añades solo los ves tú, hasta que apunte allí suficiente gente.',
+  'discover.addPlaceNote': 'Solo tú ves los sitios que añades.',
   'discover.whosBeenNobody': "Todavía nadie.",
   'discover.whosBeenUnknown': "No se puede comprobar ahora.",
+  'discover.venueCategory': 'Qué tipo de sitio',
+  'discover.kindBar': 'Bar',
+  'discover.kindClub': 'Discoteca',
+  'discover.kindWine': 'Vinoteca',
+  'discover.kindRestaurant': 'Restaurante',
+  'discover.kindCafe': 'Café',
+  'discover.useMyLocation': 'Usar mi ubicación',
+  'discover.locationCaptured': 'Fijado donde estás',
+  'discover.locationUnavailable': 'Sin ubicación — se guardará igual, pero no en el mapa',
 } satisfies Record<string, Message>;

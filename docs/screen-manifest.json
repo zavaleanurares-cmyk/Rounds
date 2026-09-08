@@ -680,6 +680,7 @@
         "DrinkGlyph",
         "Glass",
         "Icon",
+        "Image",
         "Venue",
         "VenueMap"
       ],
@@ -764,7 +765,9 @@
       "components": [
         "Button",
         "Field",
-        "Sheet"
+        "Segmented",
+        "Sheet",
+        "VenueKind"
       ],
       "reads": [
         "const router = useRouter();\n  const toast = useToast();\n  const t = useT();\n  const { addVenue"
@@ -772,7 +775,7 @@
       "states": {
         "loading": false,
         "empty": false,
-        "error": false,
+        "error": true,
         "offline": false,
         "populated": true
       }

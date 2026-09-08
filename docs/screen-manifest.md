@@ -40,7 +40,7 @@ Every screen in the inventory has a route.
 | D-01 | P0 | Map | /(tabs)/discover | ✓ | ActivityIndicator, Aurora, Avatar, Button, Card, Chip |
 | D-02 | P1 | Venue detail | /venue/[id] | ✓ | Avatar, Button, Card, EmptyState, Screen, StatTile |
 | D-03 | P0 | Venue search | /venue/search | ✓ | ActivityIndicator, Button, Field, Icon, Sheet, Venue |
-| D-04 | P2 | Add venue | /venue/new | ✓ | Button, Field, Sheet |
+| D-04 | P2 | Add venue | /venue/new | ✓ | Button, Field, Segmented, Sheet, VenueKind |
 | D-05 | P1 | Bar passport | /passport | ✓ | Card, EmptyState, Icon, Screen |
 | D-06 | P1 | Plan detail | /plan/[id] | ✓ | Avatar, Button, Card, EmptyState, Icon, ProgressBar |
 | D-07 | P1 | Create plan | /plan/new | ✓ | Button, Chip, Field, Sheet |

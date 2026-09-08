@@ -68,8 +68,16 @@ export const discover = {
   'discover.venueName': 'Nume',
   'discover.venueArea': 'Zonă',
   'discover.venueAdded': 'Am adăugat {name}',
-  'discover.addPlaceNote':
-    'Localurile pe care le adaugi se văd doar de tine, până când notează destui oameni acolo.',
+  'discover.addPlaceNote': 'Doar tu vezi locurile pe care le adaugi.',
   'discover.whosBeenNobody': "Încă nimeni.",
   'discover.whosBeenUnknown': "Nu putem verifica acum.",
+  'discover.venueCategory': 'Ce fel de loc',
+  'discover.kindBar': 'Bar',
+  'discover.kindClub': 'Club',
+  'discover.kindWine': 'Vinărie',
+  'discover.kindRestaurant': 'Restaurant',
+  'discover.kindCafe': 'Cafenea',
+  'discover.useMyLocation': 'Folosește locația mea',
+  'discover.locationCaptured': 'Fixat unde ești',
+  'discover.locationUnavailable': 'Fără locație — se salvează oricum, doar că nu apare pe hartă',
 } satisfies Record<string, Message>;

@@ -406,7 +406,14 @@ export interface Store extends State {
   joinNight(code: string): Promise<remote.JoinOutcome | null>;
   /** Leaves a shared night without ending it for anybody else. */
   leaveSession(sessionId: string): void;
-  addVenue(input: { name: string; area: string | null; category: string | null }): Venue;
+  addVenue(input: {
+    name: string;
+    area: string | null;
+    category: string | null;
+    /** Optional, and the difference between a venue on the map and a row in a list. */
+    lat?: number | null;
+    lng?: number | null;
+  }): Venue;
   /**
    * Asks the named people whether they want one too.
    *
@@ -1596,8 +1603,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         providerId: null, // hand-added: it belongs to no provider and never will
         name: input.name.trim(),
         area: input.area?.trim() || null,
-        lat: null,
-        lng: null,
+        // A hand-added venue used to be pinned nowhere, because these were
+        // hard-coded null — so a place you added yourself could never appear
+        // on the map you added it from.
+        lat: input.lat ?? null,
+        lng: input.lng ?? null,
         priceBand: null,
         category: input.category,
       };

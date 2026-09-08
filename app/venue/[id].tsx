@@ -54,10 +54,21 @@ export default function VenueDetail() {
   return (
     <Screen
       title={venue.name}
-      subtitle={`${venue.category} · ${venue.area}`}
+      // Both are null on a hand-added venue, and this used to render the
+      // literal string "null · null" as the subtitle of the screen you land on
+      // straight after adding one.
+      subtitle={[venue.category, venue.area].filter(Boolean).join(' · ') || undefined}
       back
       mood="calm"
-      footer={<Button title={t('discover.startNightHere')} onPress={() => router.push('/session/start')} />}
+      // `venueId`, which the peek card on the map passes and this screen did
+      // not — so starting a night from the venue's own screen was the one path
+      // that forgot which venue you were at.
+      footer={
+        <Button
+          title={t('discover.startNightHere')}
+          onPress={() => router.push(`/session/start?venueId=${venue.id}` as never)}
+        />
+      }
     >
       {visits === 0 ? (
         <EmptyState

@@ -812,6 +812,60 @@ select t.rejects('and a round of a hundred is a typo',
 reset role;
 
 -- ------------------------------------------------------------------ summary
+/* ------------------------------------------------------ hand-added venues */
+
+-- The client sent every venue column EXCEPT `created_by`, and the insert
+-- policy is `with check (auth.uid() = created_by)`. So a venue somebody added
+-- by hand was refused on every sync, silently, and would have been invisible
+-- to its own creator even if it had landed. 00051 defaults the column to
+-- `auth.uid()`.
+--
+-- Run as `authenticated`, not as the owner of the tables: a superuser bypasses
+-- RLS entirely, and the first version of this block asserted a stranger could
+-- not see the row while running as postgres — which passed the insert and
+-- failed the isolation check for a reason that had nothing to do with the
+-- policies.
+
+select public.set_current_user(:owner);
+set role authenticated;
+
+-- The insert the client actually makes: no `created_by` column named at all.
+insert into public.venues (id, name, area, category)
+  values ('00000000-0000-0000-0000-0000000000b9', 'The Back Room', 'Cluj-Napoca', 'Bar');
+
+select t.check('a hand-added venue is stamped with its creator',
+  (select created_by = :owner::uuid from public.venues
+    where id = '00000000-0000-0000-0000-0000000000b9'), true);
+
+select t.check('and its creator can read it back while it is unconfirmed',
+  (select count(*) = 1 from public.venues
+    where id = '00000000-0000-0000-0000-0000000000b9'), true);
+
+-- An upsert is an UPDATE when the row exists, and there was no update policy
+-- at all — so correcting a typo in your own venue was refused just as quietly.
+update public.venues set area = 'Cluj' where id = '00000000-0000-0000-0000-0000000000b9';
+select t.check('and can correct a typo in it, which an upsert needs',
+  (select area = 'Cluj' from public.venues
+    where id = '00000000-0000-0000-0000-0000000000b9'), true);
+
+select public.set_current_user(:strang);
+select t.check('a stranger does not see an unconfirmed venue',
+  (select count(*) = 0 from public.venues
+    where id = '00000000-0000-0000-0000-0000000000b9'), true);
+
+-- Not `t.rejects`: an UPDATE against a row RLS hides is not an error, it
+-- matches nothing. Silence is the correct behaviour and this is how you prove
+-- it — by looking at the row afterwards, as somebody who can see it.
+update public.venues set name = 'Mine now'
+  where id = '00000000-0000-0000-0000-0000000000b9';
+
+select public.set_current_user(:owner);
+select t.check('and a stranger writing to it changes nothing',
+  (select name = 'The Back Room' from public.venues
+    where id = '00000000-0000-0000-0000-0000000000b9'), true);
+
+reset role;
+
 select count(*) filter (where ok) as passed,
        count(*) filter (where not ok) as failed,
        count(*) as total
