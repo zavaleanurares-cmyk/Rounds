@@ -1386,6 +1386,39 @@ describe('the provider token exchange carries its nonce', () => {
   });
 });
 
+describe('the share card is reachable', () => {
+  /**
+   * `app/share/[sessionId].tsx` was finished — it captures the card with
+   * `react-native-view-shot`, writes a PNG and hands it to the native share
+   * sheet — and **nothing in the app linked to it**. A complete feature behind
+   * a route no screen pushed. That is the same failure as `793b915`, and it is
+   * invisible to every check here: the route exists, so the manifest is happy;
+   * the screen compiles, so typecheck is happy; nothing imports it, so no test
+   * ever ran it.
+   *
+   * It matters more than most: the morning recap is the one surface that fires
+   * on a schedule the product controls rather than one the user's social life
+   * controls, and the share card is the only thing in the app built to leave it.
+   *
+   * Asserted from the route side rather than the screen side — the question is
+   * "can a person get here", and any screen linking to it answers that.
+   */
+  it('some screen pushes the share route', () => {
+    const linked = APP.filter(
+      (f) => !f.includes('share') && /router\.push\(`\/share\/\$\{/.test(code(f))
+    );
+    expect({ screensLinkingToShare: linked.length > 0 }).toEqual({
+      screensLinkingToShare: true,
+    });
+  });
+
+  it('specifically, the morning recap does', () => {
+    // The recap is where a night ends and the only moment the card is worth
+    // anything. Reachable from Settings would pass the test above and miss it.
+    expect(code('app/morning/[sessionId].tsx')).toMatch(/\/share\/\$\{/);
+  });
+});
+
 describe('nothing lands at the repository root by accident', () => {
   /**
    * `e220ad6` committed a file called `appended` to the root: 312 lines that

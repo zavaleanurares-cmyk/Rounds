@@ -219,6 +219,12 @@ export default function MorningAfter() {
 
         <View style={{ gap: space.m, marginTop: space.sm }}>
           <Button title={t('morning.seeTheFullNight')} kind="glass" onPress={() => router.replace(`/session/${session.id}` as never)} />
+          {/*
+            `push`, not `replace`: the share card is a detour from the recap and
+            back should return here. The other two buttons end the recap, which
+            is why they replace.
+          */}
+          <Button title={t('stats.shareTitle')} kind="glass" onPress={() => router.push(`/share/${session.id}` as never)} />
           <Button title={t('ui.done')} onPress={() => router.replace('/(tabs)/tonight')} />
         </View>
       </ScrollView>
