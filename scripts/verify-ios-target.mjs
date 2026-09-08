@@ -26,7 +26,6 @@
  * says which part is missing rather than "no PlugIns directory".
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
