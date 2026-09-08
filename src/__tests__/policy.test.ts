@@ -1134,8 +1134,20 @@ describe('the native build', () => {
     const workflow = readFileSync('.github/workflows/ios.yml', 'utf8');
     expect(workflow).not.toContain('Xcode_16.2.app');
     expect(workflow.match(/runs-on: macos-\d+/g)).toEqual(['runs-on: macos-26', 'runs-on: macos-26']);
-    // Both select the newest Xcode present rather than whatever is default.
-    expect(workflow.match(/xcode-select -s/g)).toHaveLength(2);
+
+    // Counting keywords is not the check. This assertion used to require two
+    // `runs-on: macos-26` and two `xcode-select -s`, and it passed on a tree
+    // where one job asserted a Swift floor and the other did not — the two
+    // jobs differed by the guard that exists to make the failure legible,
+    // and the
+    // assertion named after their sameness said nothing. Compare the steps.
+    const steps = [...workflow.matchAll(/\n      - name: Xcode\n        run: \|\n([\s\S]*?)(?=\n      (?:- |# ))/g)]
+      .map((m) => m[1]);
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toEqual(steps[1]);
+    // And what they contain is a selection and a floor, not just a print.
+    expect(steps[0]).toContain('xcode-select -s');
+    expect(steps[0]).toContain('SWIFT_FLOOR=');
   });
 
   it('CI proves the extension is embedded, rather than reporting that it is not', () => {

@@ -169,6 +169,19 @@ jobs:
           xcodebuild -version
           swift --version
 
+          # Say it here, in one line, rather than two minutes later inside a
+          # package-resolution error. SWIFT_FLOOR is the version the graph
+          # actually demanded; raise it when something demands more.
+          SWIFT_FLOOR=6.2
+          have=$(swift --version 2>&1 | grep -oE 'Swift version [0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          if [ -z "$have" ]; then
+            echo "::error::could not read the Swift version from this toolchain"; exit 1
+          fi
+          if [ "$(printf '%s\n%s\n' "$SWIFT_FLOOR" "$have" | sort -V | head -1)" != "$SWIFT_FLOOR" ]; then
+            echo "::error::this runner has Swift $have; the dependency graph needs $SWIFT_FLOOR or newer. Use a newer macOS runner image."
+            exit 1
+          fi
+
       # Deliberately WITHOUT the escape hatch: the plugin creates the widget
       # extension target here, or the job fails.
       - name: Prebuild, widgets required
