@@ -2,6 +2,7 @@ import type { Message } from '../../types';
 
 export const discover = {
   'discover.searchVenues': 'Caută localuri',
+  'discover.mapProjected': 'Hartă simplificată — doar puncte. Harta completă cere aplicația pe telefon.',
   'discover.searchPlaceholder': 'Caută baruri și cluburi',
   // The three filter chips. "Deja vizitate" agrees with the localuri it
   // filters, never with the reader.

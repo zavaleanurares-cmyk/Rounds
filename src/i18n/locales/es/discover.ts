@@ -2,6 +2,7 @@ import type { Message } from '../../types';
 
 export const discover = {
   'discover.searchVenues': 'Busca sitios',
+  'discover.mapProjected': 'Mapa simplificado — solo puntos. El mapa completo necesita la app en un teléfono.',
   'discover.searchPlaceholder': 'Busca bares y discotecas',
   // The three filter chips. "Ya visitados" agrees with the sitios it filters,
   // never with the reader.

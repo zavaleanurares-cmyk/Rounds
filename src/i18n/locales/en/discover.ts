@@ -3,6 +3,7 @@ import type { Message } from '../../types';
 /** D-01 · Map: search, layer chips, the venue peek and the location states. */
 export const discover = {
   'discover.searchVenues': 'Search venues',
+  'discover.mapProjected': 'Simplified map — pins only. The full map needs the app on a phone.',
   'discover.searchPlaceholder': 'Search bars and clubs',
   'discover.filterFriends': 'Friends out',
   'discover.filterBeen': 'Been here',

@@ -2,6 +2,7 @@ import type { Message } from '../../types';
 
 export const discover = {
   'discover.searchVenues': 'Chercher des lieux',
+  'discover.mapProjected': "Carte simplifiée — repères seulement. La carte complète demande l'application sur téléphone.",
   'discover.searchPlaceholder': 'Cherche des bars et des clubs',
   // The three filter chips. "Déjà visités" agrees with the lieux it filters,
   // never with the reader.

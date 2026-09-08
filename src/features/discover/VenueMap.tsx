@@ -162,6 +162,7 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
 
 function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset }: VenueMapProps) {
   const { width, height } = useWindowDimensions();
+  const tProjected = useT()('discover.mapProjected');
 
   const bounds = useMemo(() => {
     const pts = venues.filter((v) => v.venue.lat != null && v.venue.lng != null);
@@ -187,6 +188,20 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset 
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {/*
+        Say what this is.
+
+        Without a line of explanation a screen of floating dots reads as a map
+        that failed to load — which is exactly the conclusion a person draws,
+        and `useLocation` in this repo already makes the same point about
+        silently degraded features. It is not only the browser that lands here:
+        so does any device without Play services.
+      */}
+      <View style={{ position: 'absolute', top: topInset + 110, left: 0, right: 0, alignItems: 'center' }} pointerEvents="none">
+        <Text variant="caption1" tone="quaternary" style={{ textAlign: 'center', paddingHorizontal: 24 }}>
+          {tProjected}
+        </Text>
+      </View>
       {venues.map(({ venue }) => {
         if (venue.lat == null || venue.lng == null) return null;
         const p = project(venue.lat, venue.lng);
