@@ -4,7 +4,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Text, Button, Card, useToast } from '@/ui';
 import { useStore } from '@/data/store';
 import {
-  appleAvailable, emailSignInReason, signInWithApple, signInWithGoogle, signInWithGoogleRedirect,
+  appleAvailable, createAccountWithPassword, emailSignInReason, MIN_PASSWORD,
+  signInWithApple, signInWithGoogle, signInWithGoogleRedirect, signInWithPassword,
   providerRedirectSupported, useGoogleAuthRequest,
 } from '@/services/auth';
 import { track } from '@/services/analytics';
@@ -32,8 +33,11 @@ export default function SignIn() {
   const google = useGoogleAuthRequest();
 
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  /** Codes by default; a password is opt-in, per screen, and never remembered. */
+  const [authMode, setAuthMode] = useState<'code' | 'password'>('code');
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'email' | 'apple' | 'google' | null>(null);
+  const [busy, setBusy] = useState<'email' | 'apple' | 'google' | 'password' | null>(null);
 
   const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 
@@ -57,6 +61,38 @@ export default function SignIn() {
     } finally {
       setBusy(null);
     }
+  };
+
+  /**
+   * Sign in, or create the account, with a password.
+   *
+   * Two explicit buttons rather than one that guesses. GoTrue cannot tell a
+   * wrong password from an address with no account — on purpose, so nobody can
+   * enumerate who has one — so a single button would have to choose which of
+   * those to do on the person's behalf, and would sometimes create an account
+   * for somebody who simply mistyped.
+   */
+  const withPassword = async (intent: 'signIn' | 'create') => {
+    if (!valid) {
+      setError(t('auth.invalidEmail'));
+      return;
+    }
+    if (password.length < MIN_PASSWORD) {
+      setError(t('auth.passwordTooShort'));
+      return;
+    }
+    setBusy('password');
+    setError(null);
+    const result =
+      intent === 'create'
+        ? await createAccountWithPassword(email.trim(), password)
+        : await signInWithPassword(email.trim(), password);
+    setBusy(null);
+    if (!result.ok) {
+      setError(result.reason ? t(result.reason) : t('auth.providerFailed'));
+      return;
+    }
+    await signInWithProvider(result);
   };
 
   const provider = async (which: 'apple' | 'google') => {
@@ -148,8 +184,64 @@ export default function SignIn() {
         {error ? (
           <Text variant="footnote" color={color.safety} style={{ marginTop: space.sm }}>{error}</Text>
         ) : null}
-        <View style={{ marginTop: space.md }}>
-          <Button title={t('auth.sendMeACode')} onPress={submit} loading={busy === 'email'} disabled={!valid} />
+        {authMode === 'password' ? (
+          <TextInput
+            value={password}
+            onChangeText={(v) => {
+              setPassword(v);
+              setError(null);
+            }}
+            placeholder={t('auth.passwordHint')}
+            placeholderTextColor={color.label.quaternary}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="current-password"
+            accessibilityLabel={t('auth.passwordLabel')}
+            style={{
+              marginTop: space.sm,
+              height: 50,
+              borderRadius: radius.control,
+              backgroundColor: color.surface.secondary,
+              borderWidth: 1,
+              borderColor: error ? color.safety : color.separator,
+              paddingHorizontal: space.md,
+              color: color.label.primary,
+              fontSize: 17,
+            }}
+            onSubmitEditing={() => void withPassword('signIn')}
+            returnKeyType="go"
+          />
+        ) : null}
+
+        <View style={{ marginTop: space.md, gap: space.m }}>
+          {authMode === 'code' ? (
+            <Button title={t('auth.sendMeACode')} onPress={submit} loading={busy === 'email'} disabled={!valid} />
+          ) : (
+            <>
+              <Button
+                title={t('auth.signIn')}
+                onPress={() => void withPassword('signIn')}
+                loading={busy === 'password'}
+                disabled={!valid || password.length < MIN_PASSWORD}
+              />
+              <Button
+                title={t('auth.createAccount')}
+                kind="glass"
+                onPress={() => void withPassword('create')}
+                disabled={!valid || password.length < MIN_PASSWORD}
+              />
+            </>
+          )}
+          <Button
+            title={authMode === 'code' ? t('auth.usePassword') : t('auth.useCodeInstead')}
+            kind="plain"
+            compact
+            onPress={() => {
+              setAuthMode(authMode === 'code' ? 'password' : 'code');
+              setPassword('');
+              setError(null);
+            }}
+          />
         </View>
       </Card>
 

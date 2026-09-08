@@ -26,10 +26,14 @@ import { readFileSync } from 'node:fs';
  */
 jest.mock('@/data/remote', () => ({
   signInWithIdToken: jest.fn().mockResolvedValue(null),
+  signInWithPassword: jest.fn().mockResolvedValue(null),
+  signUpWithPassword: jest.fn().mockResolvedValue({ session: null, needsConfirmation: false }),
 }));
 
 // eslint-disable-next-line import/first
-import { emailSignInReason, signInWithGoogle } from '@/services/auth';
+import {
+  createAccountWithPassword, emailSignInReason, MIN_PASSWORD, passwordReason, signInWithGoogle,
+} from '@/services/auth';
 
 /** The shape `expo-web-browser` throws: a CodedError carries `code`. */
 const coded = (code: string, message = code) => Object.assign(new Error(message), { code });
@@ -153,5 +157,56 @@ describe('the email code failure says what actually happened', () => {
   it('and neither is nothing at all', () => {
     expect(emailSignInReason(null)).toBe('common.authDidNotGoThrough');
     expect(emailSignInReason(new Error('offline'))).toBe('common.authDidNotGoThrough');
+  });
+});
+
+describe('passwords say what actually went wrong', () => {
+  /**
+   * GoTrue answers "Invalid login credentials" both for a wrong password and
+   * for an address with no account, deliberately — telling them apart would let
+   * anyone enumerate who has an account here. So one message has to cover both,
+   * and it has to be true of both: the pair does not match.
+   */
+  it('a wrong password and an unknown account get the same, honest message', () => {
+    expect(passwordReason({ status: 400, message: 'Invalid login credentials' }))
+      .toBe('auth.wrongPassword');
+  });
+
+  it('an address that already has an account says so', () => {
+    expect(passwordReason({ code: 'user_already_exists' })).toBe('auth.accountExists');
+    expect(passwordReason({ message: 'User already registered' })).toBe('auth.accountExists');
+  });
+
+  it('a rate limit is still a rate limit here too', () => {
+    expect(passwordReason({ status: 429 })).toBe('auth.rateLimited');
+  });
+
+  it('anything else does not invent a cause', () => {
+    expect(passwordReason({ status: 500, message: 'Error sending confirmation email' }))
+      .toBe('common.authDidNotGoThrough');
+    expect(passwordReason(null)).toBe('common.authDidNotGoThrough');
+  });
+
+  it('a short password never reaches the network', async () => {
+    const remote = require('@/data/remote');
+    remote.signUpWithPassword.mockClear();
+
+    const result = await createAccountWithPassword('a@b.co', 'short');
+
+    expect(result.reason).toBe('auth.passwordTooShort');
+    expect(remote.signUpWithPassword).not.toHaveBeenCalled();
+  });
+
+  it('an unconfirmed new account is not treated as signed in', async () => {
+    // Supabase returns a user and NO session when email confirmation is on.
+    // Reporting `ok` there leaves somebody with no account and a UI insisting
+    // they have one.
+    const remote = require('@/data/remote');
+    remote.signUpWithPassword.mockResolvedValueOnce({ session: null, needsConfirmation: true });
+
+    const result = await createAccountWithPassword('a@b.co', 'x'.repeat(MIN_PASSWORD));
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('auth.checkYourEmail');
   });
 });

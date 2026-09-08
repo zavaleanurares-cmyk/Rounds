@@ -1005,6 +1005,37 @@ export async function currentSession(): Promise<AuthSession | null> {
   return data.session ?? null;
 }
 
+/**
+ * Password sign-in, for people who would rather have one.
+ *
+ * The app was built without passwords on purpose and the reasons still hold —
+ * a password is one more thing to lose, reuse, and phish, and the reset path
+ * runs back through email anyway, so it removes no dependency. It is offered
+ * because plenty of people simply prefer one and will not use an app that
+ * makes them wait for a code every time, not because it is more secure.
+ */
+export async function signInWithPassword(email: string, password: string) {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.session;
+}
+
+/**
+ * Creating one. Whether a session comes straight back depends on the project:
+ * with email confirmation on, Supabase returns a user and no session until the
+ * address is confirmed, and the caller has to say so rather than pretending
+ * somebody is signed in.
+ */
+export async function signUpWithPassword(email: string, password: string) {
+  const supabase = getClient();
+  if (!supabase) return { session: null, needsConfirmation: false };
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  return { session: data.session, needsConfirmation: data.session === null };
+}
+
 /** Age is verified and stored SERVER-side, so a reinstall cannot reset it. */
 export async function verifyAge(dob: string): Promise<boolean | null> {
   const supabase = getClient();

@@ -21,6 +21,16 @@ export const auth = {
   'auth.email': 'E-mail',
   'auth.emailLabel': 'Adresă de e-mail',
   'auth.sendMeACode': 'Trimite-mi un cod',
+
+  // A-02b · Password, for people who would rather have one
+  'auth.usePassword': 'Folosește o parolă',
+  'auth.useCodeInstead': 'Trimite-mi un cod pe e-mail',
+  'auth.passwordLabel': 'Parolă',
+  'auth.passwordHint': 'Cel puțin 8 caractere',
+  'auth.createAccount': 'Creează un cont',
+  'auth.passwordTooShort': 'Folosește cel puțin 8 caractere.',
+  'auth.wrongPassword': 'E-mailul și parola nu se potrivesc.',
+  'auth.accountExists': 'Există deja un cont cu acest e-mail. Conectează-te.',
   'auth.invalidEmail': 'Nu prea arată a adresă de e-mail.',
   'auth.rateLimited': 'Prea multe încercări. Încearcă din nou într-un minut.',
   'auth.providerFailed': 'Nu a mers.',

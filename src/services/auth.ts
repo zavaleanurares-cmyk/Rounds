@@ -206,6 +206,65 @@ function popupWasBlocked(err: unknown): boolean {
   return (err as { code?: string })?.code === 'ERR_WEB_BROWSER_BLOCKED';
 }
 
+/** Short enough to be memorable, long enough to be worth having. */
+export const MIN_PASSWORD = 8;
+
+/**
+ * What went wrong with a password, said accurately.
+ *
+ * GoTrue answers "Invalid login credentials" for a wrong password AND for an
+ * address with no account, deliberately — telling them apart would let anyone
+ * enumerate who has an account here. So the message says the pair does not
+ * match, which is the only honest thing that covers both.
+ */
+export function passwordReason(err: unknown): MessageKey {
+  const e = err as { status?: number; code?: string; message?: string } | null;
+  const msg = e?.message ?? '';
+  if (e?.code === 'user_already_exists' || /already registered|already exists/i.test(msg)) {
+    return 'auth.accountExists';
+  }
+  if (/invalid login credentials|invalid credentials/i.test(msg)) return 'auth.wrongPassword';
+  if (e?.status === 429 || e?.code === 'over_email_send_rate_limit') return 'auth.rateLimited';
+  if (/password/i.test(msg) && /short|least|weak/i.test(msg)) return 'auth.passwordTooShort';
+  return 'common.authDidNotGoThrough';
+}
+
+const asResult = (session: { user: { id: string; email?: string | null } } | null): SignInResult =>
+  session
+    ? { ok: true, userId: session.user.id, email: session.user.email ?? null }
+    // No backend configured: the credentials were real, there is just nothing
+    // to exchange them with. Same shape as the provider paths above.
+    : { ok: true };
+
+export async function signInWithPassword(email: string, password: string): Promise<SignInResult> {
+  try {
+    return asResult(await remote.signInWithPassword(email, password));
+  } catch (err: unknown) {
+    if (__DEV__) console.warn('[auth] password sign-in failed', err);
+    return { ok: false, reason: passwordReason(err) };
+  }
+}
+
+export async function createAccountWithPassword(
+  email: string,
+  password: string
+): Promise<SignInResult> {
+  if (password.length < MIN_PASSWORD) {
+    return { ok: false, reason: 'auth.passwordTooShort' };
+  }
+  try {
+    const { session, needsConfirmation } = await remote.signUpWithPassword(email, password);
+    // An account that exists but is unconfirmed is not a signed-in person, and
+    // saying otherwise is how somebody ends up with no account and a UI that
+    // insists they have one.
+    if (needsConfirmation) return { ok: false, reason: 'auth.checkYourEmail' };
+    return asResult(session);
+  } catch (err: unknown) {
+    if (__DEV__) console.warn('[auth] account creation failed', err);
+    return { ok: false, reason: passwordReason(err) };
+  }
+}
+
 /**
  * Why the email code did not send — as far as it can honestly be known.
  *

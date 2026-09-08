@@ -21,6 +21,16 @@ export const auth = {
   'auth.email': 'Email',
   'auth.emailLabel': 'Email address',
   'auth.sendMeACode': 'Send me a code',
+
+  // A-02b · Password, for people who would rather have one
+  'auth.usePassword': 'Use a password',
+  'auth.useCodeInstead': 'Email me a code instead',
+  'auth.passwordLabel': 'Password',
+  'auth.passwordHint': 'At least 8 characters',
+  'auth.createAccount': 'Create an account',
+  'auth.passwordTooShort': 'Use at least 8 characters.',
+  'auth.wrongPassword': "That email and password don't match.",
+  'auth.accountExists': 'There is already an account with this email. Sign in instead.',
   'auth.invalidEmail': "That doesn't look like an email address.",
   'auth.rateLimited': 'Too many attempts. Try again in a minute.',
   'auth.providerFailed': "That didn't go through.",

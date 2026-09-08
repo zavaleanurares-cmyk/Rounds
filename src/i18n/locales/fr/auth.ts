@@ -23,6 +23,16 @@ export const auth = {
   'auth.email': 'E-mail',
   'auth.emailLabel': 'Adresse e-mail',
   'auth.sendMeACode': 'Envoie-moi un code',
+
+  // A-02b · Password, for people who would rather have one
+  'auth.usePassword': 'Utiliser un mot de passe',
+  'auth.useCodeInstead': 'Envoie-moi plutôt un code',
+  'auth.passwordLabel': 'Mot de passe',
+  'auth.passwordHint': 'Au moins 8 caractères',
+  'auth.createAccount': 'Créer un compte',
+  'auth.passwordTooShort': 'Utilise au moins 8 caractères.',
+  'auth.wrongPassword': "L'e-mail et le mot de passe ne correspondent pas.",
+  'auth.accountExists': 'Un compte existe déjà avec cet e-mail. Connecte-toi.',
   'auth.invalidEmail': "Ça ne ressemble pas à une adresse e-mail.",
   'auth.rateLimited': "Trop d'essais. Réessaie dans une minute.",
   'auth.providerFailed': "Ça n'a pas marché.",
