@@ -1386,6 +1386,70 @@ describe('the provider token exchange carries its nonce', () => {
   });
 });
 
+describe('pgcrypto is reachable from every function that calls it', () => {
+  /**
+   * Signup was broken on the deployed project from the first day, and this
+   * suite, the RLS matrix and CI were all green throughout.
+   *
+   * `create extension pgcrypto` puts the functions in `public` on a stock
+   * Postgres — which is what `supabase/tests/run.sh` and the CI service
+   * container are — and in a schema called `extensions` on Supabase. Every
+   * SECURITY DEFINER function here pins `search_path = public`, correctly,
+   * because a mutable search_path on a definer function is an escalation
+   * route. On Supabase that pin excludes the only schema the extension lives
+   * in, and `gen_random_bytes` stops existing at runtime.
+   *
+   * The trigger on `auth.users` is one of the callers, so the failure lands on
+   * "Database error saving new user" for every person who has ever tried to
+   * sign up. Nothing here could see it: the harness and production differ in
+   * precisely the one way that matters, so the environment that ran the
+   * assertions was the environment where the bug does not exist.
+   *
+   * 00052 fixes the three, and this keeps the fourth from being written.
+   */
+  const PGCRYPTO = /gen_random_bytes|gen_salt\s*\(|crypt\s*\(|digest\s*\(|hmac\s*\(/;
+
+  const migrations = readdirSync('supabase/migrations')
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => ({ file: f, sql: read(join('supabase/migrations', f)) }));
+
+  /** Function names whose body reaches into pgcrypto. */
+  const needsExtensions = new Set<string>();
+  /** Names given `extensions` on their search_path, by definition or by ALTER. */
+  const covered = new Set<string>();
+
+  for (const { sql } of migrations) {
+    // Each definition runs to the start of the next one; good enough to tell
+    // which body a call sits in, which is all this needs to know.
+    const defs = [...sql.matchAll(/create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi)];
+    defs.forEach((m, i) => {
+      const body = sql.slice(m.index!, defs[i + 1]?.index ?? sql.length);
+      if (PGCRYPTO.test(body)) needsExtensions.add(m[1]);
+      if (/set\s+search_path[^;\n]*extensions/i.test(body)) covered.add(m[1]);
+    });
+
+    for (const m of sql.matchAll(
+      /alter\s+function\s+public\.(\w+)\s*\([^)]*\)\s*set\s+search_path[^;]*extensions/gi
+    )) {
+      covered.add(m[1]);
+    }
+  }
+
+  it('finds the callers at all — the test is worthless if the regex misses', () => {
+    expect([...needsExtensions].sort()).toEqual(
+      ['dedupe_join_code', 'ensure_join_code', 'handle_new_user'].sort()
+    );
+  });
+
+  it('every one of them can resolve pgcrypto on Supabase', () => {
+    const unreachable = [...needsExtensions].filter((fn) => !covered.has(fn));
+    expect({ functionsThatWouldFailOnSupabase: unreachable }).toEqual({
+      functionsThatWouldFailOnSupabase: [],
+    });
+  });
+});
+
 describe('the share card is reachable', () => {
   /**
    * `app/share/[sessionId].tsx` was finished — it captures the card with
