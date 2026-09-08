@@ -4,6 +4,13 @@ import { useRouter } from 'expo-router';
 import { Screen, Card, Text, Button, Sparkline, EmptyState, StatTile } from '@/ui';
 import { useStore } from '@/data/store';
 import { weekTotals, spendTotals, summariseNights, hangoverForecast } from '@/domain/stats';
+import {
+  nicotineThisWeek,
+  pouchMgThisWeek,
+  nicotineFreeDays,
+  isNicotine,
+  NICOTINE_PRODUCTS,
+} from '@/domain/nicotine';
 import { gramsToUnits, UNIT_LABEL } from '@/domain/units';
 import { useT, useFormat, type MessageKey, type TranslateFn } from '@/i18n';
 import { color, space } from '@/design/tokens';
@@ -48,6 +55,24 @@ export default function Insights() {
   const t = useT();
   const f = useFormat();
   const { logs, profile, settings, venues, plus } = useStore();
+
+  // Nicotine, computed by the domain rather than here. `pouchMgThisWeek` is
+  // pouches only and `nicotineFreeDays` counts night keys, not calendar days,
+  // because this app's day ends at 04:00 — both decisions are documented where
+  // they live and neither should be re-derived on a screen.
+  const nicWeek = useMemo(() => nicotineThisWeek(logs), [logs]);
+  const nicPouchMg = useMemo(() => pouchMgThisWeek(logs), [logs]);
+  const nicFree = useMemo(() => nicotineFreeDays(logs), [logs]);
+  const nicSmoked = useMemo(
+    () =>
+      logs.some(
+        (l) =>
+          !l.deleted &&
+          isNicotine(l) &&
+          NICOTINE_PRODUCTS.some((p) => p.id === l.drinkId && p.mg === null)
+      ),
+    [logs]
+  );
   const system = profile?.unitSystem ?? 'EU';
 
   // `cutoff` is computed INSIDE the memo. As a dependency it was a new number on
@@ -198,6 +223,65 @@ export default function Insights() {
           {t('stats.morningTuneNote')}
         </Text>
       </Card>
+
+      {/*
+        Nicotine, for people who turned the module on.
+
+        It was absent from every aggregation on this screen — `summariseNights`
+        has no nicotine branch, and a nicotine log has `ethanolG === 0` and a
+        category that is not water, so it falls through both arms and counts as
+        nothing. The only place it was ever totalled was its own screen, which
+        nothing linked to.
+
+        The numbers come from `@/domain/nicotine` rather than being recomputed
+        here, because the rules live with them: `pouchMgThisWeek` sums pouches
+        ONLY, and the milligram figure is shown with its own caption saying so.
+        A total that quietly mixed in a per-cigarette number would be inventing
+        a figure EU rules took off the packaging. Counting is the honest
+        measure for smoked products, and that is what the first tile is.
+      */}
+      {profile?.modules.nicotine && nicWeek > 0 ? (
+        <Card>
+          <Text variant="sectionHeader" tone="tertiary">{t('stats.nicotine')}</Text>
+          <View style={{ flexDirection: 'row', gap: space.m, marginTop: space.m }}>
+            <StatTile
+              label={t('stats.thisWeek')}
+              value={f.number(nicWeek, 0)}
+              caption={t('stats.logged')}
+              icon="flame"
+            />
+            <StatTile
+              label={t('stats.freeStreak')}
+              value={f.number(nicFree, 0)}
+              caption={t('stats.days')}
+              icon="checkmark.shield"
+            />
+          </View>
+          {nicPouchMg > 0 ? (
+            <View style={{ marginTop: space.m }}>
+              <Text variant="sectionHeader" tone="tertiary">{t('stats.pouchMgHeader')}</Text>
+              <Text variant="title2" style={{ marginTop: 2 }}>
+                {t('stats.pouchMgValue', { mg: f.number(nicPouchMg, 1) })}
+              </Text>
+              <Text variant="footnote" tone="tertiary" style={{ marginTop: 2 }}>
+                {t('stats.pouchMgNote')}
+              </Text>
+            </View>
+          ) : null}
+          {nicSmoked ? (
+            <Text variant="footnote" tone="tertiary" style={{ marginTop: space.m }}>
+              {t('stats.noYieldNote')}
+            </Text>
+          ) : null}
+          <Button
+            title={t('stats.nicotine')}
+            kind="glass"
+            icon="flame"
+            onPress={() => router.push('/nicotine')}
+            style={{ marginTop: space.m }}
+          />
+        </Card>
+      ) : null}
 
     </Screen>
   );

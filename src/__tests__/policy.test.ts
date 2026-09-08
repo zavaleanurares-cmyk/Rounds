@@ -1191,6 +1191,47 @@ describe('a sheet scrolls, and only once', () => {
   });
 });
 
+describe('the nicotine module is reachable and counted', () => {
+  /**
+   * The whole feature existed and could not be opened. Domain, store action,
+   * the `nicotine_mg` column with its 20 mg constraint, sync in both
+   * directions, the goal ring — all present and tested — while **no screen in
+   * the app navigated to `/nicotine`**. It was reachable by deep link and by
+   * nothing else, and `scripts/build-manifest.mjs` said the route existed,
+   * which is a different claim.
+   *
+   * A screen nothing links to is a screen nobody has.
+   */
+  it('some screen navigates to /nicotine', () => {
+    const linked = APP.filter((f) => /router\.push\('\/nicotine'\)/.test(code(f)));
+    expect({ screensLinkingToNicotine: linked.length > 0 }).toEqual({
+      screensLinkingToNicotine: true,
+    });
+  });
+
+  it('the live night offers it, which is when it is needed', () => {
+    const live = code('src/features/tonight/TonightLive.tsx');
+    expect(live).toContain("router.push('/nicotine')");
+    // Gated on the module, which is off by default. The drink sheet stays a
+    // grid of drinks for the seven people in ten who do not smoke.
+    expect(live).toContain('profile?.modules.nicotine');
+  });
+
+  it('insights aggregates it, and delegates the rules', () => {
+    // It was absent from every aggregation: a nicotine log has ethanolG === 0
+    // and a non-water category, so `summariseNights` counts it as nothing.
+    const insights = code('app/insights.tsx');
+    expect(insights).toContain('nicotineThisWeek');
+    expect(insights).toContain('nicotineFreeDays');
+    // Pouch milligrams come from the domain, never re-summed on the screen —
+    // that function is where "pouches only" is enforced.
+    expect(insights).toContain('pouchMgThisWeek');
+    expect(insights).not.toMatch(/nicotineMg\s*\?\?\s*0/);
+    // And the smoked products carry their reason rather than a made-up figure.
+    expect(insights).toContain('stats.noYieldNote');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

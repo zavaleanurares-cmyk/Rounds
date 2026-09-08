@@ -1375,6 +1375,7 @@
       "source": "app/insights.tsx",
       "built": true,
       "components": [
+        "Button",
         "Card",
         "EmptyState",
         "Screen",
