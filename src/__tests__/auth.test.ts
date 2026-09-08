@@ -29,7 +29,7 @@ jest.mock('@/data/remote', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { signInWithGoogle } from '@/services/auth';
+import { emailSignInReason, signInWithGoogle } from '@/services/auth';
 
 /** The shape `expo-web-browser` throws: a CodedError carries `code`. */
 const coded = (code: string, message = code) => Object.assign(new Error(message), { code });
@@ -120,5 +120,38 @@ describe('the failure is not swallowed', () => {
     await signInWithGoogle(() => Promise.reject(err));
 
     expect(warn).toHaveBeenCalledWith('[auth] Google sign-in failed', err);
+  });
+});
+
+describe('the email code failure says what actually happened', () => {
+  /**
+   * This screen answered every failure with "Too many attempts. Try again in a
+   * minute." A rate limit is one of the rarer things that goes wrong here; a
+   * refused user insert and a rejected SMTP sender both arrived wearing the
+   * same sentence, and the only actionable part of it — wait a minute — was
+   * the part that was certainly wrong.
+   */
+  it('a 429 really is a rate limit', () => {
+    expect(emailSignInReason({ status: 429 })).toBe('auth.rateLimited');
+  });
+
+  it("GoTrue's own code for it counts too", () => {
+    expect(emailSignInReason({ code: 'over_email_send_rate_limit' })).toBe('auth.rateLimited');
+  });
+
+  it('a database error is not a rate limit', () => {
+    // The real one, verbatim, from the deployed project.
+    expect(emailSignInReason({ status: 500, message: 'Database error saving new user' }))
+      .toBe('common.authDidNotGoThrough');
+  });
+
+  it('a failing mail provider is not a rate limit either', () => {
+    expect(emailSignInReason({ status: 500, message: 'Error sending confirmation email' }))
+      .toBe('common.authDidNotGoThrough');
+  });
+
+  it('and neither is nothing at all', () => {
+    expect(emailSignInReason(null)).toBe('common.authDidNotGoThrough');
+    expect(emailSignInReason(new Error('offline'))).toBe('common.authDidNotGoThrough');
   });
 });

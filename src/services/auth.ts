@@ -207,6 +207,30 @@ function popupWasBlocked(err: unknown): boolean {
 }
 
 /**
+ * Why the email code did not send — as far as it can honestly be known.
+ *
+ * The sign-in screen used to answer this question with `catch {}` and a single
+ * string: "Too many attempts. Try again in a minute." It is the right sentence
+ * for a rate limit and a lie for everything else, and everything else is what
+ * kept happening. A database trigger that refused to create the user, and later
+ * an SMTP provider rejecting the sender, both arrived as "too many attempts" —
+ * so the one number a person could act on, the minute they were told to wait,
+ * was the only part guaranteed to be wrong.
+ *
+ * GoTrue is specific when it is rate limiting: HTTP 429, and an `error_code` of
+ * `over_email_send_rate_limit`. Anything else is not a rate limit, whatever it
+ * is, and saying so plainly beats inventing a cause.
+ */
+export function emailSignInReason(err: unknown): MessageKey {
+  const e = err as { status?: number; code?: string; message?: string } | null;
+  const rateLimited =
+    e?.status === 429 ||
+    e?.code === 'over_email_send_rate_limit' ||
+    /rate limit/i.test(e?.message ?? '');
+  return rateLimited ? 'auth.rateLimited' : 'common.authDidNotGoThrough';
+}
+
+/**
  * Web takes the redirect road; native keeps the id_token one.
  *
  * On native, `useIdTokenAuthRequest` is right: the system browser opens, there

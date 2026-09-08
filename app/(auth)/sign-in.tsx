@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Text, Button, Card, useToast } from '@/ui';
 import { useStore } from '@/data/store';
 import {
-  appleAvailable, signInWithApple, signInWithGoogle, signInWithGoogleRedirect,
+  appleAvailable, emailSignInReason, signInWithApple, signInWithGoogle, signInWithGoogleRedirect,
   providerRedirectSupported, useGoogleAuthRequest,
 } from '@/services/auth';
 import { track } from '@/services/analytics';
@@ -47,9 +47,13 @@ export default function SignIn() {
     try {
       await signInWithEmail(email.trim());
       router.push('/(auth)/verify');
-    } catch {
-      // Rate limits are shown in plain language, never as the raw error.
-      setError(t('auth.rateLimited'));
+    } catch (err: unknown) {
+      // Not every failure here is a rate limit, and for a long time every one
+      // of them said it was. Keep the error in development — this path has
+      // twice now been the only place a real server fault surfaced, and twice
+      // it surfaced as the wrong sentence.
+      if (__DEV__) console.warn('[auth] email sign-in failed', err);
+      setError(t(emailSignInReason(err)));
     } finally {
       setBusy(null);
     }
