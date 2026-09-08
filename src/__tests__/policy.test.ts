@@ -1285,6 +1285,51 @@ describe('the map shows everywhere you can drink', () => {
   });
 });
 
+describe('a place you add is a place that exists', () => {
+  /**
+   * Three failures in one flow, none of which reported anything:
+   *
+   * - `upsert_venue` sent every column except `created_by`, and the insert
+   *   policy is `with check (auth.uid() = created_by)` — so every hand-added
+   *   venue was refused on every sync, forever, silently.
+   * - `addVenue` hard-coded `lat: null, lng: null`, so a place you added could
+   *   never appear on the map you added it from.
+   * - the screen was reachable only from the search sheet's zero-results
+   *   state: you had to search for something that did not exist before the app
+   *   would let you say it existed.
+   */
+  it('the server stamps the creator rather than trusting the client to send it', () => {
+    const migration = read('supabase/migrations/00051_venue_ownership.sql');
+    expect(migration).toContain('alter column created_by set default auth.uid()');
+    // An upsert is an UPDATE when the row exists, and there was no update
+    // policy at all — correcting a typo in your own venue was refused too.
+    expect(migration).toContain('for update');
+  });
+
+  it('a hand-added venue can carry coordinates', () => {
+    const store = code('src/data/store.tsx');
+    expect(store).not.toMatch(/lat: null,\s*\n\s*lng: null,/);
+    expect(store).toContain('lat: input.lat ?? null');
+  });
+
+  it('and can be added from the map, not only from a failed search', () => {
+    expect(code('app/(tabs)/discover.tsx')).toContain("router.push('/venue/new')");
+  });
+
+  it('the venue screen survives a venue with no category or area', () => {
+    // `subtitle={`${venue.category} · ${venue.area}`}` rendered the literal
+    // string "null · null" on the screen you land on straight after adding one.
+    const detail = code('app/venue/[id].tsx');
+    expect(detail).not.toMatch(/\$\{venue\.category\} · \$\{venue\.area\}/);
+    expect(detail).toContain('filter(Boolean)');
+  });
+
+  it('and starting a night from it remembers which venue you are at', () => {
+    // The peek card on the map passed `venueId`; this screen did not.
+    expect(code('app/venue/[id].tsx')).toContain('venueId=${venue.id}');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

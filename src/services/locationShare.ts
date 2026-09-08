@@ -36,6 +36,17 @@ let lastSentAt: number | null = null;
 
 export const sharingState = () => ({ active: active !== null, until: active?.until ?? null, lastSentAt });
 
+/**
+ * One coordinate, or null if permission was never granted.
+ *
+ * Exported because adding a venue needs exactly this and should not
+ * re-implement the permission check — the reason for `Balanced` accuracy below
+ * applies just as much to pinning a bar as to sharing a location.
+ */
+export async function currentCoords(): Promise<{ lat: number; lng: number } | null> {
+  return currentPoint();
+}
+
 async function currentPoint(): Promise<{ lat: number; lng: number } | null> {
   try {
     const Location = require('expo-location') as typeof import('expo-location');
