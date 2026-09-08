@@ -62,7 +62,7 @@ Every screen in the inventory has a route.
 | Y-02 | P2 | Public profile preview | /people/preview | ✓ | Avatar, Card, Screen, StatTile |
 | Y-03 | P1 | Nights history | /nights | ✓ | Card, EmptyState, Group, NavRow, Screen, Segmented |
 | Y-04 | P1 | Morning after | /morning/[sessionId] | ✓ | Aurora, Button, Card, Chip, EmptyState, Icon |
-| Y-05 | P1 | Insights | /insights | ✓ | Card, EmptyState, Screen, Sparkline, StatTile |
+| Y-05 | P1 | Insights | /insights | ✓ | Button, Card, EmptyState, Screen, Sparkline, StatTile |
 | Y-06 | P1 | Wellbeing hub | /wellbeing | ✓ | Button, Card, Goal, Group, Icon, InlineLink |
 | Y-07 | P1 | Goal editor | /wellbeing/goal/[type] | ✓ | Button, Icon, Sheet, Step, ToggleRow |
 | Y-08 | P2 | Nicotine dashboard | /nicotine | ✓ | Card, Chip, DrinkGlyph, EmptyState, Screen, StatTile |

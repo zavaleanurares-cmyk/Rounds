@@ -1303,6 +1303,86 @@ describe('the deploy path does not float on someone else\'s latest', () => {
   });
 });
 
+describe('a sheet scrolls, and only once', () => {
+  /**
+   * `Sheet` clips — `overflow: 'hidden'`, `maxHeight: '92%'` — and for a long
+   * time nothing inside it scrolled. Two screens hit that in different ways:
+   * `log/edit/[logId]` rendered all 165 drink chips with no scroller at all,
+   * putting most of the picker and the price and time fields below it out of
+   * reach entirely; `log/index` hand-rolled `<ScrollView maxHeight: 540>`, a
+   * device-independent constant taller than 92% of an SE-sized screen once the
+   * drag handle, title and bottom inset are counted.
+   *
+   * Sixteen screens use this component. Each was one forgotten wrapper away
+   * from the same bug, so the scroller belongs to the component.
+   */
+  it('Sheet scrolls its own body', () => {
+    // `code`, not `read`: the comment above this component explains the whole
+    // fix and names `flexShrink: 1` in prose. Asserting against the file with
+    // comments left in passes on the explanation while the code says
+    // something else — which is exactly what happened the first time this was
+    // written, and the mutation survived.
+    const sheet = code('src/ui/Sheet.tsx');
+    expect(sheet).toMatch(/<ScrollView/);
+    // flexShrink, not flex: a two-field sheet must still hug its content
+    // rather than becoming a full-height panel.
+    expect(sheet).toContain('flexShrink: 1');
+  });
+
+  it('no screen nests a second vertical scroller inside a Sheet', () => {
+    // Two vertical scrollers inside one another fight on Android and the
+    // inner one swallows the fling.
+    for (const file of APP.filter((f) => /<Sheet[\s>]/.test(read(f)))) {
+      const nested = [...read(file).matchAll(/<ScrollView(?![^>]*horizontal)/g)].length;
+      expect({ file, nestedVerticalScrollViews: nested }).toEqual({
+        file,
+        nestedVerticalScrollViews: 0,
+      });
+    }
+  });
+});
+
+describe('the nicotine module is reachable and counted', () => {
+  /**
+   * The whole feature existed and could not be opened. Domain, store action,
+   * the `nicotine_mg` column with its 20 mg constraint, sync in both
+   * directions, the goal ring — all present and tested — while **no screen in
+   * the app navigated to `/nicotine`**. It was reachable by deep link and by
+   * nothing else, and `scripts/build-manifest.mjs` said the route existed,
+   * which is a different claim.
+   *
+   * A screen nothing links to is a screen nobody has.
+   */
+  it('some screen navigates to /nicotine', () => {
+    const linked = APP.filter((f) => /router\.push\('\/nicotine'\)/.test(code(f)));
+    expect({ screensLinkingToNicotine: linked.length > 0 }).toEqual({
+      screensLinkingToNicotine: true,
+    });
+  });
+
+  it('the live night offers it, which is when it is needed', () => {
+    const live = code('src/features/tonight/TonightLive.tsx');
+    expect(live).toContain("router.push('/nicotine')");
+    // Gated on the module, which is off by default. The drink sheet stays a
+    // grid of drinks for the seven people in ten who do not smoke.
+    expect(live).toContain('profile?.modules.nicotine');
+  });
+
+  it('insights aggregates it, and delegates the rules', () => {
+    // It was absent from every aggregation: a nicotine log has ethanolG === 0
+    // and a non-water category, so `summariseNights` counts it as nothing.
+    const insights = code('app/insights.tsx');
+    expect(insights).toContain('nicotineThisWeek');
+    expect(insights).toContain('nicotineFreeDays');
+    // Pouch milligrams come from the domain, never re-summed on the screen —
+    // that function is where "pouches only" is enforced.
+    expect(insights).toContain('pouchMgThisWeek');
+    expect(insights).not.toMatch(/nicotineMg\s*\?\?\s*0/);
+    // And the smoked products carry their reason rather than a made-up figure.
+    expect(insights).toContain('stats.noYieldNote');
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so

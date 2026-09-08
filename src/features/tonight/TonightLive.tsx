@@ -174,6 +174,16 @@ export function TonightLive({ session }: { session: Session }) {
           tint={lateNight ? color.safety : undefined}
           onPress={() => router.push('/safety')}
         />
+        {/* Only for people who turned the module on, which is off by default.
+            The drink sheet stays a grid of drinks — a cigarette between a
+            Negroni and a pint is in the way of the seven people in ten who do
+            not smoke, and that decision stands. But for the three who do, the
+            nicotine screen was reachable by deep link and by nothing else:
+            no screen in the app pushed `/nicotine` at all. During a night is
+            exactly when it is needed, so it goes here rather than nowhere. */}
+        {profile?.modules.nicotine ? (
+          <Quick icon="flame" label={t('stats.nicotine')} onPress={() => router.push('/nicotine')} />
+        ) : null}
       </View>
 
       {lateNight ? (
@@ -252,7 +262,7 @@ function Quick({
   onPress,
   tint,
 }: {
-  icon: 'drop' | 'arrow.clockwise' | 'car';
+  icon: 'drop' | 'arrow.clockwise' | 'car' | 'flame';
   label: string;
   onPress: () => void;
   tint?: string;
