@@ -1386,6 +1386,47 @@ describe('the provider token exchange carries its nonce', () => {
   });
 });
 
+describe('nothing lands at the repository root by accident', () => {
+  /**
+   * `e220ad6` committed a file called `appended` to the root: 312 lines that
+   * were a byte-identical copy of `src/services/venues.ts`, left behind by a
+   * shell redirect while the venue work was being applied. It was tracked,
+   * pushed, and survived a further six commits. Nothing imported it, so
+   * typecheck, the tests, the route manifest and the web build were all
+   * completely happy — a dead copy of a real module is invisible to every
+   * check that only looks at code something reaches.
+   *
+   * The root is the one directory where a stray file is both most likely
+   * (it is where a careless redirect lands) and least likely to be noticed
+   * (nobody scrolls past the README). So it is enumerated: adding a file here
+   * is a deliberate act that comes with editing this list.
+   */
+  const ALLOWED = [
+    '.env.example',
+    '.gitignore',
+    'CLAUDE.md',
+    'LICENSE',
+    'README.md',
+    'TESTING.md',
+    'app.config.ts',
+    'babel.config.js',
+    'eas.json',
+    'metro.config.js',
+    'package-lock.json',
+    'package.json',
+    'tsconfig.json',
+  ];
+
+  it('every tracked file in the root is one somebody chose to put there', () => {
+    const tracked = execSync('git ls-files', { encoding: 'utf8' })
+      .split('\n')
+      .filter((f) => f && !f.includes('/'))
+      .sort();
+
+    expect(tracked).toEqual([...ALLOWED].sort());
+  });
+});
+
 describe('the scheduled jobs are described consistently', () => {
   // 00049 is the source of truth. docs/deploy.md said "Expect six" and listed
   // six while the migration scheduled seven — purge-outbound was missing — so
