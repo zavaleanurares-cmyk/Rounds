@@ -53,6 +53,26 @@ jobs:
       - name: Every migration, then the RLS matrix, the escalation and the RPC rules
         run: bash supabase/tests/run.sh
 
+      # The CLI has to be able to READ supabase/config.toml before it can do
+      # anything with it, and that failed in the deploy job rather than here:
+      # `Invalid db.major_version: 16`, thrown after pg_cron had already been
+      # enabled on the live project. A file the deploy cannot parse is a
+      # pull-request problem, not a production one.
+      #
+      # There is no offline `config validate`, so this runs a command that
+      # reads the config and fails only on a config error — a connection error
+      # is the expected outcome here and is not a failure.
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.117.0 }
+      - name: The CLI can read supabase/config.toml
+        run: |
+          out=$(supabase db query --local "select 1" 2>&1 || true)
+          echo "$out"
+          if echo "$out" | grep -qi "ConfigLoadError\|Failed reading config\|Missing required field in config"; then
+            echo "::error::supabase/config.toml is not valid for Supabase CLI $(supabase --version)."
+            exit 1
+          fi
+
   functions:
     name: The edge functions type-check
     runs-on: ubuntu-latest

@@ -20,7 +20,12 @@ max_rows = 1000
 port = 54322
 # Match production. A local database on a different major version can accept a
 # migration that production then rejects, which is the worst time to find out.
-major_version = 16
+#
+# 17, not 16: the CLI validates this field against the versions Supabase
+# actually provisions, and 16 is no longer one of them — `supabase db push`
+# refused to read this file at all with "Invalid db.major_version: 16", after
+# pg_cron had already been enabled. New projects are 17.
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -47,11 +52,21 @@ enable_confirmations = false
 otp_length = 6
 otp_expiry = 600
 
+# An enabled provider must now declare its credentials, even when they live
+# somewhere else. `env(...)` is the CLI's own indirection and validates fine
+# while the variable is unset, so the file states the intent — these two
+# providers are on — without carrying a secret. Set the variables where the
+# provider is actually configured; the dashboard is the source of truth for the
+# hosted project either way.
 [auth.external.apple]
 enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 
 [auth.external.google]
 enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 
 [storage]
 enabled = true
