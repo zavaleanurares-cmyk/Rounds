@@ -160,6 +160,17 @@ jobs:
             echo "$got" | grep -qw -- "$job" \
               || { echo "::error::$job is not scheduled. See docs/deploy.md."; exit 1; }
           done
+          # The summary reports what was actually checked. It used to say "six
+          # jobs scheduled" in prose while this step verified seven — the same
+          # drift docs/deploy.md already had, in the one place a person reads
+          # after a deploy.
+          {
+            echo "### Deployed"
+            echo ""
+            echo "Migrations applied. Scheduled jobs verified:"
+            echo ""
+            for job in $expected; do echo "- \`$job\`"; done
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Push the function secrets
         run: |
@@ -196,9 +207,8 @@ jobs:
       # forever — so the run says so rather than finishing quietly.
       - name: Remind about the drain
         run: |
-          echo "### Deployed" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Migrations applied, six jobs scheduled, functions deployed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Functions deployed." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Still manual:** the outbound drain. \`send-outbound\` is an edge function and cannot be scheduled from SQL." >> "$GITHUB_STEP_SUMMARY"
           echo "Without it nothing is ever delivered — the safety SMS included. See \`docs/deploy.md\` §2." >> "$GITHUB_STEP_SUMMARY"
