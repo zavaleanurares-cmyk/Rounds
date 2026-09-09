@@ -178,21 +178,25 @@ async function searchOsm(q: VenueQuery): Promise<Venue[]> {
   // representative point, which is all a pin needs.
   const query = q.term
     ? `[out:json][timeout:12];nwr${filter}["name"~"${escapeOverpass(q.term)}",i](${bbox(q)});out center 60;`
-    // 300, not 60.
+    // NO RESULT CAP. Everything inside the radius, however many that is.
     //
-    // This was the real cap on "why can I only see some of the bars". The
-    // screen sliced to 120 and the map clusters, so both of those looked like
-    // the limit — but Overpass was told to stop at 60 before either of them
-    // saw a thing, and a dense city centre has more than 60 places to drink
-    // within a few streets. The ones dropped were not the far ones; `out` has
-    // no ordering, so it was an arbitrary 60.
+    // It was 60, then 300, and both were the same mistake in different
+    // clothing: `out` has no ordering, so a cap does not drop the far ones, it
+    // drops an arbitrary subset. A city centre has thousands of places to eat
+    // and drink and the honest answer is all of them.
     //
-    // Three hundred is bounded on purpose: the response is JSON over a public,
-    // rate-limited API that asks for restraint, and the map has to lay the
-    // results out. It is enough for any real neighbourhood at the zoom this
-    // queries, and panning now fetches the next area rather than relying on
-    // one enormous first request.
-    : `[out:json][timeout:25];nwr${filter}(around:${radius},${q.lat},${q.lng});out center 300;`;
+    // What bounds this now is the AREA, not the count. `radius` comes from
+    // what is actually on screen and is clamped at 14km by the caller, so the
+    // query is "everything in view" rather than "the first n of everything in
+    // the world" — a bound the user controls by zooming, and one they can see.
+    // Overpass streams a few thousand elements comfortably; the timeout goes
+    // to 60s because a whole-city bounding box legitimately takes longer than
+    // a street corner.
+    //
+    // Rendering that many is the map's problem and it already solves it:
+    // `clusterByGrid` is O(n) and the map draws clusters, so marker count
+    // follows the zoom rather than the result count.
+    : `[out:json][timeout:60];nwr${filter}(around:${radius},${q.lat},${q.lng});out center;`;
 
   const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter', {
     method: 'POST',

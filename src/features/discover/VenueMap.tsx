@@ -119,8 +119,42 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
     [venues, span]
   );
 
-  const zoomTo = (c: { lat: number; lng: number }) => {
-    ref.current?.animateCamera({ center: { latitude: c.lat, longitude: c.lng }, zoom: 16.5 }, { duration: 320 });
+  /**
+   * Tapping a cluster frames what is inside it.
+   *
+   * It used to `animateCamera` to a fixed `zoom: 16.5`, which is a bug in one
+   * direction and a dead end in the other. Past zoom 16.5 — which is normal
+   * once you are looking at a street — tapping a cluster to open it ZOOMED YOU
+   * OUT, so the thing you tapped got further away. And a cluster of three bars
+   * in one building never separates at any fixed zoom, so those three were
+   * unreachable however many times you tapped.
+   *
+   * `fitToCoordinates` frames the members' actual bounds instead, so one tap
+   * always gets closer and always shows what was under the pin. When the
+   * members share a point the bounds are degenerate and the map would zoom to
+   * maximum, so a cluster that cannot be separated selects its first member
+   * rather than pretending a fourth tap will help.
+   */
+  const openCluster = (c: { lat: number; lng: number; items: Venue[] }) => {
+    const pts = c.items.filter((v) => v.lat != null && v.lng != null);
+    const spread = pts.length > 1
+      ? Math.max(
+          Math.max(...pts.map((v) => v.lat!)) - Math.min(...pts.map((v) => v.lat!)),
+          Math.max(...pts.map((v) => v.lng!)) - Math.min(...pts.map((v) => v.lng!))
+        )
+      : 0;
+
+    // ~11m. Below that the venues are the same doorway and no zoom separates
+    // them; there is nothing to open, so open the place itself.
+    if (pts.length <= 1 || spread < 0.0001) {
+      onSelect(pts[0] ?? c.items[0]);
+      return;
+    }
+
+    ref.current?.fitToCoordinates?.(
+      pts.map((v) => ({ latitude: v.lat as number, longitude: v.lng as number })),
+      { edgePadding: { top: topInset + 170, right: 60, bottom: 240, left: 60 }, animated: true }
+    );
   };
 
   return (
@@ -180,7 +214,7 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
           <Marker
             key={c.key}
             coordinate={{ latitude: c.lat, longitude: c.lng }}
-            onPress={() => zoomTo(c)}
+            onPress={() => openCluster(c)}
             tracksViewChanges={false}
             accessibilityLabel={t('common.mapCluster', { count: c.items.length })}
           >
@@ -217,6 +251,21 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
   // the "couldn't reach the venue service" line stack to about 130pt from the
   // top inset, and the caption below sat at +110 — printed straight through
   // the chips. Measured in a browser at 390pt.
+  /**
+   * Clustered, not truncated.
+   *
+   * This fallback has no zoom and no camera, so it cannot open a cluster the
+   * way the real map does — but rendering every venue as its own absolutely
+   * positioned view is not an option either now that a city returns thousands.
+   * So it collapses co-located places to one pin, labelled with how many more
+   * are there, and nothing is dropped: the count is on the pin.
+   */
+  const projected = useMemo(() => {
+    const withCoords = venues.map((v) => v.venue).filter((v) => v.lat != null && v.lng != null);
+    const cell = cellForSpan(Math.max(0.002, bounds.maxLat - bounds.minLat));
+    return clusterByGrid(withCoords, cell).map((c) => ({ venue: c.items[0], extra: c.items.length - 1 }));
+  }, [venues, bounds]);
+
   const top = topInset + 190;
   const usableH = height - top - 230;
 
@@ -263,7 +312,7 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
           </View>
         );
       })() : null}
-      {venues.map(({ venue }) => {
+      {projected.map(({ venue, extra }) => {
         if (venue.lat == null || venue.lng == null) return null;
         const p = project(venue.lat, venue.lng);
         const been = visited.has(venue.id);
@@ -279,7 +328,12 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
             // fallback marks the venue in the same place the real map does.
             style={{ position: 'absolute', left: p.x - g.boxW / 2, top: p.y - g.tipY, zIndex: sel ? 20 : been ? 10 : 1 }}
           >
-            <Pin name={venue.name} kind={venueKind(venue.category)} been={been} selected={sel} />
+            <Pin
+              name={extra > 0 ? `${venue.name} +${extra}` : venue.name}
+              kind={venueKind(venue.category)}
+              been={been}
+              selected={sel}
+            />
           </Pressable>
         );
       })}
@@ -326,8 +380,22 @@ function VenuePin({
   onPress: () => void;
   t: ReturnType<typeof useT>;
 }) {
-  const [tracking, setTracking] = useState(true);
+  /**
+   * Tracked only when the state CHANGES, never on mount.
+   *
+   * Turning tracking on for the first render was fine when the map held forty
+   * markers and is not fine now the result cap is gone: every pin in view
+   * would rasterise itself for 450ms at once, which is exactly the stall
+   * `tracksViewChanges={false}` exists to prevent. A pin's first frame is
+   * already correct — it is only selection that needs a redraw.
+   */
+  const [tracking, setTracking] = useState(false);
+  const mounted = useRef(false);
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     setTracking(true);
     const id = setTimeout(() => setTracking(false), 450);
     return () => clearTimeout(id);

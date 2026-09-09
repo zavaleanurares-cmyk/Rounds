@@ -157,14 +157,12 @@ export default function Discover() {
             : null,
       }))
       .sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9))
-      // 600, not 120, and not 40 before that.
-      //
-      // Each of those caps silently dropped a real bar somebody might have
-      // been looking for, and the drop was invisible: the nearest survive, so
-      // the map always looks plausible. The map clusters and the fetch now
-      // follows the camera, so the honest bound is "more than any screen can
-      // show" rather than a number chosen to keep a pin count comfortable.
-      .slice(0, 600);
+      // No cap. There was one at 40, then 120, then 600, and every one of them
+      // silently dropped a real place somebody might have been looking for —
+      // invisibly, because the nearest survive and the map always looks
+      // plausible. The map clusters, so what limits the number of markers is
+      // how far you are zoomed out, which is a bound you can see and change.
+      ;
   }, [foundList, localVenues, layers.been, layers.open, canAnswerOpen, visited, coords]);
 
   const liveFriends = people.filter((p) => p.liveNow && p.status === 'friend');

@@ -152,4 +152,21 @@ export const onboarding = {
   'onboarding.markLog':
     'Butonul din mijloc notează o băutură. De pe ecranul blocat e o singură atingere.',
   'onboarding.markSafety': 'Ajungi acasă cu bine e la îndemână de oriunde și e mereu gratuit.',
+  // ── what you usually order ───────────────────────────────────────────────
+  'onboarding.usualTitle': 'Ce comanzi de obicei?',
+  'onboarding.usualSubtitle':
+    'Alege până la trei. Devin scurtăturile tale dintr-o atingere și îi spun aplicației cum arată o seară normală pentru tine, nu pentru o medie.',
+  'onboarding.usualHint': 'Atinge ce comanzi de fapt.',
+  'onboarding.usualPicked': { one: 'Una aleasă. Prima e semnătura ta.', few: '{count} alese. Prima e semnătura ta.', other: '{count} alese. Prima e semnătura ta.' },
+  'onboarding.usualSkip': 'Aleg mai târziu',
+
+  // ── a typical night ──────────────────────────────────────────────────────
+  'onboarding.nightsTitle': 'O seară obișnuită',
+  'onboarding.nightsSubtitle':
+    'Aproximativ, ca aplicația să știe ce e normal pentru tine. Nu e o țintă — nimic de aici nu se punctează, iar serile reale înlocuiesc estimarea într-o lună.',
+  'onboarding.nightsDrinks': 'BĂUTURI ÎNTR-O SEARĂ OBIȘNUITĂ',
+  'onboarding.nightsPerMonth': 'SERI ÎN ORAȘ PE LUNĂ',
+  'onboarding.nightsUnits': 'Aproximativ {units} unități',
+  'onboarding.nightsNote': 'Poți schimba oricând, și contează tot mai puțin cu fiecare seară notată.',
+  'onboarding.nightsSkip': 'Sari peste — deduceți din serile mele',
 } satisfies Record<string, Message>;

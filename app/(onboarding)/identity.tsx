@@ -38,7 +38,7 @@ export default function Identity() {
           disabled={!ok}
           onPress={() => {
             updateProfile({ displayName: name.trim(), username });
-            router.push('/(onboarding)/region');
+            router.push('/(onboarding)/usual');
           }}
         />
       }

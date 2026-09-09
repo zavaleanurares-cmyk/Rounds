@@ -10,8 +10,8 @@ import { useT, useFormat } from '@/i18n';
 import { byId } from '@/domain/catalog';
 import { CUSTOM_ART } from '@/domain/art';
 import { useTick } from '@/hooks/useTick';
-import { paceState, bacAt, weekdayMedian, shouldPromptWater } from '@/domain/pace';
-import { summariseNights } from '@/domain/stats';
+import { paceState, bacAt, shouldPromptWater } from '@/domain/pace';
+import { personalNormal } from '@/domain/baseline';
 import type { Session } from '@/domain/types';
 import { color, paceColor, space, radius } from '@/design/tokens';
 
@@ -51,10 +51,31 @@ export function TonightLive({ session }: { session: Session }) {
    */
   const now = useMemo(() => Math.max(tick, Date.now()), [tick, sessionLogs.length]);
 
-  const median = useMemo(() => {
-    const nights = summariseNights(logs.filter((l) => l.sessionId !== session.id));
-    return weekdayMedian(nights.map((n) => ({ weekday: n.weekday, totalG: n.totalG })), new Date(session.startedAt).getDay());
-  }, [logs, session]);
+  /**
+   * What tonight is being compared against.
+   *
+   * This was `weekdayMedian`, which is null until you have gone out on THIS
+   * weekday before — so `paceState` fell through to a population constant, and
+   * the ring's state word was measuring a new user against a stranger. Not for
+   * the first night only: a person with twenty Saturdays on file still got the
+   * constant the first time they went out on a Tuesday.
+   *
+   * `personalNormal` blends what they told onboarding with what they have
+   * actually recorded, and gives way to the recorded half as it arrives. See
+   * `domain/baseline.ts`. Somebody who skipped the questions and has no history
+   * lands on exactly the old fallback, so nothing regressed.
+   */
+  const normal = useMemo(
+    () =>
+      personalNormal({
+        logs,
+        weekday: new Date(session.startedAt).getDay(),
+        baseline: store.profile?.baseline ?? null,
+        excludeSessionId: session.id,
+      }),
+    [logs, session.startedAt, session.id, store.profile?.baseline]
+  );
+  const median = normal.gramsPerNight;
 
   const pace = useMemo(
     () => paceState({ logs: paceLogs, weekdayMedianG: median, startedAt: session.startedAt, now }),

@@ -123,4 +123,21 @@ export const onboarding = {
     'Tonight changes shape through the night — plan, live, wind-down, morning.',
   'onboarding.markLog': 'The middle button logs a drink. From the lock screen it is one tap.',
   'onboarding.markSafety': 'Get home safe is reachable from anywhere and always free.',
+  // ── what you usually order ───────────────────────────────────────────────
+  'onboarding.usualTitle': 'What do you usually order?',
+  'onboarding.usualSubtitle':
+    'Pick up to three. They become your one-tap shortcuts, and they tell the app what a normal night looks like for you rather than for an average.',
+  'onboarding.usualHint': 'Tap the ones you actually order.',
+  'onboarding.usualPicked': { one: '{count} picked. The first one is your signature.', other: '{count} picked. The first one is your signature.' },
+  'onboarding.usualSkip': 'I will pick later',
+
+  // ── a typical night ──────────────────────────────────────────────────────
+  'onboarding.nightsTitle': 'A typical night out',
+  'onboarding.nightsSubtitle':
+    'Roughly, so the app knows what normal looks like for you. Not a target — nothing here is scored, and real nights replace this within a month.',
+  'onboarding.nightsDrinks': 'DRINKS ON A TYPICAL NIGHT',
+  'onboarding.nightsPerMonth': 'NIGHTS OUT A MONTH',
+  'onboarding.nightsUnits': 'About {units} units',
+  'onboarding.nightsNote': 'You can change this any time, and it matters less every night you log.',
+  'onboarding.nightsSkip': 'Skip — work it out from my nights',
 } satisfies Record<string, Message>;

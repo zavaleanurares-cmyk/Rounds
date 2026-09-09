@@ -152,4 +152,21 @@ export const onboarding = {
   'onboarding.markLog':
     "Le bouton du milieu note un verre. Depuis l'écran verrouillé, c'est un seul appui.",
   'onboarding.markSafety': 'Rentrer sain et sauf est accessible de partout et toujours gratuit.',
+  // ── what you usually order ───────────────────────────────────────────────
+  'onboarding.usualTitle': 'Tu prends quoi, d\u2019habitude ?',
+  'onboarding.usualSubtitle':
+    'Jusqu\u2019à trois. Ils deviennent tes raccourcis en un geste, et ils disent à l\u2019app à quoi ressemble une soirée normale pour toi, pas pour une moyenne.',
+  'onboarding.usualHint': 'Touche ce que tu commandes vraiment.',
+  'onboarding.usualPicked': { one: '{count} choisi. Le premier est ta signature.', other: '{count} choisis. Le premier est ta signature.' },
+  'onboarding.usualSkip': 'Je choisirai plus tard',
+
+  // ── a typical night ──────────────────────────────────────────────────────
+  'onboarding.nightsTitle': 'Une soirée typique',
+  'onboarding.nightsSubtitle':
+    'À peu près, pour que l\u2019app sache ce qui est normal pour toi. Pas un objectif — rien ici n\u2019est noté, et tes vraies soirées remplacent ça en un mois.',
+  'onboarding.nightsDrinks': 'VERRES SUR UNE SOIRÉE TYPIQUE',
+  'onboarding.nightsPerMonth': 'SOIRÉES PAR MOIS',
+  'onboarding.nightsUnits': 'Environ {units} unités',
+  'onboarding.nightsNote': 'Modifiable à tout moment, et de moins en moins important à chaque soirée notée.',
+  'onboarding.nightsSkip': 'Passer — devine avec mes soirées',
 } satisfies Record<string, Message>;

@@ -962,7 +962,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .map(([id]) => byId(id))
       .filter((d): d is Drink => Boolean(d))
       .slice(0, 4);
-    const fallback = CATALOG.filter((d) => ['beer-pint', 'wine-glass', 'spirit-double', 'gin-tonic'].includes(d.id));
+    /**
+     * What fills the gaps before somebody has logged four different things.
+     *
+     * Their own answer first. Onboarding asks what they usually order, so a new
+     * account's "YOUR USUAL" row is the drinks they actually drink from the
+     * first night rather than a guess — which is the entire payoff of asking,
+     * and the reason the question is worth a screen.
+     *
+     * Then a generic tail, and note what was in it: `wine-glass` is not a
+     * catalogue id — the drink is `wine-red`. `byId` returned undefined,
+     * `filter(Boolean)` swallowed it, and every brand-new account rendered
+     * THREE chips under a row built for four, silently, on the most-used
+     * screen in the app. The same shape as the "popular at" row and the
+     * favourites fallback before it: a wrong id costs a chip and says nothing.
+     */
+    const chosen = (stateRef.current.profile?.baseline?.usualDrinkIds ?? [])
+      .map((id) => byId(id))
+      .filter((d): d is Drink => Boolean(d));
+    const generic = ['beer-pint', 'wine-red', 'spirit-double', 'gin-tonic']
+      .map((id) => byId(id))
+      .filter((d): d is Drink => Boolean(d));
+    const fallback = [...chosen, ...generic];
     const list = ranked.length >= 4 ? ranked : [...ranked, ...fallback.filter((f) => !ranked.some((r) => r.id === f.id))].slice(0, 4);
     return [WATER, ...list];
   }, [visibleLogs]);
@@ -1151,6 +1172,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         privateAccount: false,
         defaultVisibility: 'friends',
         modules: { nicotine: false, social: true },
+        baseline: null,
         intent: [],
         locale: 'en',
         notificationPrefs: DEFAULT_SETTINGS.notifications,

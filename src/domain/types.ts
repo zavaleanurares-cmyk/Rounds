@@ -1,6 +1,7 @@
 import type { ReactionKind } from '@/ui/Reaction';
 import type { UnitSystem } from './units';
 import type { Sex } from './pace';
+import type { Baseline } from './baseline';
 import type { DrinkArt } from './art';
 import type { Locale } from '@/i18n/plurals';
 
@@ -46,6 +47,15 @@ export interface Profile {
   privateAccount: boolean;
   defaultVisibility: Visibility;
   modules: { nicotine: boolean; social: boolean };
+  /**
+   * What onboarding was told, before there was anything to measure.
+   *
+   * Null for accounts created before this existed, and for anyone who skipped
+   * the questions — `personalNormal` treats that as "no prior" and behaves
+   * exactly as the app did without it. See `domain/baseline.ts` for what it is
+   * for and how quickly real nights outweigh it.
+   */
+  baseline: Baseline | null;
   intent: string[];
   /**
    * The language this account reads.

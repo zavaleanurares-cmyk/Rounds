@@ -155,4 +155,21 @@ export const onboarding = {
     'El botón del medio apunta una copa. Desde la pantalla de bloqueo es un solo toque.',
   'onboarding.markSafety':
     'Vuelve a casa a salvo está a mano desde cualquier sitio y siempre es gratis.',
+  // ── what you usually order ───────────────────────────────────────────────
+  'onboarding.usualTitle': '¿Qué sueles pedir?',
+  'onboarding.usualSubtitle':
+    'Hasta tres. Se convierten en tus atajos de un toque, y le dicen a la app cómo es una noche normal para ti, no para una media.',
+  'onboarding.usualHint': 'Toca lo que pides de verdad.',
+  'onboarding.usualPicked': { one: '{count} elegida. La primera es tu firma.', other: '{count} elegidas. La primera es tu firma.' },
+  'onboarding.usualSkip': 'Ya lo elegiré',
+
+  // ── a typical night ──────────────────────────────────────────────────────
+  'onboarding.nightsTitle': 'Una noche típica',
+  'onboarding.nightsSubtitle':
+    'Más o menos, para que la app sepa qué es normal para ti. No es un objetivo — aquí no se puntúa nada, y tus noches reales sustituyen esto en un mes.',
+  'onboarding.nightsDrinks': 'COPAS EN UNA NOCHE TÍPICA',
+  'onboarding.nightsPerMonth': 'NOCHES AL MES',
+  'onboarding.nightsUnits': 'Unas {units} unidades',
+  'onboarding.nightsNote': 'Puedes cambiarlo cuando quieras, y pesa menos con cada noche que registras.',
+  'onboarding.nightsSkip': 'Saltar — dedúcelo de mis noches',
 } satisfies Record<string, Message>;
