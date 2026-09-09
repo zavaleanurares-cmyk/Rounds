@@ -103,6 +103,16 @@ export interface Settings {
    * offered no way to say otherwise.
    */
   homeCity: { lat: number; lng: number; label: string } | null;
+  /**
+   * Which settings migration this install has seen.
+   *
+   * Defaults only ever apply to a fresh install: hydrate merges stored settings
+   * OVER `DEFAULT_SETTINGS`, so flipping a default changes nothing for anybody
+   * who has already opened the app once. Turning sound on by default therefore
+   * turned it on for nobody at all — every existing install kept the `false`
+   * written on the day it first launched.
+   */
+  settingsVersion: number;
   reduceMotion: boolean;
   /** Sound effects. Off by default — this app gets opened in quiet places. */
   sound: boolean;
@@ -200,6 +210,7 @@ const DEFAULT_SETTINGS: Settings = {
   contactMatching: false,
   nightDimming: true,
   homeCity: null,
+  settingsVersion: 2,
   reduceMotion: false,
   sound: true,
   haptics: true,
@@ -207,6 +218,23 @@ const DEFAULT_SETTINGS: Settings = {
   accentIndex: 0,
   subscribed: false,
 };
+
+/**
+ * Bring an existing install up to the current defaults, once.
+ *
+ * Version 2 turns sound on. It was off by default from the start, on the
+ * reasonable ground that an app opened in a bar should not make noise until
+ * asked — and the effect was that the entire feedback layer was silent for
+ * every user, with nothing anywhere to suggest it existed. The default is now
+ * on, and a default alone reaches nobody who has already run the app.
+ *
+ * Recorded rather than repeated: somebody who turns sound back off must not
+ * find it on again the next time they open the app.
+ */
+function migrateSettings(s: Settings): Settings {
+  if ((s.settingsVersion ?? 1) >= 2) return s;
+  return { ...s, sound: true, settingsVersion: 2 };
+}
 
 const DEFAULT_GOALS: Goal[] = [
   { type: 'weekly_cap', target: 140, enabled: true }, // grams
@@ -541,7 +569,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           blocked,
           reports,
           notifications,
-          settings: { ...DEFAULT_SETTINGS, ...settings },
+          settings: migrateSettings({ ...DEFAULT_SETTINGS, ...settings }),
         },
       });
 

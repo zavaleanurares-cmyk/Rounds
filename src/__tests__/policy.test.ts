@@ -1386,6 +1386,32 @@ describe('the provider token exchange carries its nonce', () => {
   });
 });
 
+describe('a changed default reaches people who already have the app', () => {
+  /**
+   * `sound` was flipped to true in DEFAULT_SETTINGS and turned on for nobody.
+   * Hydrate merges stored settings OVER the defaults, so every install that had
+   * ever been opened kept the value written on its first run — which is every
+   * install that matters, including every tester's. The change was real, passed
+   * review, passed the suite, and was invisible to all of them.
+   *
+   * Anything that ships a new default therefore needs a migration, and the
+   * migration needs a version to stop it running twice: somebody who turns
+   * sound back off must not find it on again tomorrow.
+   */
+  const store = code('src/data/store.tsx');
+
+  it('the merge runs through a migration rather than straight into state', () => {
+    expect(store).toMatch(/settings:\s*migrateSettings\(/);
+  });
+
+  it('the migration is versioned, so it cannot undo a deliberate choice twice', () => {
+    expect(store).toContain('settingsVersion');
+    // Guards on the stored version, and records the new one.
+    expect(store).toMatch(/settingsVersion\s*\?\?\s*1\)\s*>=\s*2/);
+    expect(store).toMatch(/settingsVersion:\s*2/);
+  });
+});
+
 describe('the code length lives in one place', () => {
   /**
    * It was in two, and the second one was invisible. The verify screen had six

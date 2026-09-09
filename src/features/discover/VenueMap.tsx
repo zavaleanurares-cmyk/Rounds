@@ -137,14 +137,27 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
               coordinate={{ latitude: c.lat, longitude: c.lng }}
               onPress={() => onSelect(venue)}
               tracksViewChanges={false}
+              // The padding below grows the marker's bounds, and a marker is
+              // anchored by its top-left corner unless told otherwise — without
+              // this every pin would sit down-and-right of its actual venue.
+              anchor={{ x: 0.5, y: 0.5 }}
               accessibilityLabel={been ? t('common.mapPinVisited', { name: venue.name }) : venue.name}
             >
-              <Pin
-                name={venue.name}
-                kind={venueKind(venue.category)}
-                been={been}
-                selected={selected}
-              />
+              {/*
+                A marker's touch target is the bounds of its child, and the
+                child is a 16pt dot — roughly a third of the 44pt minimum, on a
+                map, one-handed, at night. `hitSlop` does not apply to a marker
+                the way it does to a Pressable, so the area has to come from
+                transparent padding around the artwork.
+              */}
+              <View style={{ padding: 14 }}>
+                <Pin
+                  name={venue.name}
+                  kind={venueKind(venue.category)}
+                  been={been}
+                  selected={selected}
+                />
+              </View>
             </Marker>
           );
         }
