@@ -1625,3 +1625,44 @@ describe('the scheduled jobs are described consistently', () => {
     }
   });
 });
+
+describe('state the server owns is written to the server', () => {
+  /**
+   * The onboarding loop.
+   *
+   * `sync_pull` returns the profile row and the store applies it as a PATCH,
+   * so any field the server also owns will be overwritten by the server's
+   * value on the next pull. `onboarded` is such a field — it is in the
+   * `profiles` update in `remote.ts` and in `toProfile` — and
+   * `completeOnboarding` used to set it locally without queueing a write.
+   *
+   * The result was not a stale flag, it was a loop: finish onboarding, pull,
+   * get the server's `false` back, and `AuthGate` returns you to
+   * `(onboarding)/identity` under the `u…` placeholder username the signup
+   * trigger mints. Every launch, with nothing in the app able to break out.
+   *
+   * Read rather than executed, because the store reaches AsyncStorage at
+   * import time and cannot be loaded here — which is exactly why the bug
+   * survived: nothing in this suite runs the store.
+   */
+  it('completeOnboarding queues a profile write, not just a local flag', () => {
+    const src = read('src/data/store.tsx');
+    const fn = src.slice(src.indexOf('completeOnboarding() {'));
+    const body = fn.slice(0, fn.indexOf('\n    },'));
+
+    expect(body).toContain("onboarded: true");
+    expect(body).toContain("op: 'upsert_profile'");
+  });
+
+  it('and signing out ends the session rather than only the local state', () => {
+    // The mirror image: `signOut` dispatched a local change and left the
+    // Supabase refresh token in storage, so hydration adopted it on the next
+    // launch and put the person straight back into the account they had left.
+    const src = read('src/data/store.tsx');
+    const fn = src.slice(src.indexOf('async signOut() {'));
+    const body = fn.slice(0, fn.indexOf('\n    },'));
+
+    expect(body).toContain('remote.signOut()');
+    expect(body).toContain('clearPersisted()');
+  });
+});

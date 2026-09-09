@@ -59,3 +59,16 @@ export const KEYS = {
    */
   stamps: 'rounds.stamps.v1',
 } as const;
+
+/**
+ * Forget everything this app has stored on the device.
+ *
+ * Every key in `KEYS`, so adding a slice to the app cannot quietly leave it
+ * behind after a sign-out — which is exactly how `stamps` would have survived
+ * into the next person's account. Deliberately not `AsyncStorage.clear()`:
+ * that would also drop Supabase's own keys and Expo's, which are not ours to
+ * remove.
+ */
+export async function clearPersisted(): Promise<void> {
+  await Promise.all(Object.values(KEYS).map((k) => remove(k)));
+}

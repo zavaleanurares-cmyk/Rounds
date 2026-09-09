@@ -779,7 +779,7 @@ export async function pull(since: Date | null): Promise<PullResult | null> {
  * leaves the rest of the local row alone. Returning a whole object here would
  * blank a field the moment the server stopped sending it.
  */
-function toProfilePatch(r: Record<string, any>, priv: Record<string, any> | null): Partial<Profile> {
+export function toProfilePatch(r: Record<string, any>, priv: Record<string, any> | null): Partial<Profile> {
   return {
     id: r.id,
     displayName: r.display_name ?? '',
@@ -802,9 +802,27 @@ function toProfilePatch(r: Record<string, any>, priv: Record<string, any> | null
       ? {
           weightKg: priv.weight_kg ?? null,
           sex: priv.sex ?? null,
-          dob: priv.dob ?? null,
           modules: priv.modules ?? { nicotine: false, social: true },
           intent: priv.intent ?? [],
+          /*
+           * `dob` is OMITTED when the server has not got one, not sent as null.
+           *
+           * This function is called a patch and the merge that consumes it says
+           * "a pull must not blank the ones it does not carry" — but it carried
+           * every field, and `?? null` turned "the server has not been told yet"
+           * into "the answer is nothing".
+           *
+           * The consequence was a loop with no exit. `verify_age` writes the dob
+           * server-side and it is called fire-and-forget; if that call has not
+           * landed — offline, a failed RPC, a first run — the next pull sets the
+           * local dob to null. `AuthGate` checks `!profile?.dob` before anything
+           * else, so it sends the person to `(onboarding)/age`, then to
+           * `identity` under the `u…` placeholder username. Every launch.
+           *
+           * A date of birth is write-once: the server can only ever gain one, so
+           * an absent value is always "not yet", never "cleared".
+           */
+          ...(priv.dob ? { dob: priv.dob as string } : {}),
         }
       : {}),
   };
@@ -1116,6 +1134,22 @@ export async function cancelAccountDeletion() {
   if (!supabase) return;
   const { error } = await supabase.rpc('cancel_account_deletion');
   if (error) throw error;
+}
+
+/**
+ * End the Supabase session, not just this app's idea of it.
+ *
+ * The store's `signOut` dispatched a local state change and stopped there, so
+ * the refresh token stayed in AsyncStorage. Hydration adopts an existing
+ * session when nobody is signed in locally — which is correct, and is what put
+ * the person straight back into the account they had just left, under the
+ * placeholder username the signup trigger gave them. Signing out has to
+ * destroy the token or it is not signing out.
+ */
+export async function signOut() {
+  const supabase = getClient();
+  if (!supabase) return;
+  await supabase.auth.signOut();
 }
 
 export async function requestAccountDeletion() {

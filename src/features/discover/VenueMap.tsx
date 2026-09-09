@@ -73,6 +73,8 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
   const Maps = optional(() => require('react-native-maps'));
   const ref = useRef<any>(null);
   const [ready, setReady] = useState(false);
+  /** When a marker was last pressed. See the note on `onPress` below. */
+  const markerPressedAt = useRef(0);
   // Matches `initialRegion` below, so the first frame clusters at the zoom the
   // map actually opens at rather than at a placeholder.
   const [span, setSpan] = useState(0.02);
@@ -163,7 +165,26 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
       style={StyleSheet.absoluteFill}
       provider={provider}
       onMapReady={() => setReady(true)}
-      onPress={() => onSelect(null)}
+      /*
+       * Tapping the map dismisses the peek — EXCEPT when the tap that just
+       * happened was on a marker.
+       *
+       * `react-native-maps` fires the MapView's `onPress` after a marker's own
+       * `onPress` on Android, and on iOS for a callout-less marker. So the
+       * sequence was: select the venue, then immediately deselect it. The peek
+       * card opened and closed within a frame, which reads exactly as "I tap a
+       * pin and nothing happens" — and it never showed up in any browser check
+       * because the browser runs the projected fallback, which has its own
+       * dismiss layer and no MapView at all.
+       *
+       * `stopPropagation` is not reliable across the platforms and versions
+       * this ships to, so the guard is a timestamp: a map press within 400ms
+       * of a marker press is the echo of that press, not a new one.
+       */
+      onPress={() => {
+        if (Date.now() - markerPressedAt.current < 400) return;
+        onSelect(null);
+      }}
       onRegionChangeComplete={(r: { latitude: number; longitude: number; latitudeDelta: number }) => {
         setSpan(r.latitudeDelta);
         // Half the visible height in metres, so the request covers roughly
@@ -204,7 +225,10 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
               lng={c.lng}
               been={visited.has(venue.id)}
               selected={venue.id === selectedId}
-              onPress={() => onSelect(venue)}
+              onPress={() => {
+                markerPressedAt.current = Date.now();
+                onSelect(venue);
+              }}
               t={t}
             />
           );
@@ -214,7 +238,10 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
           <Marker
             key={c.key}
             coordinate={{ latitude: c.lat, longitude: c.lng }}
-            onPress={() => openCluster(c)}
+            onPress={() => {
+              markerPressedAt.current = Date.now();
+              openCluster(c);
+            }}
             tracksViewChanges={false}
             accessibilityLabel={t('common.mapCluster', { count: c.items.length })}
           >
@@ -503,7 +530,21 @@ function Pin({
   ].join(' ');
 
   return (
-    <View style={{ width: g.boxW, height: g.boxH, alignItems: 'center' }}>
+    /*
+     * `pointerEvents="none"` on the whole pin, and it matters on both
+     * platforms.
+     *
+     * A `Marker`'s press is handled by the marker, not by its children. A
+     * child view that is itself touch-responsive can take the touch first and
+     * the marker's `onPress` never fires — which is the other half of "I tap a
+     * pin and nothing happens", and unlike the map-press echo it is not
+     * Android-specific. The artwork has no interaction of its own to lose:
+     * everything here is a shape.
+     *
+     * The projected fallback wraps this in its own `Pressable`, which is a
+     * parent and so is unaffected.
+     */
+    <View pointerEvents="none" style={{ width: g.boxW, height: g.boxH, alignItems: 'center' }}>
       <View style={{ marginTop: g.pad, width: g.r * 2, height: g.art }}>
         <Svg width={g.r * 2} height={g.art}>
           {/* Tail first, so the head's stroke draws over where they join. */}
@@ -555,6 +596,7 @@ function ClusterPin({ count, anyVisited }: { count: number; anyVisited: boolean 
   const size = count > 20 ? 40 : count > 8 ? 34 : 30;
   return (
     <View
+      pointerEvents="none"
       style={{
         width: size,
         height: size,

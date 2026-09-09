@@ -45,7 +45,7 @@ import { nightKey } from '@/domain/nightKey';
 import type { ReactionKind } from '@/ui/Reaction';
 import { useI18n } from '@/i18n';
 import { CATALOG, WATER, byId } from '@/domain/catalog';
-import { KEYS, readJson, writeJson, remove } from './storage';
+import { KEYS, readJson, writeJson, remove, clearPersisted } from './storage';
 import { logQueue, type QueueState } from './queue';
 import { uuid } from './uuid';
 import * as remote from './remote';
@@ -703,10 +703,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       dispatch({
         type: 'set',
         payload: {
-          // The profile is a patch: the server owns some fields, the device
-          // owns others, and a pull must not blank the ones it does not carry.
+          /*
+           * The profile is a patch: the server owns some fields, the device
+           * owns others, and a pull must not blank the ones it does not carry.
+           *
+           * `onboarded` gets a floor on top of that, because it is the one
+           * field where the server's answer being STALE rather than absent
+           * still breaks the app. Finishing onboarding queues a write; until
+           * that write lands the row still says false, and applying it would
+           * send the person back through onboarding — under the placeholder
+           * username the signup trigger minted, every launch, with no way out.
+           *
+           * Onboarding is monotonic. Nobody becomes un-onboarded, so a pull may
+           * turn it on and may never turn it off.
+           */
           profile: result.profile
-            ? ({ ...current.profile, ...result.profile } as typeof current.profile)
+            ? ({
+                ...current.profile,
+                ...result.profile,
+                onboarded: Boolean(current.profile?.onboarded || result.profile.onboarded),
+              } as typeof current.profile)
             : current.profile,
           // Logs are unioned by id and a local tombstone always wins — a delete
           // that has synced must not be resurrected by a stale row.
@@ -1131,8 +1147,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'patchProfile', payload: { displayName: result.displayName } });
       }
     },
+    /**
+     * Sign out, properly.
+     *
+     * This used to dispatch one local state change and nothing else. The
+     * Supabase refresh token stayed in AsyncStorage, hydration adopted it on
+     * the next launch — that adoption is deliberate and is what keeps you
+     * signed in between launches — and the person was returned to the account
+     * they had just signed out of, wearing the `u…` placeholder username the
+     * signup trigger mints. Repeatedly, with no way out of it from inside the
+     * app.
+     *
+     * Three things now, in this order:
+     *
+     *  1. Kill the token, so there is nothing left to adopt.
+     *  2. Clear the queue, so a pending write is not replayed into whichever
+     *     account signs in next.
+     *  3. Reset the store to a fresh install, signed out.
+     *
+     * Step 3 is the one worth defending: it drops locally-held logs. On a
+     * phone that two people share, leaving one person's nights on the device
+     * for the next person to sign in and inherit is worse than losing an
+     * unsynced night, and the queue is flushed on every write anyway. "Sign
+     * out" should mean the device forgets you.
+     */
     async signOut() {
-      dispatch({ type: 'set', payload: { auth: { ...INITIAL.auth, status: 'signed_out' } } });
+      await remote.signOut().catch((err: unknown) => {
+        // Offline, or no client. The local reset below still happens — a sign
+        // out that fails silently and leaves you signed in is the bug.
+        if (__DEV__) console.warn('[auth] remote sign-out failed', err);
+      });
+      await logQueue.clear();
+      await clearPersisted();
+      dispatch({ type: 'reset' });
     },
     async deleteAccount() {
       // Server-side first: a 30-day grace and a cascade, then local wipe. The
@@ -1158,9 +1205,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
         return { ok: false, underage: true };
       }
-      // The server is the authority on age and keeps the answer, so a reinstall
-      // cannot reset it. Locally we mirror the result for the gate above.
-      void remote.verifyAge(dob).catch(() => null);
+      /*
+       * The server is the authority on age and keeps the answer, so a reinstall
+       * cannot reset it. Locally we mirror the result for the gate above.
+       *
+       * The failure was swallowed by `.catch(() => null)`, which is how a
+       * broken age write became an unexplainable onboarding loop rather than an
+       * error anybody could read. It is still fire-and-forget — blocking the
+       * gate on a network call would be worse — but it says so now.
+       */
+      void remote.verifyAge(dob).catch((err: unknown) => {
+        if (__DEV__) console.warn('[auth] verify_age did not land; dob is local-only for now', err);
+      });
       dispatch({ type: 'set', payload: { auth: { ...stateRef.current.auth, ageVerified: true } } });
       const base: Profile = stateRef.current.profile ?? {
         id: stateRef.current.auth.userId ?? 'me',
@@ -1191,8 +1247,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'set', payload: { profile: { ...base, dob } } });
       return { ok: true, underage: false };
     },
+    /**
+     * Finish onboarding — on the SERVER as well as here.
+     *
+     * This used to dispatch `onboarded: true` and stop. Every other profile
+     * change goes through `updateProfile`, which queues an `upsert_profile`;
+     * this one did not, so the flag lived only on the device.
+     *
+     * The consequence was a loop with no way out. The signup trigger inserts a
+     * profile row with `onboarded` false and a placeholder username of the form
+     * `u3f9c…`. You finish onboarding, the flag is set locally, and the first
+     * successful pull returns the server's row — which still says false. The
+     * pull applies the server's answer as a patch, so `onboarded` flips back,
+     * and `AuthGate` sends you to `(onboarding)/identity`, sitting under the
+     * placeholder username you never chose. Next launch, the same. The screen
+     * that is supposed to run once ran every time.
+     *
+     * It queues now, like everything else. The queue dedupes on id+op and
+     * survives being offline, so finishing onboarding on a train still lands.
+     */
     completeOnboarding() {
       dispatch({ type: 'patchProfile', payload: { onboarded: true } });
+      const current = stateRef.current.profile;
+      if (current) {
+        logQueue.enqueue({
+          id: current.id,
+          op: 'upsert_profile',
+          payload: { ...current, onboarded: true },
+        });
+      }
       if (stateRef.current.notifications.length === 0) {
         dispatch({ type: 'set', payload: { notifications: [] } });
       }

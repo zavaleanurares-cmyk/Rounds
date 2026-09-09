@@ -251,3 +251,61 @@ describe('the code length belongs to the project, not to this client', () => {
     expect(src).toMatch(/code\.length >= 6/);
   });
 });
+
+describe('a pull cannot push you back into onboarding', () => {
+  /**
+   * The loop, and why it had no exit.
+   *
+   * `AuthGate` checks `!profile?.dob` first and `!profile.onboarded` second.
+   * The pull applies the server's profile as a patch — but `toProfilePatch`
+   * asserted a value for every field, so `dob: priv.dob ?? null` turned "the
+   * server has not been told yet" into "there is no date of birth", and
+   * `onboarded: Boolean(r.onboarded)` turned a not-yet-synced completion into
+   * an incomplete one.
+   *
+   * Either one sends the person to `(onboarding)/age` or `identity`, sitting
+   * under the `u…` placeholder username the signup trigger mints. On every
+   * launch, with nothing in the app able to break the cycle.
+   *
+   * Two properties fix it and both are directional:
+   *   · a date of birth is write-once, so an absent server value is "not yet"
+   *   · onboarding is monotonic, so a pull may turn it on and never off
+   */
+  const patch = (server: { dob?: string | null; onboarded?: boolean }) => {
+    const out: Record<string, unknown> = { onboarded: Boolean(server.onboarded) };
+    if (server.dob) out.dob = server.dob;
+    return out;
+  };
+  const merge = (local: { dob: string | null; onboarded: boolean }, server: Record<string, unknown>) => ({
+    ...local,
+    ...server,
+    onboarded: Boolean(local.onboarded || server.onboarded),
+  });
+
+  it('keeps a local dob the server has not received', () => {
+    const after = merge({ dob: '1998-01-01', onboarded: true }, patch({ dob: null, onboarded: true }));
+    expect(after.dob).toBe('1998-01-01');
+  });
+
+  it('accepts a dob the server does have', () => {
+    const after = merge({ dob: null, onboarded: true }, patch({ dob: '1997-05-05', onboarded: true }));
+    expect(after.dob).toBe('1997-05-05');
+  });
+
+  it('never un-onboards somebody whose write has not landed yet', () => {
+    const after = merge({ dob: '1998-01-01', onboarded: true }, patch({ dob: '1998-01-01', onboarded: false }));
+    expect(after.onboarded).toBe(true);
+  });
+
+  it('still lets the server complete onboarding for a fresh install', () => {
+    const after = merge({ dob: null, onboarded: false }, patch({ dob: '1998-01-01', onboarded: true }));
+    expect(after.onboarded).toBe(true);
+    expect(after.dob).toBe('1998-01-01');
+  });
+
+  it('the two rules are the ones actually in the code', () => {
+    expect(readFileSync('src/data/remote.ts', 'utf8')).toMatch(/\.\.\.\(priv\.dob \? \{ dob:/);
+    expect(readFileSync('src/data/store.tsx', 'utf8'))
+      .toMatch(/onboarded: Boolean\(current\.profile\?\.onboarded \|\| result\.profile\.onboarded\)/);
+  });
+});
