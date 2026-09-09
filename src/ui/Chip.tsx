@@ -1,7 +1,11 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
 import { Text } from './Text';
+import { usePressScale } from './Motion';
 import { color, radius, space, geometry } from '@/design/tokens';
+
+/** Same spring as the buttons and the tiles. See the note in `Tile.tsx`. */
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Chip({
   label,
@@ -19,14 +23,16 @@ export function Chip({
   compact?: boolean;
   accessibilityHint?: string;
 }) {
+  const { style, handlers } = usePressScale(0.93);
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      {...handlers}
       accessibilityRole="button"
       accessibilityState={{ selected: Boolean(selected) }}
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
-      style={({ pressed }) => ({
+      style={[{
         minHeight: compact ? 34 : geometry.minTouch,
         paddingHorizontal: compact ? space.m : space.md,
         justifyContent: 'center',
@@ -34,8 +40,7 @@ export function Chip({
         backgroundColor: selected ? 'rgba(59,130,246,0.22)' : color.surface.secondary,
         borderWidth: 1,
         borderColor: selected ? 'rgba(124,179,255,0.55)' : color.separator,
-        opacity: pressed ? 0.75 : 1,
-      })}
+      }, style]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
         {glyph}
@@ -43,7 +48,7 @@ export function Chip({
           {label}
         </Text>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

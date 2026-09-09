@@ -184,7 +184,6 @@ export const stats = {
     one: '{venue}, {count} tampon',
     other: '{venue}, {count} tampons',
   },
-  'stats.stampTimes': '×{count}',
   'stats.passportNote': "Un tampon par lieu et par soirée. De l'exploration, pas du volume.",
 
   // Y-12 · Wrapped
@@ -293,4 +292,46 @@ export const stats = {
   'stats.pouchLabel': "{name}, {mg} milligrammes",
   'stats.pouchCapNote': "Les forces telles qu'elles sont vendues. La loi roumaine plafonne un sachet à {max} mg ; rien de plus fort n'est listé.",
   'stats.noYieldNote': "Pas de milligrammes ici, volontairement. Les règles européennes ont retiré les taux de nicotine des paquets parce qu'ils faisaient paraître certaines marques moins nocives. Compter est la mesure honnête.",
+  // ── passport cover ───────────────────────────────────────────────────────
+  'stats.coverPlaces': "LIEUX",
+  'stats.coverStamps': "TAMPONS",
+  'stats.coverKinds': "TYPES",
+  'stats.kindsTitle': "TYPES DE LIEU",
+  'stats.kindsHint': "Bar, club, bar à vin, restaurant, café. Un café compte.",
+  'stats.kindsAll': "Les cinq. Ton passeport est bien tamponné.",
+  'stats.stampsAddYours': "Touche un tampon pour ajouter une photo et une ligne.",
+  'stats.stampsDecorated': { one: '{count} tampon a une photo ou une note.', other: '{count} tampons ont une photo ou une note.' },
+
+  // ── one stamp ────────────────────────────────────────────────────────────
+  'stats.stampVisits': { one: '{count} soirée ici', other: '{count} soirées ici' },
+  'stats.stampAddPhoto': "Ajouter une photo",
+  'stats.stampChangePhoto': "Changer la photo",
+  'stats.stampRemovePhoto': "Retirer",
+  'stats.stampNoteLabel': "TA NOTE",
+  'stats.stampNotePlaceholder': "Avec qui, ce que tu as pris, pourquoi tu reviendrais…",
+  'stats.stampFirst': "Première fois",
+  'stats.stampLast': "Dernière fois",
+  'stats.stampTonight': "Ce soir",
+  'stats.stampArea': "Quartier",
+  'stats.stampPrivacy': "Les photos et les notes restent sur ce téléphone. Rien n'est envoyé et personne d'autre ne les voit.",
+  'stats.stampPhotoUnavailable': "Les photos, c'est dans l'app, pas dans le navigateur.",
+  'stats.stampPhotoDenied': "ROUNDS a besoin d'accéder à tes photos.",
+
+  // ── the collection ───────────────────────────────────────────────────────
+  'stats.collection': "Collection",
+  'stats.collectionSubtitle': "{found} sur {total} trouvées",
+  'stats.collectionAll': "Toutes",
+  'stats.collectionEmptyTitle': "Rien trouvé pour l'instant",
+  'stats.collectionEmptyBody':
+    "Chaque boisson de ROUNDS est une carte, retournée la première fois que tu la notes. L'eau compte. La deuxième fois, non.",
+  'stats.collectionNewThisMonth': { one: '{count} nouvelle ce mois-ci', other: '{count} nouvelles ce mois-ci' },
+  'stats.collectionNoneThisMonth': "Rien de nouveau ce mois-ci. Essaie quelque chose que tu n'as jamais pris.",
+  'stats.collectionRule': "Seule la première fois compte. Boire plus ne remplit aucune carte.",
+  'stats.collectionNote': "La variété, pas la quantité. Tout l'album se fait un verre à la fois.",
+  'stats.collectionLocked': "{drink}, pas encore trouvée",
+  'stats.collectionFirstOn': "Première fois le {date}",
+  'stats.collectionFirstAtVenue': "{date} · {venue}",
+
+  // ── achievements ─────────────────────────────────────────────────────────
+  'stats.nearlyThere': "PRESQUE",
 } satisfies Record<string, Message>;

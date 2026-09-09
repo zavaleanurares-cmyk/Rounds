@@ -2,7 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Aurora, Card, Text, Button, Chip, Icon, StatTile, EmptyState, MoodFace, MOODS, MOOD_LABEL } from '@/ui';
+import {
+  Aurora, Card, Text, Button, Chip, Icon, StatTile, EmptyState, MoodFace, MOODS, MOOD_LABEL,
+  Bar, Enter,
+} from '@/ui';
 import { useStore } from '@/data/store';
 import { summariseNights, estimateMissedDrinks, hangoverForecast } from '@/domain/stats';
 import { CATALOG } from '@/domain/catalog';
@@ -97,7 +100,14 @@ export default function MorningAfter() {
           </Pressable>
         </View>
 
-        {/* card 1 — last night. Emotional hook before metric. */}
+        {/* card 1 — last night. Emotional hook before metric.
+
+            This screen is a `ScrollView` rather than a `Screen`, so it cannot
+            take the `stagger` prop the other read screens use; the cards are
+            wrapped individually instead. It is worth the extra lines here —
+            this is the one screen in the app somebody opens hungover, and it
+            should assemble itself gently rather than land all at once. */}
+        <Enter from="below">
         <Card aurora accent={color.night[session.accentIndex % 4]}>
           <Text variant="title1">{venue?.name ?? session.title ?? t('morning.lastNight')}</Text>
           <Text variant="body" tone="secondary" style={{ marginTop: space.xs }}>
@@ -107,21 +117,26 @@ export default function MorningAfter() {
             })}
             {session.safeHomeAt ? ` ${t('morning.homeAt', { time: f.clock(session.safeHomeAt) })}` : ''}
           </Text>
+          {/*
+            The night, replayed.
+
+            These bars are in time order, so growing them left to right is not
+            a flourish — it draws the shape of the evening in the order it
+            happened, which is the one thing this card is for. They were
+            painted finished, and a finished chart of last night is a receipt.
+          */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 46, marginTop: space.md }}>
-            {logs.map((l) => (
-              <View
+            {logs.map((l, i) => (
+              <Bar
                 key={l.id}
-                style={{
-                  flex: 1,
-                  height: Math.max(6, (l.ethanolG / 25) * 44),
-                  borderRadius: 3,
-                  backgroundColor: l.category === 'water' ? color.brand.tintLight : color.night[session.accentIndex % 4],
-                  opacity: l.category === 'water' ? 0.6 : 1,
-                }}
+                to={Math.max(6, (l.ethanolG / 25) * 44)}
+                delay={180 + i * 55}
+                tint={l.category === 'water' ? color.brand.tintLight : color.night[session.accentIndex % 4]}
               />
             ))}
           </View>
         </Card>
+        </Enter>
 
         {/* card 2 — fill the gaps. The critical one. */}
         {missed - added > 0 ? (
@@ -195,13 +210,29 @@ export default function MorningAfter() {
 
         {/* card 4 — numbers. Plain, no red. */}
         <View style={{ flexDirection: 'row', gap: space.m }}>
-          <StatTile label={t('morning.drinks')} value={String(summary?.drinks ?? 0)} icon="wineglass" tint={color.label.primary} />
-          <StatTile label={t('morning.water')} value={String(summary?.waters ?? 0)} icon="drop" tint={color.brand.tintLight} />
+          <StatTile
+            label={t('morning.drinks')}
+            value={String(summary?.drinks ?? 0)}
+            countTo={summary?.drinks ?? 0}
+            format={(n) => String(Math.round(n))}
+            icon="wineglass"
+            tint={color.label.primary}
+          />
+          <StatTile
+            label={t('morning.water')}
+            value={String(summary?.waters ?? 0)}
+            countTo={summary?.waters ?? 0}
+            format={(n) => String(Math.round(n))}
+            icon="drop"
+            tint={color.brand.tintLight}
+          />
         </View>
         <View style={{ flexDirection: 'row', gap: space.m }}>
           <StatTile
             label={t('morning.spend')}
             value={f.money(summary?.spendMinor ?? 0, store.profile?.currency ?? 'EUR')}
+            countTo={summary?.spendMinor ?? 0}
+            format={(n) => f.money(Math.round(n), store.profile?.currency ?? 'EUR')}
             icon="creditcard"
             tint={color.pace.quick}
           />

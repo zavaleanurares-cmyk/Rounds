@@ -113,4 +113,5 @@ export const tonight = {
   // Same wording as common.pushActionHomeSafe — it answers the same question.
   'tonight.homeSafe': 'Je suis chez moi',
   'tonight.seeTheNight': 'Voir la soirée',
+  'tonight.loggedTonight': { one: '{count} verre noté ce soir', other: '{count} verres notés ce soir' },
 } satisfies Record<string, Message>;

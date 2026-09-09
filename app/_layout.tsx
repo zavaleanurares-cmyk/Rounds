@@ -137,6 +137,7 @@ function Routes() {
       <Stack.Screen name="plan/new" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="crew/new" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="wellbeing/goal/[type]" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="stamp/[venueId]" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
       {/* full-screen modals — take over, demand a decision */}
       <Stack.Screen name="morning/[sessionId]" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       <Stack.Screen name="safety/index" options={{ presentation: 'fullScreenModal' }} />

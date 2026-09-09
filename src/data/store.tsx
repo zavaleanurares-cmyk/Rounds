@@ -33,6 +33,7 @@ import type {
   Profile,
   Report,
   Rsvp,
+  Stamp,
   SafeArrivalCheck,
   Session,
   SessionMessage,
@@ -165,6 +166,8 @@ export interface AuthState {
 export interface State {
   hydrated: boolean;
   auth: AuthState;
+  /** Passport stamps the user has personalised, keyed by venue id. */
+  stamps: Record<string, Stamp>;
   profile: Profile | null;
   logs: Log[];
   sessions: Session[];
@@ -245,6 +248,7 @@ const DEFAULT_GOALS: Goal[] = [
 
 const INITIAL: State = {
   hydrated: false,
+  stamps: {},
   auth: {
     status: 'loading',
     userId: null,
@@ -282,6 +286,7 @@ type Action =
   | { type: 'patchSession'; id: string; payload: Partial<Session> }
   | { type: 'patchSettings'; payload: Partial<Settings> }
   | { type: 'patchSafety'; payload: Partial<SafetyState> }
+  | { type: 'patchStamp'; venueId: string; payload: Partial<Stamp> }
   | { type: 'reset' };
 
 function reducer(state: State, action: Action): State {
@@ -316,6 +321,18 @@ function reducer(state: State, action: Action): State {
       return { ...state, settings: { ...state.settings, ...action.payload } };
     case 'patchSafety':
       return { ...state, safety: { ...state.safety, ...action.payload } };
+    case 'patchStamp': {
+      const prev = state.stamps[action.venueId] ?? { photoUri: null, note: null, updatedAt: 0 };
+      const next = { ...prev, ...action.payload, updatedAt: Date.now() };
+      // An emptied stamp is removed rather than stored as two nulls, so
+      // `Object.keys(stamps).length` is the number of decorated stamps and the
+      // screen does not have to filter.
+      if (!next.photoUri && !next.note) {
+        const { [action.venueId]: _gone, ...rest } = state.stamps;
+        return { ...state, stamps: rest };
+      }
+      return { ...state, stamps: { ...state.stamps, [action.venueId]: next } };
+    }
     case 'reset':
       return { ...INITIAL, hydrated: true, auth: { ...INITIAL.auth, status: 'signed_out' } };
     default:
@@ -507,6 +524,14 @@ export interface Store extends State {
   addTrustedContact(c: Omit<TrustedContact, 'id'>): void;
   removeTrustedContact(id: string): void;
   shareLocationFor(hours: number): void;
+  /* passport */
+  /**
+   * Add or change the photo and the line on one venue's stamp.
+   *
+   * Clearing both removes the stamp's decoration; the stamp itself is derived
+   * from the logs and cannot be deleted from here.
+   */
+  setStamp(venueId: string, patch: Partial<Stamp>): void;
   /* settings */
   updateSettings(patch: Partial<Settings>): void;
   /** Absorbs venues from the provider, keyed so the same pub never doubles. */
@@ -536,7 +561,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       await logQueue.load();
-      const [auth, profile, logs, sessions, messages, people, crews, plans, goals, safety, blocked, reports, notifications, settings] =
+      const [auth, profile, logs, sessions, messages, people, crews, plans, goals, safety, blocked, reports, notifications, settings, stamps] =
         await Promise.all([
           readJson<AuthState>(KEYS.auth, INITIAL.auth),
           readJson<Profile | null>(KEYS.profile, null),
@@ -552,6 +577,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           readJson<Report[]>(KEYS.reports, []),
           readJson<AppNotification[]>(KEYS.notifications, []),
           readJson<Settings>(KEYS.settings, DEFAULT_SETTINGS),
+          readJson<Record<string, Stamp>>(KEYS.stamps, {}),
         ]);
       dispatch({
         type: 'hydrate',
@@ -570,6 +596,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           reports,
           notifications,
           settings: migrateSettings({ ...DEFAULT_SETTINGS, ...settings }),
+          stamps,
         },
       });
 
@@ -627,6 +654,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (state.hydrated) persist(KEYS.reports, state.reports); }, [state.reports, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.notifications, state.notifications); }, [state.notifications, state.hydrated, persist]);
   useEffect(() => { if (state.hydrated) persist(KEYS.settings, state.settings); }, [state.settings, state.hydrated, persist]);
+  useEffect(() => { if (state.hydrated) persist(KEYS.stamps, state.stamps); }, [state.stamps, state.hydrated, persist]);
 
   /**
    * Pull, and merge.
@@ -1969,6 +1997,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // somebody wait out a window they no longer want.
       const until = hours <= 0 ? null : Date.now() + hours * 3600000;
       dispatch({ type: 'patchSafety', payload: { locationSharingUntil: until } });
+    },
+
+    /* ----------------------------------------------------- passport */
+    setStamp(venueId, patch) {
+      dispatch({ type: 'patchStamp', venueId, payload: patch });
     },
 
     /* ------------------------------------------------------ settings */

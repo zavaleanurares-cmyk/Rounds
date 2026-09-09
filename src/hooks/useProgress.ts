@@ -37,12 +37,13 @@ const ICON_FOR: Record<string, IconName> = {
  */
 export function useProgress() {
   const t = useT();
-  const { logs, sessions, people, crews, plans, goals, safety, settings, recordEarned } = useStore();
+  const { logs, venues, sessions, people, crews, plans, goals, safety, settings, recordEarned } = useStore();
 
   const progress: Progress = useMemo(
     () =>
       evaluate({
         logs,
+        venues,
         sessions,
         people,
         crews,
@@ -51,7 +52,7 @@ export function useProgress() {
         trustedContacts: safety.contacts.length,
         safeArrivalsResolved: safety.safeArrivalsResolved,
       }),
-    [logs, sessions, people, crews, plans, goals, safety]
+    [logs, venues, sessions, people, crews, plans, goals, safety]
   );
 
   const [seen, setSeen] = useState<Seen | null>(null);

@@ -27,6 +27,19 @@ export interface VenueMapProps {
    */
   onSelect: (v: Venue | null) => void;
   topInset: number;
+  /**
+   * Bumped every time "find me" is pressed, and part of the camera effect's
+   * dependency list.
+   *
+   * Without it that effect only fires when `center` changes, so pressing the
+   * button while already standing at `center` moved nothing — and standing
+   * where the map is already pointed is the normal case for somebody checking
+   * that the button works. Recentring is a command, not a consequence of the
+   * coordinates happening to differ.
+   */
+  focusKey?: number;
+  /** Where the device actually is, which is not always where the map is. */
+  me?: { lat: number; lng: number } | null;
 }
 
 /**
@@ -44,7 +57,7 @@ export function VenueMap(props: VenueMapProps) {
 
 /* -------------------------------------------------------------- the real one */
 
-function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: VenueMapProps) {
+function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, focusKey = 0 }: VenueMapProps) {
   const t = useT();
   const Maps = optional(() => require('react-native-maps'));
   const ref = useRef<any>(null);
@@ -67,7 +80,7 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
       { center: { latitude: center.lat, longitude: center.lng }, zoom: 14.5 },
       { duration: 600 }
     );
-  }, [ready, center.lat, center.lng]);
+  }, [ready, center.lat, center.lng, focusKey]);
 
   if (!Maps) return <ProjectedMap {...{ center, venues, visited, selectedId, onSelect, topInset }} />;
   const MapView = Maps.default;
@@ -180,7 +193,7 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset }: 
 
 /* ------------------------------------------------------------ the fallback */
 
-function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset }: VenueMapProps) {
+function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset, me }: VenueMapProps) {
   const { width, height } = useWindowDimensions();
   const t = useT();
   const tProjected = t('discover.mapProjected');
@@ -236,6 +249,30 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset 
           {tProjected}
         </Text>
       </View>
+      {/*
+        You are here.
+
+        `showsUserLocation` is a react-native-maps prop, so the projected
+        fallback had no blue dot at all — pressing "find me" in a browser or on
+        a device without Play services recentred onto nothing visible, which is
+        indistinguishable from a button that does not work.
+      */}
+      {me ? (() => {
+        const p = project(me.lat, me.lng);
+        return (
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', left: p.x - 9, top: p.y - 9 }}
+            accessibilityLabel={t('discover.findMe')}
+          >
+            <View style={{
+              width: 18, height: 18, borderRadius: 9,
+              backgroundColor: color.brand.tint, borderWidth: 3, borderColor: '#fff',
+              shadowColor: color.brand.tint, shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+            }} />
+          </View>
+        );
+      })() : null}
       {venues.map(({ venue }) => {
         if (venue.lat == null || venue.lng == null) return null;
         const p = project(venue.lat, venue.lng);

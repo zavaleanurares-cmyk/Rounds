@@ -48,6 +48,7 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
       subtitle={nightOne ? t('tonight.nothingLoggedYet') : undefined}
       mood="default"
       tabBarSpace
+      stagger
       right={{ icon: 'gearshape', label: t('ui.settings'), onPress: () => router.push('/settings') }}
       footer={<Button title={t('tonight.startNight')} onPress={() => router.push('/session/start')} />}
     >
@@ -123,6 +124,8 @@ export function TonightIdle({ nextPlan, lastSession }: { nextPlan: Plan | null; 
             <StatTile
               label={t('tonight.dryStreak')}
               value={f.number(streaks.dryStreak)}
+              countTo={streaks.dryStreak}
+              format={(n) => f.number(Math.round(n))}
               caption={t('tonight.dryStreakUnit', { count: streaks.dryStreak })}
               tint={color.pace.steady}
               icon="flame"

@@ -688,6 +688,8 @@
         "logs",
         "mergeVenues",
         "people",
+        "settings",
+        "updateSettings",
         "venues: localVenues"
       ],
       "states": {
@@ -709,8 +711,10 @@
         "Avatar",
         "Button",
         "Card",
+        "DrinkGlyph",
         "EmptyState",
         "Screen",
+        "Stamp",
         "StatTile"
       ],
       "reads": [
@@ -718,6 +722,7 @@
         "people",
         "profile",
         "sessions",
+        "stamps",
         "venues"
       ],
       "states": {
@@ -790,18 +795,23 @@
       "components": [
         "Card",
         "EmptyState",
+        "Enter",
         "Icon",
-        "Screen"
+        "LinearGradient",
+        "ProgressBar",
+        "Screen",
+        "Stamp"
       ],
       "reads": [
         "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { logs",
+        "stamps: notes",
         "venues"
       ],
       "states": {
         "loading": false,
         "empty": true,
         "error": false,
-        "offline": false,
+        "offline": true,
         "populated": true
       }
     },
@@ -1320,10 +1330,13 @@
       "source": "app/nights.tsx",
       "built": true,
       "components": [
+        "AnimatedPressable",
         "Card",
         "EmptyState",
         "Group",
-        "NavRow",
+        "Icon",
+        "MoodFace",
+        "NightRow",
         "Screen",
         "Segmented"
       ],
@@ -1350,10 +1363,12 @@
       "built": true,
       "components": [
         "Aurora",
+        "Bar",
         "Button",
         "Card",
         "Chip",
         "EmptyState",
+        "Enter",
         "Icon",
         "Mood",
         "MoodFace",
@@ -1378,6 +1393,7 @@
       "source": "app/insights.tsx",
       "built": true,
       "components": [
+        "Bar",
         "Button",
         "Card",
         "EmptyState",
@@ -1495,20 +1511,24 @@
       "source": "app/achievements.tsx",
       "built": true,
       "components": [
+        "AchievementRow",
         "Card",
+        "Enter",
         "Icon",
         "LevelBar",
-        "Screen",
-        "Stagger"
+        "LinearGradient",
+        "ProgressBar",
+        "Screen"
       ],
       "reads": [
-        "const t = useT();\n  const f = useFormat();\n  const { logs",
+        "const t = useT();\n  const f = useFormat();\n  const router = useRouter();\n  const { logs",
         "crews",
         "goals",
         "people",
         "plans",
         "safety",
-        "sessions"
+        "sessions",
+        "venues"
       ],
       "states": {
         "loading": false,
@@ -1555,18 +1575,23 @@
       "components": [
         "Card",
         "EmptyState",
+        "Enter",
         "Icon",
-        "Screen"
+        "LinearGradient",
+        "ProgressBar",
+        "Screen",
+        "Stamp"
       ],
       "reads": [
         "const router = useRouter();\n  const t = useT();\n  const f = useFormat();\n  const { logs",
+        "stamps: notes",
         "venues"
       ],
       "states": {
         "loading": false,
         "empty": true,
         "error": false,
-        "offline": false,
+        "offline": true,
         "populated": true
       }
     },
@@ -1579,7 +1604,11 @@
       "built": true,
       "components": [
         "Aurora",
+        "Bloom",
         "Button",
+        "Enter",
+        "LinearGradient",
+        "ProgressBar",
         "UpgradeSlide"
       ],
       "reads": [

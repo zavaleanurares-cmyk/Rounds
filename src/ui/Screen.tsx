@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  View, ScrollView, Pressable, Animated, type ViewStyle, type NativeSyntheticEvent,
-  type NativeScrollEvent,
+  View, ScrollView, Pressable, Animated, Platform, type ViewStyle,
+  type NativeSyntheticEvent, type NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,7 @@ import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
 import { Glass } from './Glass';
 import { OfflinePill } from './States';
+import { Stagger } from './Motion';
 import { useNightDimming } from '@/hooks/useNightDimming';
 import { useT } from '@/i18n';
 import { useStore } from '@/data/store';
@@ -34,6 +35,21 @@ export interface ScreenProps {
   tabBarSpace?: boolean;
   contentStyle?: ViewStyle;
   footer?: React.ReactNode;
+  /**
+   * Bring the children in one after another instead of all at once.
+   *
+   * A screen's cards arriving together is a screenshot; arriving in sequence
+   * is a screen assembling itself, and it is the cheapest thing in this file
+   * that makes the app feel alive. Opt-in rather than automatic, because it is
+   * wrong for two kinds of screen: anything you land on mid-task (the sheets,
+   * the forms) where the delay is friction rather than flourish, and anything
+   * that re-renders constantly, since the entrance plays once on mount and a
+   * remount would replay it.
+   *
+   * `Stagger` caps the delay at eight children, so a long screen still
+   * finishes arriving in under half a second.
+   */
+  stagger?: boolean;
 }
 
 export const TAB_BAR_CLEARANCE = geometry.tabBar.height + geometry.tabBar.aboveSafeArea + space.lg;
@@ -76,6 +92,7 @@ export function Screen({
   tabBarSpace,
   contentStyle,
   footer,
+  stagger,
 }: ScreenProps) {
   const t = useT();
   const insets = useSafeAreaInsets();
@@ -166,7 +183,7 @@ export function Screen({
         contentStyle,
       ]}
     >
-      {children}
+      {stagger ? <Stagger>{children}</Stagger> : children}
     </View>
   );
 
@@ -182,6 +199,12 @@ export function Screen({
             contentContainerStyle={{ flexGrow: 1, paddingTop: headerHeight }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            // The same fix as `Sheet`: without it the keyboard covers the
+            // bottom of a full screen too, and the ScrollView does not know it
+            // has anything left to reveal. It matters on every screen with a
+            // field near the bottom — sign-in, the password screen, the city
+            // search, the stamp note.
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             scrollEventThrottle={16}
             onScroll={onScroll}
           >

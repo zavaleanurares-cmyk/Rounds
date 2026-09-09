@@ -131,4 +131,5 @@ export const tonight = {
   // Same wording as common.pushActionHomeSafe — it answers the same question.
   'tonight.homeSafe': 'Am ajuns acasă',
   'tonight.seeTheNight': 'Vezi seara',
+  'tonight.loggedTonight': { one: 'o băutură notată în seara asta', few: '{count} băuturi notate în seara asta', other: '{count} de băuturi notate în seara asta' },
 } satisfies Record<string, Message>;

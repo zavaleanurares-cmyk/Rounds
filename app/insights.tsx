@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, Card, Text, Button, Sparkline, EmptyState, StatTile } from '@/ui';
+import { Screen, Card, Text, Button, Sparkline, EmptyState, StatTile, Bar } from '@/ui';
 import { useStore } from '@/data/store';
 import { weekTotals, spendTotals, summariseNights, hangoverForecast } from '@/domain/stats';
 import {
@@ -120,11 +120,19 @@ export default function Insights() {
   }
 
   return (
-    <Screen title={t('stats.insights')} subtitle={plus ? t('stats.insightsAllTime') : t('stats.insightsLast90')} back mood="calm">
+    <Screen
+      title={t('stats.insights')}
+      subtitle={plus ? t('stats.insightsAllTime') : t('stats.insightsLast90')}
+      back
+      mood="calm"
+      stagger
+    >
       <View style={{ flexDirection: 'row', gap: space.m }}>
         <StatTile
           label={t('stats.last30Days')}
           value={f.number(gramsToUnits(g30, system), 0)}
+          countTo={gramsToUnits(g30, system)}
+          format={(n) => f.number(n, 0)}
           caption={t(UNIT_LABEL[system])}
           icon="wineglass"
         />
@@ -180,18 +188,21 @@ export default function Insights() {
       <Card>
         <Text variant="sectionHeader" tone="tertiary">{t('stats.byDay')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, height: 80, marginTop: space.m }}>
+          {/* Columns grow left to right rather than being drawn already
+              finished — the same `Bar` the sparkline uses, so the two charts on
+              this screen move the same way. */}
           {byDay.map((v, i) => {
             const max = Math.max(1, ...byDay);
             return (
               <View key={i} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-                <View
-                  style={{
-                    width: '100%',
-                    height: Math.max(3, (v / max) * 58),
-                    borderRadius: 4,
-                    backgroundColor: v === max ? color.brand.tint : 'rgba(124,179,255,0.3)',
-                  }}
-                />
+                <View style={{ width: '100%', height: 58, justifyContent: 'flex-end' }}>
+                  <Bar
+                    to={Math.max(3, (v / max) * 58)}
+                    delay={i * 45}
+                    radius={4}
+                    tint={v === max ? color.brand.tint : 'rgba(124,179,255,0.3)'}
+                  />
+                </View>
                 <Text variant="caption2" tone="tertiary">{t(DAY_INITIALS[i])}</Text>
               </View>
             );

@@ -1,29 +1,49 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Screen, Card, Text, Button, StatTile, EmptyState, Avatar } from '@/ui';
+import { Screen, Card, Text, Button, StatTile, EmptyState, Avatar, DrinkGlyph } from '@/ui';
 import { useStore } from '@/data/store';
 import { venueVisitors } from '@/data/remote';
+import { venueKind } from '@/domain/venueKind';
+import { byId } from '@/domain/catalog';
+import { Stamp } from '@/features/passport/Stamp';
 import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
-/** D-02 · Venue detail — dominated by YOUR history here, not by their photos. */
+/**
+ * D-02 · Venue detail — dominated by YOUR history here, not by their photos.
+ *
+ * This screen used to be the one place a venue had no identity. The map gives
+ * every place a colour and a glyph for its kind, and the passport now stamps
+ * it in the same colour — and then you tapped through to the venue itself and
+ * got two grey tiles and three lines of text, the same for a nightclub and a
+ * café. So the kind's colour leads here too, the usual drink is drawn rather
+ * than named, and your own stamp for this place sits at the top where you can
+ * tap it and put a photo on it.
+ */
 export default function VenueDetail() {
   const router = useRouter();
   const t = useT();
   const f = useFormat();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { venues, logs, sessions, profile, people } = useStore();
+  const { venues, logs, sessions, profile, people, stamps } = useStore();
   const venue = venues.find((v) => v.id === id);
 
   const mine = useMemo(() => logs.filter((l) => l.venueId === id && !l.deleted), [logs, id]);
   const visits = useMemo(() => new Set(mine.map((l) => l.nightKey)).size, [mine]);
   const spend = mine.reduce((s, l) => s + (l.priceMinor ?? 0), 0);
-  const usual = useMemo(() => {
+  /**
+   * The usual, as the drink rather than its name — the catalogue entry, so it
+   * can be drawn. Counted by id for the same reason: two logs of the same
+   * drink under different display names are the same drink.
+   */
+  const usualDrink = useMemo(() => {
     const counts = new Map<string, number>();
-    mine.forEach((l) => counts.set(l.drinkName, (counts.get(l.drinkName) ?? 0) + 1));
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    mine.forEach((l) => counts.set(l.drinkId, (counts.get(l.drinkId) ?? 0) + 1));
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    return top ? byId(top) ?? null : null;
   }, [mine]);
+  const usual = usualDrink?.name ?? mine[mine.length - 1]?.drinkName ?? null;
   const lastVisit = mine.length ? Math.max(...mine.map((l) => l.at)) : null;
 
   /**
@@ -60,6 +80,9 @@ export default function VenueDetail() {
       subtitle={[venue.category, venue.area].filter(Boolean).join(' · ') || undefined}
       back
       mood="calm"
+      // The kind's colour reaches the aurora, so the whole screen is tinted
+      // like the pin you tapped to get here.
+      accent={color.venue[venueKind(venue.category)]}
       // `venueId`, which the peek card on the map passes and this screen did
       // not — so starting a night from the venue's own screen was the one path
       // that forgot which venue you were at.
@@ -69,6 +92,7 @@ export default function VenueDetail() {
           onPress={() => router.push(`/session/start?venueId=${venue.id}` as never)}
         />
       }
+      stagger
     >
       {visits === 0 ? (
         <EmptyState
@@ -79,7 +103,14 @@ export default function VenueDetail() {
       ) : (
         <>
           <View style={{ flexDirection: 'row', gap: space.m }}>
-            <StatTile label={t('discover.visits')} value={String(visits)} icon="calendar" />
+            <StatTile
+              label={t('discover.visits')}
+              value={String(visits)}
+              countTo={visits}
+              format={(n) => String(Math.round(n))}
+              tint={color.venue[venueKind(venue.category)]}
+              icon="calendar"
+            />
             <StatTile
               label={t('discover.typicalSpend')}
               value={f.money(Math.round(spend / Math.max(1, visits)), profile?.currency ?? 'EUR')}
@@ -88,20 +119,43 @@ export default function VenueDetail() {
             />
           </View>
           <Card>
-            <Text variant="sectionHeader" tone="tertiary">{t('discover.yourHistoryHere')}</Text>
-            <View style={{ marginTop: space.m, gap: space.sm }}>
-              <Text variant="subheadline" tone="secondary">
-                {t('discover.usualLabel')} <Text variant="subheadline">{usual ?? '—'}</Text>
-              </Text>
-              <Text variant="subheadline" tone="secondary">
-                {t('discover.lastVisitLabel')}{' '}
-                <Text variant="subheadline">
-                  {lastVisit ? t('discover.dateAtTime', { date: f.dayCompact(lastVisit), time: f.clock(lastVisit) }) : '—'}
-                </Text>
-              </Text>
-              <Text variant="subheadline" tone="secondary">
-                {t('discover.totalHereLabel')} <Text variant="subheadline">{f.money(spend, profile?.currency ?? 'EUR')}</Text>
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+              {/* Your stamp for this place, the same object the passport
+                  shows, tappable to the same editor. It is the shortest path
+                  from "I am at this bar" to a photo on the stamp — the
+                  passport is a page you visit, this is where you actually
+                  are. */}
+              <View style={{ width: 84 }}>
+                <Stamp
+                  index={0}
+                  venueId={venue.id}
+                  name={venue.name}
+                  kind={venueKind(venue.category)}
+                  count={visits}
+                  stamp={stamps[venue.id]}
+                  onPress={() => router.push(`/stamp/${venue.id}` as never)}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="sectionHeader" tone="tertiary">{t('discover.yourHistoryHere')}</Text>
+                <View style={{ marginTop: space.m, gap: space.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                    {usualDrink ? <DrinkGlyph drink={usualDrink} size={26} /> : null}
+                    <Text variant="subheadline" tone="secondary" style={{ flex: 1 }}>
+                      {t('discover.usualLabel')} <Text variant="subheadline">{usual ?? '—'}</Text>
+                    </Text>
+                  </View>
+                  <Text variant="subheadline" tone="secondary">
+                    {t('discover.lastVisitLabel')}{' '}
+                    <Text variant="subheadline">
+                      {lastVisit ? t('discover.dateAtTime', { date: f.dayCompact(lastVisit), time: f.clock(lastVisit) }) : '—'}
+                    </Text>
+                  </Text>
+                  <Text variant="subheadline" tone="secondary">
+                    {t('discover.totalHereLabel')} <Text variant="subheadline">{f.money(spend, profile?.currency ?? 'EUR')}</Text>
+                  </Text>
+                </View>
+              </View>
             </View>
           </Card>
         </>

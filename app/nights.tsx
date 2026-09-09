@@ -1,14 +1,31 @@
 import React, { useMemo, useState } from 'react';
-import { View, Pressable } from 'react-native';
+import { Animated, View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, Card, Text, Segmented, NavRow, Group, EmptyState } from '@/ui';
+import {
+  Screen, Card, Text, Segmented, Group, EmptyState, Icon, MoodFace, usePressScale,
+} from '@/ui';
 import { useStore } from '@/data/store';
 import { summariseNights } from '@/domain/stats';
 import { nightKey } from '@/domain/nightKey';
+import { venueKind } from '@/domain/venueKind';
+import type { Mood } from '@/domain/types';
 import { useT, useFormat } from '@/i18n';
 import { color, space } from '@/design/tokens';
 
-/** Y-03 · Nights history. List and calendar heatmap. */
+/**
+ * Y-03 · Nights history. List and calendar heatmap.
+ *
+ * The list was twelve identical `NavRow`s — a grey title, a grey subtitle and a
+ * chevron, repeated. Which is a correct rendering of a database table and a
+ * poor rendering of a year of going out: every night looked the same as every
+ * other, and the single most personal thing the app knows about each one — the
+ * mood you tapped on the way home — was not on it at all.
+ *
+ * Each row now carries the venue's kind colour down its left edge, the same
+ * colour the map pin and the passport stamp use, and the face you gave the
+ * night. Scanning the list you can see which nights were rough without reading
+ * a word, which is the only reason to keep a history at all.
+ */
 export default function Nights() {
   const router = useRouter();
   const t = useT();
@@ -30,7 +47,7 @@ export default function Nights() {
   }
 
   return (
-    <Screen title={t('stats.nightsTitle')} subtitle={t('stats.nightsRecorded', { count: ended.length })} back mood="night">
+    <Screen title={t('stats.nightsTitle')} subtitle={t('stats.nightsRecorded', { count: ended.length })} back mood="night" stagger>
       <Segmented
         label={t('stats.view')}
         value={view}
@@ -45,16 +62,19 @@ export default function Nights() {
         <Group>
           {ended.map((s, i) => {
             const n = nights.find((x) => x.key === s.nightKey);
+            const venue = venues.find((v) => v.id === s.venueId);
             return (
-              <NavRow
+              <NightRow
                 key={s.id}
-                title={venues.find((v) => v.id === s.venueId)?.name ?? s.title ?? t('stats.aNightOut')}
+                title={venue?.name ?? s.title ?? t('stats.aNightOut')}
                 subtitle={t('stats.nightRowFull', {
                   date: f.dayShort(s.startedAt),
                   duration: f.duration((s.endedAt ?? 0) - s.startedAt),
                   count: n?.drinks ?? 0,
                   money: f.money(n?.spendMinor ?? 0, profile?.currency ?? 'EUR'),
                 })}
+                tint={color.venue[venueKind(venue?.category)]}
+                mood={s.mood}
                 onPress={() => router.push(`/session/${s.id}` as never)}
                 last={i === ended.length - 1}
               />
@@ -100,5 +120,57 @@ export default function Nights() {
         </Card>
       )}
     </Screen>
+  );
+}
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/**
+ * One night.
+ *
+ * The colour is a 3pt rule rather than a filled tile: twelve saturated blocks
+ * down a dark screen is a paint chart, and the venue's kind is context, not the
+ * subject. The subject is the night, and the face is what you look at.
+ */
+function NightRow({
+  title,
+  subtitle,
+  tint,
+  mood,
+  onPress,
+  last,
+}: {
+  title: string;
+  subtitle: string;
+  tint: string;
+  mood: Mood | null;
+  onPress: () => void;
+  last?: boolean;
+}) {
+  const { style, handlers } = usePressScale(0.985);
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      {...handlers}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${subtitle}`}
+      style={[{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.m,
+        paddingVertical: space.m,
+        paddingRight: space.xs,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: color.separator,
+      }, style]}
+    >
+      <View style={{ width: 3, alignSelf: 'stretch', minHeight: 34, borderRadius: 2, backgroundColor: tint }} />
+      <View style={{ flex: 1 }}>
+        <Text variant="body" numberOfLines={1}>{title}</Text>
+        <Text variant="footnote" tone="tertiary" numberOfLines={1}>{subtitle}</Text>
+      </View>
+      {mood ? <MoodFace mood={mood} size={26} active /> : null}
+      <Icon name="chevron.right" size={14} color={color.label.quaternary} />
+    </AnimatedPressable>
   );
 }

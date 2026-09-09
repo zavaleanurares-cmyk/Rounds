@@ -199,7 +199,6 @@ export const stats = {
     few: '{venue}, {count} ștampile',
     other: '{venue}, {count} de ștampile',
   },
-  'stats.stampTimes': '×{count}',
   'stats.passportNote': 'O ștampilă per local, per seară. Explorare, nu cantitate.',
 
   // Y-12 · Wrapped
@@ -326,4 +325,46 @@ export const stats = {
   'stats.pouchLabel': "{name}, {mg} miligrame",
   'stats.pouchCapNote': "Tăriile așa cum se vând. Legea românească limitează un pliculeț la {max} mg, așa că nimic mai tare nu apare aici.",
   'stats.noYieldNote': "Aici nu sunt miligrame, intenționat. Regulile UE au scos cifrele de nicotină de pe pachete pentru că făceau unele mărci să pară mai puțin dăunătoare. Numărarea este măsura cinstită.",
+  // ── passport cover ───────────────────────────────────────────────────────
+  'stats.coverPlaces': "LOCURI",
+  'stats.coverStamps': "ȘTAMPILE",
+  'stats.coverKinds': "TIPURI",
+  'stats.kindsTitle': "TIPURI DE LOCAL",
+  'stats.kindsHint': "Bar, club, vinărie, restaurant, cafenea. Și o cafea contează.",
+  'stats.kindsAll': "Toate cinci. Pașaportul tău e ștampilat cum trebuie.",
+  'stats.stampsAddYours': "Atinge o ștampilă ca să adaugi o poză și un rând.",
+  'stats.stampsDecorated': { one: 'O ștampilă are o poză sau o notiță.', few: '{count} ștampile au o poză sau o notiță.', other: '{count} de ștampile au o poză sau o notiță.' },
+
+  // ── one stamp ────────────────────────────────────────────────────────────
+  'stats.stampVisits': { one: 'o seară aici', few: '{count} seri aici', other: '{count} de seri aici' },
+  'stats.stampAddPhoto': "Adaugă o poză",
+  'stats.stampChangePhoto': "Schimbă poza",
+  'stats.stampRemovePhoto': "Șterge",
+  'stats.stampNoteLabel': "NOTIȚA TA",
+  'stats.stampNotePlaceholder': "Cu cine ai fost, ce ai băut, de ce te-ai întoarce…",
+  'stats.stampFirst': "Prima dată",
+  'stats.stampLast': "Ultima dată",
+  'stats.stampTonight': "În seara asta",
+  'stats.stampArea': "Zonă",
+  'stats.stampPrivacy': "Pozele și notițele rămân pe telefonul ăsta. Nu se încarcă nicăieri și nimeni altcineva nu le vede.",
+  'stats.stampPhotoUnavailable': "Pozele merg în aplicație, nu în browser.",
+  'stats.stampPhotoDenied': "ROUNDS are nevoie de acces la poze.",
+
+  // ── the collection ───────────────────────────────────────────────────────
+  'stats.collection': "Colecție",
+  'stats.collectionSubtitle': "{found} din {total} găsite",
+  'stats.collectionAll': "Toate",
+  'stats.collectionEmptyTitle': "Nimic găsit încă",
+  'stats.collectionEmptyBody':
+    "Fiecare băutură din ROUNDS e o carte, întoarsă prima dată când o notezi. Apa contează. A doua oară, nu.",
+  'stats.collectionNewThisMonth': { one: 'una nouă luna asta', few: '{count} noi luna asta', other: '{count} noi luna asta' },
+  'stats.collectionNoneThisMonth': "Nimic nou luna asta. Încearcă ceva ce n-ai mai băut.",
+  'stats.collectionRule': "Contează doar prima dată. Cât bei nu completează nicio carte.",
+  'stats.collectionNote': "Varietate, nu cantitate. Tot albumul se poate face cu un pahar pe rând.",
+  'stats.collectionLocked': "{drink}, încă negăsită",
+  'stats.collectionFirstOn': "Prima dată pe {date}",
+  'stats.collectionFirstAtVenue': "{date} · {venue}",
+
+  // ── achievements ─────────────────────────────────────────────────────────
+  'stats.nearlyThere': "APROAPE GATA",
 } satisfies Record<string, Message>;

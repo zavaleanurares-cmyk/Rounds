@@ -22,6 +22,17 @@ export const settings = {
   'settings.systemSurfacesSubtitle': 'Live Activity, widgets, Siri, reloj',
   'settings.blockedUsers': 'Usuarios bloqueados',
   'settings.dataAccount': 'Datos y cuenta',
+
+  // A password, for anybody who would rather have one than wait for a code
+  'settings.password': 'Contraseña',
+  'settings.passwordSet': 'Definida',
+  'settings.passwordNotSet': 'Sin definir',
+  'settings.passwordIntro': 'Puedes iniciar sesión con un código por correo o con una contraseña. Definir una aquí no desactiva los códigos — ambos siguen funcionando.',
+  'settings.passwordNew': 'Nueva contraseña',
+  'settings.passwordRepeat': 'Repítela',
+  'settings.passwordMismatch': 'Las dos no coinciden.',
+  'settings.passwordSaved': 'Contraseña guardada.',
+  'settings.savePassword': 'Guardar contraseña',
   'settings.helpLegal': 'Ayuda y aspectos legales',
   'settings.demoData': 'Datos de demo',
   'settings.demoDataSubtitle': 'Llena la app con 14 semanas de historial verosímil',

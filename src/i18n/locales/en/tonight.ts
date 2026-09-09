@@ -92,4 +92,5 @@ export const tonight = {
   'tonight.howWasIt': 'How was it?',
   'tonight.homeSafe': "I'm home safe",
   'tonight.seeTheNight': 'See the night',
+  'tonight.loggedTonight': { one: '{count} drink logged tonight', other: '{count} drinks logged tonight' },
 } satisfies Record<string, Message>;

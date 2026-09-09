@@ -26,6 +26,17 @@ export const settings = {
   'settings.systemSurfacesSubtitle': 'Live Activity, widgeturi, Siri, ceas',
   'settings.blockedUsers': 'Utilizatori blocați',
   'settings.dataAccount': 'Date & cont',
+
+  // A password, for anybody who would rather have one than wait for a code
+  'settings.password': 'Parolă',
+  'settings.passwordSet': 'Setată',
+  'settings.passwordNotSet': 'Nesetată',
+  'settings.passwordIntro': 'Te poți conecta cu un cod primit pe e-mail sau cu o parolă. Dacă îți setezi una aici, codurile rămân active — merg amândouă.',
+  'settings.passwordNew': 'Parolă nouă',
+  'settings.passwordRepeat': 'Repet-o',
+  'settings.passwordMismatch': 'Cele două nu se potrivesc.',
+  'settings.passwordSaved': 'Parolă salvată.',
+  'settings.savePassword': 'Salvează parola',
   'settings.helpLegal': 'Ajutor & informații legale',
   'settings.demoData': 'Date demo',
   'settings.demoDataSubtitle': 'Umple aplicația cu 14 săptămâni de istoric plauzibil',

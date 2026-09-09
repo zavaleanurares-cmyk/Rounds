@@ -10,7 +10,7 @@ export { PaceRing, PaceEstimate } from './PaceRing';
 export { NavRow, ValueRow, ToggleRow, Group } from './List';
 export { Chip, Segmented } from './Chip';
 export { Avatar, AvatarStack, AVATAR_TINTS } from './Avatar';
-export { ProgressBar, ProgressRing, Sparkline } from './Progress';
+export { ProgressBar, ProgressRing, Sparkline, Bar } from './Progress';
 export { EmptyState, ErrorState, OfflinePill, ScreenSkeleton, SkeletonBlock, SkeletonRow, Spinner, InlineLink } from './States';
 export { Screen, TAB_BAR_CLEARANCE } from './Screen';
 export { TabBar, type TabItem } from './TabBar';

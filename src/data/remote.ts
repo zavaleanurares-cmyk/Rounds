@@ -1060,6 +1060,35 @@ export async function signUpWithPassword(email: string, password: string) {
   return { session: data.session, needsConfirmation: data.session === null };
 }
 
+/**
+ * Set or change the password on the account that is already signed in.
+ *
+ * The same call does both, which is what makes it work for somebody who has
+ * only ever used email codes: they have an account, they are authenticated,
+ * and it simply has no password yet. GoTrue does not require the old one —
+ * possession of a live session is the proof — so a person who has never had a
+ * password is not locked out of getting one, which a "current password" field
+ * would have done to every single code user.
+ */
+export async function setPassword(password: string) {
+  const supabase = getClient();
+  if (!supabase) return { ok: true, local: true as const };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+  return { ok: true, local: false as const };
+}
+
+/** Whether this account already has one, so the screen can say which it is. */
+export async function hasPassword(): Promise<boolean | null> {
+  const supabase = getClient();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  // GoTrue lists how the identity was established. An email/password account
+  // carries the `email` provider; a code-only one does not.
+  const providers = (data?.user?.app_metadata?.providers ?? []) as string[];
+  return providers.includes('email');
+}
+
 /** Age is verified and stored SERVER-side, so a reinstall cannot reset it. */
 export async function verifyAge(dob: string): Promise<boolean | null> {
   const supabase = getClient();

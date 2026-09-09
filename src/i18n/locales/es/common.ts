@@ -109,7 +109,7 @@ export const common = {
   'common.achTenVenuesName': 'Diez sitios',
   'common.achTenVenuesHint': 'Apunta en diez sitios distintos.',
   'common.achNewPlaceName': 'Un sitio nuevo',
-  'common.achNewPlaceHint': 'Ve a un sitio donde no haya estado nadie de tu peña.',
+  'common.achNewPlaceHint': 'Ve a un sitio en el que no hayas estado nunca.',
   'common.achPassportPageName': 'Página de pasaporte',
   'common.achPassportPageHint': 'Consigue sellos en tres sitios en un mes.',
   'common.achHomeCityName': 'Del barrio',

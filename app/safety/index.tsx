@@ -53,7 +53,7 @@ export default function Safety() {
   };
 
   return (
-    <Screen title={t('safety.title')} back mood="safety" scroll>
+    <Screen title={t('safety.title')} back mood="safety" scroll stagger>
       {safety.activeCheck ? (
         <Card aurora accent={color.safety}>
           <Text variant="sectionHeader" tone="tertiary">{t('safety.checkInArmed')}</Text>

@@ -54,6 +54,7 @@ export default function PlanDetail() {
           }}
         />
       }
+      stagger
     >
       <Card aurora accent={color.night[1]}>
         <Text variant="sectionHeader" tone="tertiary">{t('plan.areYouIn')}</Text>

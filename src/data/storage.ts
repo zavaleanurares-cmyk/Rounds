@@ -45,4 +45,17 @@ export const KEYS = {
   seeded: 'rounds.seeded.v2',
   /** What the user has already been shown a celebration for. */
   celebrated: 'rounds.celebrated.v1',
+  /**
+   * Passport stamps: a photo and a line, per venue.
+   *
+   * Local only, and it does not appear in `pull`, `push` or the outbound
+   * queue. The privacy policy promises that nothing about your drinking leaves
+   * the device unless you share it, and a photograph taken inside a bar is the
+   * most identifying thing this app could hold — of the person, of whoever
+   * else is in the frame, and of exactly where they were. Syncing it would
+   * need a storage bucket, a retention policy, moderation and a consent flow
+   * for the people in the picture, none of which exist. Until they do, the
+   * photo stays on the phone.
+   */
+  stamps: 'rounds.stamps.v1',
 } as const;

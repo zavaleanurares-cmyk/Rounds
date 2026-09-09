@@ -180,7 +180,6 @@ export const stats = {
     one: '{venue}, {count} sello',
     other: '{venue}, {count} sellos',
   },
-  'stats.stampTimes': '×{count}',
   'stats.passportNote': 'Un sello por sitio y por noche. Exploración, no cantidad.',
 
   // Y-12 · Wrapped
@@ -287,4 +286,46 @@ export const stats = {
   'stats.pouchLabel': "{name}, {mg} miligramos",
   'stats.pouchCapNote': "Intensidades tal como se venden. La ley rumana limita una bolsita a {max} mg, así que no aparece nada más fuerte.",
   'stats.noYieldNote': "Aquí no hay miligramos, a propósito. Las normas de la UE quitaron las cifras de nicotina de las cajetillas porque hacían que unas marcas parecieran menos dañinas. Contar es la medida honesta.",
+  // ── passport cover ───────────────────────────────────────────────────────
+  'stats.coverPlaces': "SITIOS",
+  'stats.coverStamps': "SELLOS",
+  'stats.coverKinds': "TIPOS",
+  'stats.kindsTitle': "TIPOS DE SITIO",
+  'stats.kindsHint': "Bar, club, vinoteca, restaurante, cafetería. Un café cuenta.",
+  'stats.kindsAll': "Los cinco. Tu pasaporte está bien sellado.",
+  'stats.stampsAddYours': "Toca un sello para añadir una foto y una línea.",
+  'stats.stampsDecorated': { one: '{count} sello tiene foto o nota.', other: '{count} sellos tienen foto o nota.' },
+
+  // ── one stamp ────────────────────────────────────────────────────────────
+  'stats.stampVisits': { one: '{count} noche aquí', other: '{count} noches aquí' },
+  'stats.stampAddPhoto': "Añadir una foto",
+  'stats.stampChangePhoto': "Cambiar la foto",
+  'stats.stampRemovePhoto': "Quitar",
+  'stats.stampNoteLabel': "TU NOTA",
+  'stats.stampNotePlaceholder': "Con quién fuiste, qué tomaste, por qué volverías…",
+  'stats.stampFirst': "Primera vez",
+  'stats.stampLast': "Última vez",
+  'stats.stampTonight': "Esta noche",
+  'stats.stampArea': "Zona",
+  'stats.stampPrivacy': "Las fotos y las notas se quedan en este teléfono. No se suben y nadie más las ve.",
+  'stats.stampPhotoUnavailable': "Las fotos van en la app, no en el navegador.",
+  'stats.stampPhotoDenied': "ROUNDS necesita acceso a tus fotos.",
+
+  // ── the collection ───────────────────────────────────────────────────────
+  'stats.collection': "Colección",
+  'stats.collectionSubtitle': "{found} de {total} encontradas",
+  'stats.collectionAll': "Todas",
+  'stats.collectionEmptyTitle': "Nada encontrado todavía",
+  'stats.collectionEmptyBody':
+    "Cada bebida de ROUNDS es una carta, que se gira la primera vez que la registras. El agua cuenta. La segunda vez, no.",
+  'stats.collectionNewThisMonth': { one: '{count} nueva este mes', other: '{count} nuevas este mes' },
+  'stats.collectionNoneThisMonth': "Nada nuevo este mes. Prueba algo que no hayas tomado.",
+  'stats.collectionRule': "Solo cuenta la primera vez. Beber más no rellena ninguna carta.",
+  'stats.collectionNote': "Variedad, no cantidad. El álbum entero se hace de copa en copa.",
+  'stats.collectionLocked': "{drink}, aún sin encontrar",
+  'stats.collectionFirstOn': "Primera vez el {date}",
+  'stats.collectionFirstAtVenue': "{date} · {venue}",
+
+  // ── achievements ─────────────────────────────────────────────────────────
+  'stats.nearlyThere': "CASI",
 } satisfies Record<string, Message>;

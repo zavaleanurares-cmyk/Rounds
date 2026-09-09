@@ -189,3 +189,42 @@ describe('achievements', () => {
     expect([...a.earned].sort()).toEqual([...b.earned].sort());
   });
 });
+
+describe('every achievement can say how far along it is', () => {
+  /**
+   * The achievements screen leads with "nearly there", which is only possible
+   * because `towards` carries a have/need pair for every id. A missing key
+   * renders as a silently blank row rather than an error, which is the class
+   * of bug this repository keeps finding by hand — so assert the two lists are
+   * the same list.
+   */
+  it('towards covers exactly the achievement table', () => {
+    const p = evaluate(empty);
+
+    expect([...p.towards.keys()].sort()).toEqual(ACHIEVEMENTS.map((a) => a.id).sort());
+  });
+
+  it('have never exceeds need, however much has happened', () => {
+    // Forty venues is 40, and "Ten venues" is a bar that stops at ten.
+    const logs = Array.from({ length: 40 }, (_, i) =>
+      mkLog({ id: `x${i}`, venueId: `v${i}` })
+    );
+    const p = evaluate({ ...empty, logs });
+
+    p.towards.forEach(({ have, need }, id) => {
+      expect(have).toBeLessThanOrEqual(need);
+      expect(have).toBeGreaterThanOrEqual(0);
+      expect(need).toBeGreaterThan(0);
+      if (p.earned.has(id)) expect(have).toBe(need);
+    });
+  });
+
+  it('an earned achievement is always full, and a full one always earned', () => {
+    const logs = Array.from({ length: 12 }, (_, i) => mkLog({ id: `y${i}`, venueId: `v${i}` }));
+    const p = evaluate({ ...empty, logs });
+
+    p.towards.forEach(({ have, need }, id) => {
+      expect(p.earned.has(id)).toBe(have >= need);
+    });
+  });
+});

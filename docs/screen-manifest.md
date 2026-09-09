@@ -38,10 +38,10 @@ Every screen in the inventory has a route.
 | L-03 | P1 | Round builder | /log/round | ✓ | Avatar, Button, Chip, DrinkGlyph, Icon, Sheet |
 | L-04 | P1 | Edit log | /log/edit/[logId] | ✓ | Button, Chip, DrinkGlyph, Field, Sheet |
 | D-01 | P0 | Map | /(tabs)/discover | ✓ | ActivityIndicator, Aurora, Avatar, Button, Card, Chip |
-| D-02 | P1 | Venue detail | /venue/[id] | ✓ | Avatar, Button, Card, EmptyState, Screen, StatTile |
+| D-02 | P1 | Venue detail | /venue/[id] | ✓ | Avatar, Button, Card, DrinkGlyph, EmptyState, Screen |
 | D-03 | P0 | Venue search | /venue/search | ✓ | ActivityIndicator, Button, Field, Icon, Sheet, Venue |
 | D-04 | P2 | Add venue | /venue/new | ✓ | Button, Field, Segmented, Sheet, VenueKind |
-| D-05 | P1 | Bar passport | /passport | ✓ | Card, EmptyState, Icon, Screen |
+| D-05 | P1 | Bar passport | /passport | ✓ | Card, EmptyState, Enter, Icon, LinearGradient, ProgressBar |
 | D-06 | P1 | Plan detail | /plan/[id] | ✓ | Avatar, Button, Card, EmptyState, Icon, ProgressBar |
 | D-07 | P1 | Create plan | /plan/new | ✓ | Button, Chip, Field, Sheet |
 | D-08 | P1 | Plan invite | /plan/[id]/invite | ✓ | Button, Card, Sheet |
@@ -60,16 +60,16 @@ Every screen in the inventory has a route.
 | C-13 | P1 | Notifications | /notifications | ✓ | Card, EmptyState, Icon, Record, Screen |
 | Y-01 | P0 | You | /(tabs)/you | ✓ | Avatar, Card, DrinkGlyph, EmptyState, Enter, Group |
 | Y-02 | P2 | Public profile preview | /people/preview | ✓ | Avatar, Card, Screen, StatTile |
-| Y-03 | P1 | Nights history | /nights | ✓ | Card, EmptyState, Group, NavRow, Screen, Segmented |
-| Y-04 | P1 | Morning after | /morning/[sessionId] | ✓ | Aurora, Button, Card, Chip, EmptyState, Icon |
-| Y-05 | P1 | Insights | /insights | ✓ | Button, Card, EmptyState, Screen, Sparkline, StatTile |
+| Y-03 | P1 | Nights history | /nights | ✓ | AnimatedPressable, Card, EmptyState, Group, Icon, MoodFace |
+| Y-04 | P1 | Morning after | /morning/[sessionId] | ✓ | Aurora, Bar, Button, Card, Chip, EmptyState |
+| Y-05 | P1 | Insights | /insights | ✓ | Bar, Button, Card, EmptyState, Screen, Sparkline |
 | Y-06 | P1 | Wellbeing hub | /wellbeing | ✓ | Button, Card, Goal, Group, Icon, InlineLink |
 | Y-07 | P1 | Goal editor | /wellbeing/goal/[type] | ✓ | Button, Icon, Sheet, Step, ToggleRow |
 | Y-08 | P2 | Nicotine dashboard | /nicotine | ✓ | Card, Chip, DrinkGlyph, EmptyState, Screen, StatTile |
-| Y-09 | P1 | Achievements | /achievements | ✓ | Card, Icon, LevelBar, Screen, Stagger |
+| Y-09 | P1 | Achievements | /achievements | ✓ | AchievementRow, Card, Enter, Icon, LevelBar, LinearGradient |
 | Y-10 | P0 | Get home safe | /safety | ✓ | Action, Button, Card, Chip, Glow, Icon |
-| Y-11 | P1 | Bar passport (shared with D-05) | /passport | ✓ | Card, EmptyState, Icon, Screen |
-| Y-12 | P2 | Wrapped | /wrapped/[year] | ✓ | Aurora, Button, UpgradeSlide |
+| Y-11 | P1 | Bar passport (shared with D-05) | /passport | ✓ | Card, EmptyState, Enter, Icon, LinearGradient, ProgressBar |
+| Y-12 | P2 | Wrapped | /wrapped/[year] | ✓ | Aurora, Bloom, Button, Enter, LinearGradient, ProgressBar |
 | S-01 | P0 | Settings home | /settings | ✓ | Button, Group, NavRow, Screen |
 | S-02 | P2 | Appearance | /settings/appearance | ✓ | Card, Group, Icon, Screen, ToggleRow |
 | S-03 | P0 | Units & region | /settings/units | ✓ | Card, Group, Screen, Segmented, ToggleRow |

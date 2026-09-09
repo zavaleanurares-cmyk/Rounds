@@ -171,7 +171,6 @@ export const stats = {
     one: '{venue}, {count} stamp',
     other: '{venue}, {count} stamps',
   },
-  'stats.stampTimes': '×{count}',
   'stats.passportNote': 'One stamp per venue per night. Exploration, not volume.',
 
   // Y-12 · Wrapped
@@ -268,4 +267,46 @@ export const stats = {
   'stats.pouchLabel': "{name}, {mg} milligrams",
   'stats.pouchCapNote': "Strengths as sold. Romanian law caps a pouch at {max} mg, so nothing stronger is listed.",
   'stats.noYieldNote': "No milligrams here on purpose. EU rules took nicotine figures off cigarette packs because they made some brands look safer than others. Counting is the honest measure.",
+  // ── passport cover ───────────────────────────────────────────────────────
+  'stats.coverPlaces': "PLACES",
+  'stats.coverStamps': "STAMPS",
+  'stats.coverKinds': "KINDS",
+  'stats.kindsTitle': "KINDS OF PLACE",
+  'stats.kindsHint': "Bar, club, wine bar, restaurant, café. A coffee counts.",
+  'stats.kindsAll': "All five. Your passport is properly stamped.",
+  'stats.stampsAddYours': "Tap a stamp to add a photo and a line.",
+  'stats.stampsDecorated': { one: '{count} stamp has a photo or a note.', other: '{count} stamps have a photo or a note.' },
+
+  // ── one stamp ────────────────────────────────────────────────────────────
+  'stats.stampVisits': { one: '{count} night here', other: '{count} nights here' },
+  'stats.stampAddPhoto': "Add a photo",
+  'stats.stampChangePhoto': "Change photo",
+  'stats.stampRemovePhoto': "Remove",
+  'stats.stampNoteLabel': "YOUR NOTE",
+  'stats.stampNotePlaceholder': "Who you were with, what you had, why you'd come back…",
+  'stats.stampFirst': "First time",
+  'stats.stampLast': "Last time",
+  'stats.stampTonight': "Tonight",
+  'stats.stampArea': "Area",
+  'stats.stampPrivacy': "Photos and notes stay on this phone. They are never uploaded and nobody else can see them.",
+  'stats.stampPhotoUnavailable': "Photos need the app, not the browser.",
+  'stats.stampPhotoDenied': "ROUNDS needs photo access to add one.",
+
+  // ── the collection ───────────────────────────────────────────────────────
+  'stats.collection': "Collection",
+  'stats.collectionSubtitle': "{found} of {total} found",
+  'stats.collectionAll': "All",
+  'stats.collectionEmptyTitle': "Nothing found yet",
+  'stats.collectionEmptyBody':
+    "Every drink in ROUNDS is a card, turned over the first time you log it. Water counts. Having the same thing twice does not.",
+  'stats.collectionNewThisMonth': { one: '{count} new this month', other: '{count} new this month' },
+  'stats.collectionNoneThisMonth': "Nothing new this month. Try one thing you have not had.",
+  'stats.collectionRule': "Only your first of each counts. Drinking more never fills a card.",
+  'stats.collectionNote': "Variety, not volume. The whole album can be finished one glass at a time.",
+  'stats.collectionLocked': "{drink}, not found yet",
+  'stats.collectionFirstOn': "First on {date}",
+  'stats.collectionFirstAtVenue': "{date} · {venue}",
+
+  // ── achievements ─────────────────────────────────────────────────────────
+  'stats.nearlyThere': "NEARLY THERE",
 } satisfies Record<string, Message>;

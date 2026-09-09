@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, ScrollView } from 'react-native';
+import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -29,6 +29,24 @@ import { color, radius, space, blur } from '@/design/tokens';
  *
  * The footer stays OUTSIDE the scroller on purpose. Save and Delete are why
  * the sheet is open; they do not scroll away.
+ *
+ * THE SHEET MOVES FOR THE KEYBOARD, and that is why it is wrapped in a
+ * `KeyboardAvoidingView` rather than merely having a scrollable body.
+ *
+ * It did not, and the effect was reported as "the sheet won't scroll down".
+ * The mechanics: this container is bottom-anchored inside a
+ * `transparentModal`, and on iOS the keyboard does not resize that — it is
+ * drawn over it. So tapping the name field on "Start the night", or the price
+ * field on the log sheet, put roughly 300pt of keyboard on top of the bottom
+ * of the sheet, including the footer with the button you opened it to press.
+ * Scrolling could not recover it, because the part of the scroller that was
+ * covered was not below the content, it was behind the keyboard: the
+ * ScrollView's own idea of its height had not changed, so it believed it was
+ * already showing everything and refused to move.
+ *
+ * `behavior="padding"` shortens the avoiding view by the keyboard's height,
+ * which shortens the sheet — `maxHeight: '92%'` is 92% of a smaller box now —
+ * which is what finally gives the body something to scroll within.
  */
 export function Sheet({
   children,
@@ -49,7 +67,12 @@ export function Sheet({
   const close = onClose ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/tonight')));
 
   return (
-    <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+    <KeyboardAvoidingView
+      // Android resizes the window itself (`adjustResize`), so adding padding
+      // there would double-count and leave a gap the height of the keyboard.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}
+    >
       <Pressable style={{ flex: 1 }} onPress={close} accessibilityLabel={t('ui.dismiss')} accessibilityRole="button" />
       <View
         style={{
@@ -80,11 +103,15 @@ export function Sheet({
           contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.md }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          // Belt and braces on iOS 14+: the scroller adds the keyboard's
+          // height to its own bottom inset, so the field you are typing in
+          // stays reachable even mid-sheet.
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {children}
         </ScrollView>
         {footer ? <View style={{ paddingHorizontal: space.lg, paddingTop: space.md }}>{footer}</View> : null}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

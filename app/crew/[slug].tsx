@@ -62,6 +62,7 @@ export default function CrewDetail() {
       mood="calm"
       accent={color.night[crew.accentIndex % 4]}
       footer={<Button title={t('social.planSomething')} onPress={() => router.push('/plan/new')} />}
+      stagger
     >
       <Card aurora accent={color.night[crew.accentIndex % 4]}>
         <Text variant="sectionHeader" tone="tertiary">{t('social.plans')}</Text>

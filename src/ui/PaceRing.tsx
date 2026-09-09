@@ -1,8 +1,9 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Animated, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop, G } from 'react-native-svg';
 import { Bloom } from './Bloom';
 import { Text } from './Text';
+import { usePulse } from './Motion';
 import { color, paceColor, paceGradient, paceWord, type PaceState } from '@/design/tokens';
 import type { PaceResult } from '@/domain/pace';
 import { paceAccessibilityLabel } from '@/domain/pace';
@@ -18,6 +19,13 @@ import { useStore } from '@/data/store';
  * THE STATE WORD IS THE PRIMARY READOUT. The ‰ estimate is a separate, smaller
  * element that the screen owns — it is deliberately not part of this component,
  * so it can never be accidentally promoted into the hero.
+ *
+ * The bloom behind it breathes. `Motion.tsx` reserves looping animation for
+ * exactly two things — the live dot and this ring while a night is running —
+ * and then nothing in the app ever used it, so the one element that is
+ * supposed to say "this is happening now" was as still as a screenshot. It is
+ * the light that moves, not the ring: the segments are a readout and a
+ * readout that pulses is a readout you distrust.
  */
 export interface PaceRingProps {
   result: PaceResult;
@@ -46,6 +54,10 @@ export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
   // Condensed runs ~0.46em per character including the tracking, and "SLOW DOWN"
   // is the word that has to fit — the state word is the primary readout, so it
   // is never allowed to truncate.
+  // Slower than the default pulse: this runs for hours, and anything quicker
+  // reads as an alert rather than as a heartbeat.
+  const breath = usePulse({ min: 0.5, max: 1, duration: 3600 });
+
   const chord = (size - stroke * 2) * 0.86;
   const word = t(paceWord[state]);
   const wordSize = Math.min(size * 0.2, chord / (word.length * 0.58));
@@ -57,7 +69,9 @@ export function PaceRing({ result, size = 220, subtitle }: PaceRingProps) {
       accessibilityRole="image"
       accessibilityLabel={paceAccessibilityLabel(result, locale)}
     >
-      <Bloom size={size * 1.35} color={paceColor[state]} opacity={0.35} />
+      <Animated.View style={{ position: 'absolute', opacity: breath }}>
+        <Bloom size={size * 1.35} color={paceColor[state]} opacity={0.35} />
+      </Animated.View>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Defs>
           <SvgGradient id={id} x1="0" y1="0" x2="1" y2="1">

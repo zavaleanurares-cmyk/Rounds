@@ -696,10 +696,10 @@ describe('the app is not write-only', () => {
    */
   it('every route is either social-guarded or deliberately not', () => {
     const NOT_SOCIAL = [
-      '(auth)', '(onboarding)', '(tabs)', 'achievements', 'city', 'dev', 'insights',
-      'legal', 'log', 'morning', 'nicotine', 'nights', 'passport', 'paywall',
-      'profile', 'report', 'safety', 'session', 'settings', 'venue',
-      'wellbeing', 'wrapped',
+      '(auth)', '(onboarding)', '(tabs)', 'achievements', 'city', 'collection',
+      'dev', 'insights', 'legal', 'log', 'morning', 'nicotine', 'nights',
+      'passport', 'paywall', 'profile', 'report', 'safety', 'session',
+      'settings', 'stamp', 'venue', 'wellbeing', 'wrapped',
     ];
     const guard = read('src/hooks/useSocial.ts');
     const routes = readdirSync('app')

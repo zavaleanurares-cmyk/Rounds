@@ -277,6 +277,26 @@ export async function createAccountWithPassword(
 }
 
 /**
+ * Setting a password from inside the app, for an account that may not have one.
+ *
+ * Deliberately does NOT ask for the current password. Everybody who has only
+ * ever signed in with an emailed code has no current password to give, and a
+ * field demanding one would lock exactly those people out of ever getting one —
+ * which is most of this app's users, since codes are the default.
+ */
+export async function changePassword(password: string, repeat: string): Promise<SignInResult> {
+  if (password.length < MIN_PASSWORD) return { ok: false, reason: 'auth.passwordTooShort' };
+  if (password !== repeat) return { ok: false, reason: 'settings.passwordMismatch' };
+  try {
+    await remote.setPassword(password);
+    return { ok: true };
+  } catch (err: unknown) {
+    if (__DEV__) console.warn('[auth] set password failed', err);
+    return { ok: false, reason: passwordReason(err) };
+  }
+}
+
+/**
  * Why the email code did not send — as far as it can honestly be known.
  *
  * The sign-in screen used to answer this question with `catch {}` and a single

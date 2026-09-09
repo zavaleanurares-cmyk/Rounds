@@ -99,6 +99,7 @@ export default function NightDetail() {
           });
         },
       }}
+      stagger
     >
       <View style={{ flexDirection: 'row', gap: space.m }}>
         <StatTile label={t('session.outFor')} value={f.duration(duration)} tint={accent} icon="clock" />

@@ -113,7 +113,7 @@ export const common = {
   'common.achTenVenuesName': 'Zece localuri',
   'common.achTenVenuesHint': 'Notează în zece localuri diferite.',
   'common.achNewPlaceName': 'Un local nou',
-  'common.achNewPlaceHint': 'Mergi într-un local unde n-a fost nimeni din gașcă.',
+  'common.achNewPlaceHint': 'Mergi undeva unde n-ai mai fost.',
   'common.achPassportPageName': 'Pagină de pașaport',
   'common.achPassportPageHint': 'Adună ștampile în trei localuri într-o lună.',
   // "Localnic" and "de-al locului" both gender the reader; "De-aici" does not.

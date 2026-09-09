@@ -107,7 +107,7 @@ export const common = {
   'common.achTenVenuesName': 'Ten places',
   'common.achTenVenuesHint': 'Log at ten different venues.',
   'common.achNewPlaceName': 'Somewhere new',
-  'common.achNewPlaceHint': 'Visit a venue nobody in your crew has.',
+  'common.achNewPlaceHint': 'Go somewhere you have never been.',
   'common.achPassportPageName': 'Passport page',
   'common.achPassportPageHint': 'Collect stamps at three venues in a month.',
   'common.achHomeCityName': 'Local',

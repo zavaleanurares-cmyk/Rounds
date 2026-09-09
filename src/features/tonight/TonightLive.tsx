@@ -99,6 +99,7 @@ export function TonightLive({ session }: { session: Session }) {
       // `undefined` here is what lets it.
       dimmed={lateNight && store.settings.nightDimming ? true : undefined}
       tabBarSpace
+      stagger
       contentStyle={{ gap: space.md }}
     >
       {/* venue · elapsed · end */}

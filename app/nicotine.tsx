@@ -74,7 +74,7 @@ export default function Nicotine() {
 
   if (!profile?.modules.nicotine) {
     return (
-      <Screen title={t('stats.nicotine')} back mood="calm">
+      <Screen title={t('stats.nicotine')} back mood="calm" stagger>
         <EmptyState
           icon="flame"
           title={t('stats.nicotineOffTitle')}

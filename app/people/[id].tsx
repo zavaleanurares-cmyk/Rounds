@@ -61,6 +61,7 @@ export default function PersonProfile() {
       back
       mood="calm"
       right={{ icon: 'ellipsis', label: t('ui.more'), onPress: () => setMenu((m) => !m) }}
+      stagger
     >
       <Card aurora>
         <View style={{ alignItems: 'center', gap: space.m, paddingVertical: space.sm }}>

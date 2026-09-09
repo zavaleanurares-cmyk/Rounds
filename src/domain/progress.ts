@@ -1,4 +1,4 @@
-import type { Log, Session, Person, Crew, Plan, Goal } from './types';
+import type { Log, Session, Person, Crew, Plan, Goal, Venue } from './types';
 import type { MessageKey } from '@/i18n';
 import { summariseNights, computeStreaks } from './stats';
 
@@ -66,6 +66,13 @@ export const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
 
 export interface ProgressInput {
   logs: Log[];
+  /**
+   * Needed only by `far-afield`, which asks how far apart the places you go
+   * are, and cannot answer that from logs — a log carries a venue id and no
+   * coordinate. Optional so every existing caller keeps compiling; an empty
+   * list simply means that one achievement stays at zero.
+   */
+  venues?: Venue[];
   sessions: Session[];
   people: Person[];
   crews: Crew[];
@@ -78,6 +85,15 @@ export interface ProgressInput {
 
 export interface Progress {
   earned: Set<string>;
+  /**
+   * How far along each achievement is, earned or not, keyed by id.
+   *
+   * `have` is clamped to `need`, so a person with forty venues does not read
+   * as 40/10 on a bar that only goes to ten. Every id in `ACHIEVEMENTS` is
+   * present — a missing key would silently render as a blank row, and a test
+   * holds the two lists to the same length.
+   */
+  towards: Map<string, { have: number; need: number }>;
   xp: number;
   level: number;
   /** XP into the current level, and how much that level costs in total. */
@@ -107,6 +123,7 @@ export function levelForXp(xp: number): number {
 
 export function evaluate(input: ProgressInput): Progress {
   const { logs, sessions, people, crews, plans, goals, trustedContacts, safeArrivalsResolved } = input;
+  const venues = input.venues ?? [];
   const now = input.now ?? Date.now();
 
   const nights = summariseNights(logs);
@@ -125,32 +142,65 @@ export function evaluate(input: ProgressInput): Progress {
   const weeksUnderCap = weeksUnder(nights, weeklyCap?.enabled ? weeklyCap.target : null);
 
   const earned = new Set<string>();
-  const add = (id: string, when: boolean) => {
-    if (when) earned.add(id);
+  /**
+   * Every rule here was already a threshold — `venueIds.size >= 5` — and the
+   * comparison was being thrown away the moment it was made, so the screen
+   * could say "locked" and nothing else. Twenty-two achievements, and not one
+   * of them could tell you that you were four fifths of the way there.
+   *
+   * `track` keeps both halves. `have`/`need` is the same boolean it always
+   * was, plus the two numbers that were already in hand. The two genuinely
+   * binary rules pass 0 or 1, which reads as "not yet" rather than as a false
+   * precision.
+   */
+  const towards = new Map<string, { have: number; need: number }>();
+  const track = (id: string, have: number, need: number) => {
+    towards.set(id, { have: Math.min(have, need), need });
+    if (have >= need) earned.add(id);
   };
+  const flag = (id: string, when: boolean) => track(id, when ? 1 : 0, 1);
 
-  add('first-night', recorded.length >= 1);
-  add('week-of-logs', recorded.length >= 7);
-  add('morning-person', mornings.length >= 5);
-  add('honest-editor', logs.some((l) => l.createdAt - l.at > 6 * 3600_000));
-  add('gap-filler', sessions.some((s) => s.mood && s.venueId));
-  add('five-venues', venueIds.size >= 5);
-  add('ten-venues', venueIds.size >= 10);
-  add('passport-page', venueIds.size >= 3);
-  add('home-city', logs.filter((l) => !l.deleted && l.venueId).length >= 20);
-  add('hydrated', nights.filter((n) => n.waters > 0).length >= 3);
-  add('dry-week', streaks.longestDry >= 7);
-  add('dry-fortnight', streaks.longestDry >= 14);
-  add('under-goal', weeksUnderCap >= 1);
-  add('under-goal-month', weeksUnderCap >= 4);
-  add('early-home', homeBeforeTwo.length >= 3);
-  add('water-first', startedWithWater(logs));
-  add('safe-arrival', safeArrivalsResolved >= 1);
-  add('first-friend', people.some((p) => p.status === 'friend'));
-  add('crew-founder', crews.length > 0);
-  add('plan-maker', plans.some((p) => p.invitees.filter((i) => i.rsvp === 'yes').length >= 3));
-  add('round-buyer', roundsBought(logs) >= 1);
-  add('looked-out', trustedContacts > 0);
+  const loggedAtVenue = logs.filter((l) => !l.deleted && l.venueId).length;
+
+  track('first-night', recorded.length, 1);
+  track('week-of-logs', recorded.length, 7);
+  track('morning-person', mornings.length, 5);
+  flag('honest-editor', logs.some((l) => l.createdAt - l.at > 6 * 3600_000));
+  flag('gap-filler', sessions.some((s) => s.mood && s.venueId));
+  track('five-venues', venueIds.size, 5);
+  track('ten-venues', venueIds.size, 10);
+  track('passport-page', venueIds.size, 3);
+  track('home-city', loggedAtVenue, 20);
+  track('hydrated', nights.filter((n) => n.waters > 0).length, 3);
+  track('dry-week', streaks.longestDry, 7);
+  track('dry-fortnight', streaks.longestDry, 14);
+  track('under-goal', weeksUnderCap, 1);
+  track('under-goal-month', weeksUnderCap, 4);
+  track('early-home', homeBeforeTwo.length, 3);
+  flag('water-first', startedWithWater(logs));
+  track('safe-arrival', safeArrivalsResolved, 1);
+  flag('first-friend', people.some((p) => p.status === 'friend'));
+  track('crew-founder', crews.length, 1);
+  flag('plan-maker', plans.some((p) => p.invitees.filter((i) => i.rsvp === 'yes').length >= 3));
+  track('round-buyer', roundsBought(logs), 1);
+  track('looked-out', trustedContacts, 1);
+
+  /*
+   * These two were DEFINED and never evaluated.
+   *
+   * Twenty-four achievements in the table, twenty-two `add` calls, and no
+   * check that the lists matched — so "Somewhere new" and "Away game" were
+   * displayed, listed in the total the screen divides by, and could not be
+   * earned by anybody, ever. Both had been shipped that way. `towards covers
+   * exactly the achievement table` is now the test that would have caught it
+   * on the day it was written, and it is what caught it today.
+   *
+   * The hints moved with the rules, because the old wording for "Somewhere
+   * new" asked a question this app cannot answer offline — whether anybody in
+   * your crew has been somewhere is not on this device.
+   */
+  track('new-place', firstVisitsSince(logs, now - 30 * 24 * 3600_000), 1);
+  track('far-afield', citiesVisited(logs, venues), 2);
 
   // XP. Every term below is per NIGHT or per ACT, never per drink.
   const breakdown = {
@@ -169,6 +219,7 @@ export function evaluate(input: ProgressInput): Progress {
 
   return {
     earned,
+    towards,
     xp,
     level,
     intoLevel: xp - base,
@@ -177,6 +228,50 @@ export function evaluate(input: ProgressInput): Progress {
     nextLevelAt: next,
     breakdown,
   };
+}
+
+/**
+ * Venues whose FIRST visit falls after `since`.
+ *
+ * Deliberately a rolling window rather than a one-off: "go somewhere you have
+ * never been" is worth doing again next month, and an exploration achievement
+ * that can only ever fire once is a tutorial step wearing a badge.
+ */
+function firstVisitsSince(logs: Log[], since: number): number {
+  const first = new Map<string, number>();
+  for (const l of logs) {
+    if (l.deleted || !l.venueId) continue;
+    const seen = first.get(l.venueId);
+    if (seen === undefined || l.at < seen) first.set(l.venueId, l.at);
+  }
+  let n = 0;
+  first.forEach((at) => {
+    if (at >= since) n += 1;
+  });
+  return n;
+}
+
+/**
+ * How many distinct places-in-the-world the visited venues sit in.
+ *
+ * `area` where the provider gave one, and otherwise a coarse coordinate
+ * bucket: ~0.5° is roughly 55km of latitude, which separates two cities and
+ * does not separate two districts of one. Venues with neither are skipped
+ * rather than counted as a nameless extra city — an unknown is not a journey.
+ */
+function citiesVisited(logs: Log[], venues: Venue[]): number {
+  const byId = new Map(venues.map((v) => [v.id, v]));
+  const places = new Set<string>();
+  for (const l of logs) {
+    if (l.deleted || !l.venueId) continue;
+    const v = byId.get(l.venueId);
+    if (!v) continue;
+    if (v.area) places.add(v.area.trim().toLowerCase());
+    else if (v.lat != null && v.lng != null) {
+      places.add(`${Math.round(v.lat * 2) / 2},${Math.round(v.lng * 2) / 2}`);
+    }
+  }
+  return places.size;
 }
 
 /** How many complete weeks came in under the weekly cap, most recent first. */

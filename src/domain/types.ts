@@ -95,6 +95,21 @@ export interface Venue {
   photoUrl?: string | null;
 }
 
+/**
+ * What somebody added to a passport stamp themselves.
+ *
+ * Deliberately tiny: one image and one line. A stamp is a souvenir, not a
+ * review, and a free-text box big enough for a paragraph invites a diary that
+ * this app then has to defend in a privacy review.
+ */
+export interface Stamp {
+  /** A local file URI from the image picker. Never a remote URL. */
+  photoUri: string | null;
+  /** 140 characters, the same limit as a profile bio. */
+  note: string | null;
+  updatedAt: number;
+}
+
 export interface Drink {
   id: string;
   name: string;

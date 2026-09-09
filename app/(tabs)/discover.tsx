@@ -32,7 +32,7 @@ export default function Discover() {
   const t = useT();
   const { locale } = useI18n();
   const insets = useSafeAreaInsets();
-  const { people, logs, venues: localVenues, mergeVenues, settings } = useStore();
+  const { people, logs, venues: localVenues, mergeVenues, settings, updateSettings } = useStore();
   const { status, coords: gpsCoords, request } = useLocation(true);
   /**
    * A hand-picked city wins over GPS. Somebody who has told the app where they
@@ -41,6 +41,26 @@ export default function Discover() {
    */
   const homeCity = settings.homeCity;
   const coords = homeCity ? { lat: homeCity.lat, lng: homeCity.lng } : gpsCoords;
+
+  /**
+   * "Find me" is a command, and it had two ways of doing nothing.
+   *
+   * It called `request()` and stopped there. If a city had been picked, the
+   * line above pins `coords` to that city forever, so a granted, accurate fix
+   * was fetched and then discarded — the map stayed on Lisbon while the device
+   * sat in Cluj. And with no city picked, `request()` returns the same
+   * coordinates it already had, `center` does not change, and the camera
+   * effect never re-runs, so nothing moves either.
+   *
+   * Pressing it now says three things at once: forget the pinned city, ask
+   * again, and move the camera regardless of whether the numbers changed.
+   */
+  const [focusKey, setFocusKey] = useState(0);
+  const findMe = async () => {
+    if (homeCity) updateSettings({ homeCity: null });
+    await request();
+    setFocusKey((k) => k + 1);
+  };
 
   const [peek, setPeek] = useState<Venue | null>(null);
   const [layers, setLayers] = useState({ friends: true, been: true, open: false });
@@ -130,6 +150,8 @@ export default function Discover() {
         selectedId={peek?.id ?? null}
         onSelect={setPeek}
         topInset={insets.top}
+        focusKey={focusKey}
+        me={status === 'granted' || status === 'approximate' ? gpsCoords : null}
       />
 
       {/* glass search toolbar */}
@@ -170,7 +192,7 @@ export default function Discover() {
 
       {/* recentre */}
       <Pressable
-        onPress={() => void request()}
+        onPress={() => void findMe()}
         accessibilityRole="button"
         accessibilityLabel={t('discover.findMe')}
         style={{ position: 'absolute', right: geometry.screenMargin, top: insets.top + 118 }}
@@ -236,7 +258,7 @@ export default function Discover() {
               </View>
             </View>
             <View style={{ marginTop: space.sm }}>
-              <Button title={t('ui.retry')} kind="plain" compact onPress={() => void request()} />
+              <Button title={t('ui.retry')} kind="plain" compact onPress={() => void findMe()} />
             </View>
           </Card>
         ) : layers.friends && liveFriends.length > 0 ? (

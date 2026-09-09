@@ -142,6 +142,7 @@ export default function You() {
         <QuickAction label={t('stats.goals')} icon="checkmark.shield" onPress={() => router.push('/wellbeing')} />
         <QuickAction label={t('stats.wrapped')} icon="sparkles" onPress={() => router.push(`/wrapped/${new Date().getFullYear()}` as never)} />
         <QuickAction label={t('stats.passport')} icon="location" onPress={() => router.push('/passport')} />
+        <QuickAction label={t('stats.collection')} icon="wineglass" onPress={() => router.push('/collection')} />
         {profile?.modules.nicotine ? (
           <QuickAction label={t('stats.nicotine')} icon="flame" onPress={() => router.push('/nicotine')} />
         ) : null}

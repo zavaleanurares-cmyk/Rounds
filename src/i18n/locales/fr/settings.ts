@@ -22,6 +22,17 @@ export const settings = {
   'settings.systemSurfacesSubtitle': 'Live Activity, widgets, Siri, montre',
   'settings.blockedUsers': 'Comptes bloqués',
   'settings.dataAccount': 'Données & compte',
+
+  // A password, for anybody who would rather have one than wait for a code
+  'settings.password': 'Mot de passe',
+  'settings.passwordSet': 'Défini',
+  'settings.passwordNotSet': 'Non défini',
+  'settings.passwordIntro': 'Tu peux te connecter avec un code reçu par e-mail ou avec un mot de passe. En définir un ici ne désactive pas les codes — les deux continuent de fonctionner.',
+  'settings.passwordNew': 'Nouveau mot de passe',
+  'settings.passwordRepeat': 'Répète-le',
+  'settings.passwordMismatch': 'Les deux ne correspondent pas.',
+  'settings.passwordSaved': 'Mot de passe enregistré.',
+  'settings.savePassword': 'Enregistrer le mot de passe',
   'settings.helpLegal': 'Aide & mentions légales',
   'settings.demoData': 'Données de démo',
   'settings.demoDataSubtitle': "Remplit l'appli avec 14 semaines d'historique plausible",

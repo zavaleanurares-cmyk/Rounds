@@ -35,7 +35,7 @@ export default function Wellbeing() {
         : f.number(gramsToUnits(value, system), 1);
 
   return (
-    <Screen title={t('stats.wellbeing')} back mood="calm">
+    <Screen title={t('stats.wellbeing')} back mood="calm" stagger>
       <Card aurora accent={color.pace.steady}>
         <Text variant="sectionHeader" tone="tertiary">{t('stats.dryStreakHeader')}</Text>
         <Text variant="numericLarge" style={{ marginTop: space.xs }}>{f.number(streaks.dryStreak, 0)}</Text>

@@ -40,6 +40,7 @@ export default function Settings() {
 
       <Group title={t('settings.groupSafetyPeople')}>
         <NavRow title={t('settings.blockedUsers')} onPress={() => router.push('/settings/blocked')} />
+        <NavRow title={t('settings.password')} onPress={() => router.push('/settings/password')} />
         <NavRow title={t('settings.dataAccount')} onPress={() => router.push('/settings/data')} />
         <NavRow title={t('settings.helpLegal')} onPress={() => router.push('/settings/help')} last />
       </Group>

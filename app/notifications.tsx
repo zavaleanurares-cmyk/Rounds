@@ -30,7 +30,7 @@ export default function Notifications() {
 
   if (notifications.length === 0) {
     return (
-      <Screen title={t('notifications.title')} back mood="calm">
+      <Screen title={t('notifications.title')} back mood="calm" stagger>
         <EmptyState icon="bell" title={t('notifications.emptyTitle')} body={t('notifications.emptyBody')} />
       </Screen>
     );
