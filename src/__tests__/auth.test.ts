@@ -210,3 +210,44 @@ describe('passwords say what actually went wrong', () => {
     expect(result.reason).toBe('auth.checkYourEmail');
   });
 });
+
+describe('the code length belongs to the project, not to this client', () => {
+  /**
+   * The lockout this replaces.
+   *
+   * `store.verifyOtp` used to demand exactly `OTP_LENGTH` digits, and the
+   * verify screen only submitted when the field reached that length. So a
+   * project sending six digits into a build configured for eight could not be
+   * logged into at all: the code was correct, the screen never submitted it,
+   * and the guard would have refused it anyway — with no error, no log, and
+   * nothing on screen to explain it. Setting the constant to eight fixed the
+   * mirror image of the same bug and created this one.
+   *
+   * Only GoTrue can judge a code. The client checks the shape.
+   */
+  const shaped = (code: string) => /^\d{6,10}$/.test(code);
+
+  it('accepts every length a project can be configured for', () => {
+    for (const n of [6, 7, 8, 9, 10]) expect(shaped('1'.repeat(n))).toBe(true);
+  });
+
+  it('still refuses things that are not codes', () => {
+    expect(shaped('12345')).toBe(false);
+    expect(shaped('12345678901')).toBe(false);
+    expect(shaped('12345a')).toBe(false);
+    expect(shaped('')).toBe(false);
+  });
+
+  it('the guard in the store is the one being described', () => {
+    // Reading the file, because the store cannot be imported under jest —
+    // weaker than executing it, and the reason the assertion above exists too.
+    const src = readFileSync('src/data/store.tsx', 'utf8');
+    expect(src).toMatch(/\/\^\\\\?d\{6,10\}\$\//);
+  });
+
+  it('the verify screen has a way in when auto-submit cannot fire', () => {
+    const src = readFileSync('app/(auth)/verify.tsx', 'utf8');
+    expect(src).toContain('auth.useThisCode');
+    expect(src).toMatch(/code\.length >= 6/);
+  });
+});

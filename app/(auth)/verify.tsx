@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, TextInput, Animated, Pressable, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, Text, Card, InlineLink } from '@/ui';
+import { Screen, Text, Card, InlineLink, Button } from '@/ui';
 import { useStore } from '@/data/store';
 import { useT } from '@/i18n';
 import { color, radius, space } from '@/design/tokens';
@@ -94,13 +94,17 @@ export default function Verify() {
             const digits = t.replace(/\D/g, '').slice(0, CODE_LENGTH);
             setCode(digits);
             setError(false);
+            // Auto-submit at the configured length, which is the normal path.
+            // The button below is what makes a MISMATCH survivable: if the
+            // project sends six digits into eight boxes this never fires, and
+            // without another way in the screen is a dead end.
             if (digits.length === CODE_LENGTH) void submit(digits);
           }}
           keyboardType="number-pad"
           inputMode="numeric"
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
-          maxLength={CODE_LENGTH}
+          maxLength={10}
           style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
         />
 
@@ -108,6 +112,18 @@ export default function Verify() {
           <Text variant="footnote" color={color.safety} center style={{ marginTop: space.md }}>
             {t('auth.codeWrong')}
           </Text>
+        ) : null}
+
+        {/*
+          Shown once there are enough digits to be a code at all, and only when
+          the auto-submit has not already fired. Its whole job is to make a
+          length mismatch recoverable: six digits in eight boxes used to be
+          unenterable, so a correct code could not be submitted at all.
+        */}
+        {code.length >= 6 && code.length !== CODE_LENGTH ? (
+          <View style={{ marginTop: space.md }}>
+            <Button title={t('auth.useThisCode')} onPress={() => void submit(code)} />
+          </View>
         ) : null}
 
         <View style={{ alignItems: 'center', marginTop: space.lg }}>

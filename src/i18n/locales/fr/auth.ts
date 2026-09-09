@@ -51,4 +51,5 @@ export const auth = {
   'auth.sendAnotherCode': 'Envoyer un autre code',
   'auth.otpBuildNote':
     "Dans ce build, six chiffres quelconques marchent — l'appel OTP passe par Supabase derrière la même fonction.",
+  'auth.useThisCode': 'Utiliser ce code',
 } satisfies Record<string, Message>;

@@ -1066,11 +1066,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await remote.signInWithOtp(email);
     },
     async verifyOtp(code) {
-      // The length is the project's, not this function's. It used to be a
-      // hard-coded six here as well as in the screen, so a project configured
-      // for eight had its codes rejected before they ever reached Supabase —
-      // by the one check with no error, no log and no way to see it.
-      if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(code)) return false;
+      /*
+       * SIX TO TEN, not exactly `OTP_LENGTH`.
+       *
+       * The length belongs to the project that mints the code, not to this
+       * client, and pinning it here made a configuration mismatch fatal in
+       * both directions. Hard-coded six rejected an eight-digit project's codes
+       * before they reached Supabase. Setting it to eight then did the same to
+       * a project still sending six — a correct code, refused locally, with no
+       * error, no log and no way to see why.
+       *
+       * GoTrue is the only thing that can actually judge a code. This checks
+       * the shape and gets out of the way; a wrong length now comes back as
+       * "that code did not work" from the server, which is at least true.
+       */
+      if (!/^\d{6,10}$/.test(code)) return false;
 
       let userId = stateRef.current.auth.userId ?? 'me';
       if (remote.isRemoteEnabled() && stateRef.current.auth.pendingEmail) {

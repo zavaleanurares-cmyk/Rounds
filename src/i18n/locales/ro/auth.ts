@@ -54,4 +54,5 @@ export const auth = {
   'auth.sendAnotherCode': 'Trimite alt cod',
   'auth.otpBuildNote':
     'În buildul ăsta merge orice combinație de șase cifre — apelul OTP e legat la Supabase în spatele aceleiași funcții.',
+  'auth.useThisCode': 'Folosește codul ăsta',
 } satisfies Record<string, Message>;

@@ -49,4 +49,5 @@ export const auth = {
   'auth.sendAnotherCode': 'Mandar otro código',
   'auth.otpBuildNote':
     'En esta build funcionan seis dígitos cualesquiera — la llamada OTP va a Supabase detrás de la misma función.',
+  'auth.useThisCode': 'Usar este código',
 } satisfies Record<string, Message>;

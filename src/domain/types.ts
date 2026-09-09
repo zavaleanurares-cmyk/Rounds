@@ -54,6 +54,13 @@ export interface Profile {
    * the questions — `personalNormal` treats that as "no prior" and behaves
    * exactly as the app did without it. See `domain/baseline.ts` for what it is
    * for and how quickly real nights outweigh it.
+   *
+   * DEVICE-LOCAL, deliberately. It is absent from the `profiles` update in
+   * `remote.ts` and from `toProfile`, and the pull applies the server's answer
+   * as a PATCH — so a baseline set on this phone survives every sync rather
+   * than being overwritten by a column that does not exist. It is an estimate
+   * this device made about its owner, it is only ever read here, and there is
+   * nothing the server could do with it that would be worth the row.
    */
   baseline: Baseline | null;
   intent: string[];
