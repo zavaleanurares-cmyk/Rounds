@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Pressable, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -66,21 +66,58 @@ export default function Discover() {
   const [layers, setLayers] = useState({ friends: true, been: true, open: false });
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
-  const [found, setFound] = useState<Venue[]>([]);
+  /**
+   * Everything fetched this session, keyed by id — not the result of the last
+   * request.
+   *
+   * Replacing on each fetch meant panning away and back showed an empty map
+   * until the request came round again, and two overlapping areas kept only
+   * the second. Accumulating is what makes the map feel continuous while you
+   * drag it.
+   */
+  const [found, setFound] = useState<Map<string, Venue>>(new Map());
+
+  /**
+   * The patch of world to ask about: wherever the map is looking, falling back
+   * to your own position before the camera has reported anything.
+   */
+  const [area, setArea] = useState<{ lat: number; lng: number; radiusM: number } | null>(null);
+  const query = area ?? { lat: coords.lat, lng: coords.lng, radiusM: 1800 };
+
+  /**
+   * Panning fires `onRegionChangeComplete` on every settle, so this is
+   * debounced and ignores small moves — the cache is keyed to about 110m, and
+   * without a floor a slow drag would queue a request per frame at a public,
+   * rate-limited API that asks for restraint.
+   */
+  const onArea = useCallback((next: { lat: number; lng: number; radiusM: number }) => {
+    setArea((prev) => {
+      if (prev && distanceM(prev, next) < prev.radiusM * 0.4 && Math.abs(prev.radiusM - next.radiusM) < prev.radiusM * 0.4) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    findVenues({ lat: coords.lat, lng: coords.lng, radiusM: 1800 })
-      .then(({ venues, stale: isStale }) => {
-        if (!alive) return;
-        setFound(venues);
-        setStale(isStale);
-        mergeVenues(venues);
-      })
-      .finally(() => alive && setLoading(false));
-    return () => { alive = false; };
-  }, [coords.lat, coords.lng]);
+    const timer = setTimeout(() => {
+      findVenues({ lat: query.lat, lng: query.lng, radiusM: query.radiusM })
+        .then(({ venues, stale: isStale }) => {
+          if (!alive) return;
+          setFound((prev) => {
+            const next = new Map(prev);
+            venues.forEach((v) => next.set(v.id, v));
+            return next;
+          });
+          setStale(isStale);
+          mergeVenues(venues);
+        })
+        .finally(() => alive && setLoading(false));
+    }, 450);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [query.lat, query.lng, query.radiusM]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- mergeVenues is
   // stable via the store's ref; listing it re-fired this on every mutation.
 
@@ -99,13 +136,15 @@ export default function Discover() {
    * only when the answer exists — a filter that cannot filter is worse than no
    * filter, and hiding it is more honest than showing one that lies.
    */
+  const foundList = useMemo(() => [...found.values()], [found]);
+
   const canAnswerOpen = useMemo(
-    () => (found.length > 0 ? found : localVenues).some((v) => typeof v.openNow === 'boolean'),
-    [found, localVenues]
+    () => (foundList.length > 0 ? foundList : localVenues).some((v) => typeof v.openNow === 'boolean'),
+    [foundList, localVenues]
   );
 
   const shown = useMemo(() => {
-    const all = found.length > 0 ? found : localVenues;
+    const all = foundList.length > 0 ? foundList : localVenues;
     return all
       .filter((v) => (layers.been ? true : !visited.has(v.id)))
       // Strict when the filter is on: an unknown is not an open door.
@@ -118,14 +157,15 @@ export default function Discover() {
             : null,
       }))
       .sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9))
-      // 120, not 40. The old cap existed because forty undifferentiated pins
-      // was already a wall and the map had no way to fold them — so the fix
-      // was to silently drop the forty-first nearest place, which is a real
-      // bar somebody might have been looking for. The map clusters now, so a
-      // dense city centre folds into counts instead of vanishing. Still
-      // bounded: this is a list a person browses, not a dataset.
-      .slice(0, 120);
-  }, [found, localVenues, layers.been, layers.open, canAnswerOpen, visited, coords]);
+      // 600, not 120, and not 40 before that.
+      //
+      // Each of those caps silently dropped a real bar somebody might have
+      // been looking for, and the drop was invisible: the nearest survive, so
+      // the map always looks plausible. The map clusters and the fetch now
+      // follows the camera, so the honest bound is "more than any screen can
+      // show" rather than a number chosen to keep a pin count comfortable.
+      .slice(0, 600);
+  }, [foundList, localVenues, layers.been, layers.open, canAnswerOpen, visited, coords]);
 
   const liveFriends = people.filter((p) => p.liveNow && p.status === 'friend');
   const friendNames = liveFriends.map((f) => f.displayName.split(' ')[0]).join(', ');
@@ -152,6 +192,7 @@ export default function Discover() {
         topInset={insets.top}
         focusKey={focusKey}
         me={status === 'granted' || status === 'approximate' ? gpsCoords : null}
+        onArea={onArea}
       />
 
       {/* glass search toolbar */}

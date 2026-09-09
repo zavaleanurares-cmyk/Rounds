@@ -65,6 +65,30 @@ export function Enter({ children, delay = 0, from = 'below', distance = 14, styl
 }
 
 /**
+ * Flattens fragments so each real element is counted, not the fragment holding
+ * it.
+ *
+ * `React.Children.toArray` treats `<>{a}{b}</>` as ONE child. That matters
+ * here because the parent laying these out is a column with `gap`, and a
+ * fragment contributes no node of its own — so before staggering, `a` and `b`
+ * were siblings in the gapped container and sat a proper distance apart.
+ * Wrapping the fragment in a single `Enter` put them inside a new View with no
+ * gap, and they closed up against each other. Two screens render their body as
+ * a fragment, and on both the cards were touching.
+ */
+function flatten(children: React.ReactNode): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  React.Children.toArray(children).forEach((child) => {
+    if (React.isValidElement(child) && child.type === React.Fragment) {
+      out.push(...flatten((child.props as { children?: React.ReactNode }).children));
+    } else {
+      out.push(child);
+    }
+  });
+  return out;
+}
+
+/**
  * Wraps each child in an `Enter` with an increasing delay.
  *
  * Capped at eight, because past that the last item arrives so late it reads as
@@ -81,7 +105,7 @@ export function Stagger({
   step?: number;
   delay?: number;
 }) {
-  const items = React.Children.toArray(children);
+  const items = flatten(children);
   return (
     <>
       {items.map((child, i) => (

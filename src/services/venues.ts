@@ -177,8 +177,22 @@ async function searchOsm(q: VenueQuery): Promise<Venue[]> {
   // European city centre. `out center` gives ways and relations a single
   // representative point, which is all a pin needs.
   const query = q.term
-    ? `[out:json][timeout:12];nwr${filter}["name"~"${escapeOverpass(q.term)}",i](${bbox(q)});out center 40;`
-    : `[out:json][timeout:12];nwr${filter}(around:${radius},${q.lat},${q.lng});out center 60;`;
+    ? `[out:json][timeout:12];nwr${filter}["name"~"${escapeOverpass(q.term)}",i](${bbox(q)});out center 60;`
+    // 300, not 60.
+    //
+    // This was the real cap on "why can I only see some of the bars". The
+    // screen sliced to 120 and the map clusters, so both of those looked like
+    // the limit — but Overpass was told to stop at 60 before either of them
+    // saw a thing, and a dense city centre has more than 60 places to drink
+    // within a few streets. The ones dropped were not the far ones; `out` has
+    // no ordering, so it was an arbitrary 60.
+    //
+    // Three hundred is bounded on purpose: the response is JSON over a public,
+    // rate-limited API that asks for restraint, and the map has to lay the
+    // results out. It is enough for any real neighbourhood at the zoom this
+    // queries, and panning now fetches the next area rather than relying on
+    // one enormous first request.
+    : `[out:json][timeout:25];nwr${filter}(around:${radius},${q.lat},${q.lng});out center 300;`;
 
   const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter', {
     method: 'POST',

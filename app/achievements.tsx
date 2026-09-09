@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Screen, Card, Text, Icon, LevelBar, Enter, ProgressBar, useCountUp, usePressScale,
+  Screen, Card, Text, Icon, LevelBar, Enter, ProgressBar, useCountUp,
 } from '@/ui';
 import { useStore } from '@/data/store';
 import { ACHIEVEMENTS, evaluate, type AchievementDef } from '@/domain/progress';
@@ -213,12 +213,27 @@ function AchievementRow({
   t: ReturnType<typeof useT>;
   f: ReturnType<typeof useFormat>;
 }) {
-  const { style, handlers } = usePressScale(0.985);
   const started = !earned && at.have > 0;
 
+  /*
+   * No press animation here, and the `as never` that used to silence the type
+   * error was the tell.
+   *
+   * `usePressScale` returns a style whose transform holds an `Animated.Value`.
+   * That is only legal on an `Animated.View`; on a plain one React Native has
+   * to serialise the transform and throws on the object. react-native-web
+   * happens to tolerate it, which is why every browser check passed and the
+   * screen crashed the moment it opened in Expo Go — the difference between a
+   * check that runs and a check that runs WHERE IT SHIPS.
+   *
+   * The row is not pressable in the first place: there is no `onPress` on it,
+   * so the handlers were wired to nothing and the scale was feedback for an
+   * interaction that does not exist. Removing it is the fix, not moving it to
+   * an Animated.View.
+   */
   return (
-    <View {...handlers} style={{ gap: 6 }}>
-      <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.m }, style as never]}>
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.m }}>
         <View
           style={{
             width: 40,

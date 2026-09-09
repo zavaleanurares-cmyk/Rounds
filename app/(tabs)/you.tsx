@@ -137,7 +137,21 @@ export default function You() {
         </Card>
       )}
 
-      <View style={{ flexDirection: 'row', gap: space.m }}>
+      {/*
+        Wraps, and each tile is a quarter of the row.
+
+        This was a plain `flexDirection: 'row'` with `flex: 1` tiles, which is
+        correct for the four it was built with and silently wrong for the fifth
+        — adding Collection squeezed every tile to a fifth of the width and
+        clipped "Insights" and "Goals" to "Insight" and "Goal". Nothing errored;
+        the labels are `numberOfLines={1}`, so they just quietly lost their last
+        letters. With nicotine enabled it is six tiles and worse.
+
+        `flexBasis: 22%` with `flexWrap` fixes it at four per row and lets the
+        rest fall to a second row, so the next button someone adds costs a row
+        rather than a letter.
+      */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.m }}>
         <QuickAction label={t('stats.insights')} icon="chart.bar" onPress={() => router.push('/insights')} />
         <QuickAction label={t('stats.goals')} icon="checkmark.shield" onPress={() => router.push('/wellbeing')} />
         <QuickAction label={t('stats.wrapped')} icon="sparkles" onPress={() => router.push(`/wrapped/${new Date().getFullYear()}` as never)} />

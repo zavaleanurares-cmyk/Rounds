@@ -128,7 +128,12 @@ export function QuickAction({
       accessibilityRole="button"
       accessibilityLabel={label}
       style={[{
-        flex: 1,
+        // A quarter of the row, wrapping — not `flex: 1`, which divides the
+        // row by however many tiles happen to be in it and clips their labels
+        // the moment a fifth is added. See the note at the call site in
+        // `app/(tabs)/you.tsx`.
+        flexBasis: '22%',
+        flexGrow: 1,
         minHeight: 76,
         alignItems: 'center',
         justifyContent: 'center',

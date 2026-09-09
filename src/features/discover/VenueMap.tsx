@@ -40,6 +40,16 @@ export interface VenueMapProps {
   focusKey?: number;
   /** Where the device actually is, which is not always where the map is. */
   me?: { lat: number; lng: number } | null;
+  /**
+   * Fired when the camera settles somewhere new, with the area now on screen.
+   *
+   * The venue fetch used to be keyed on `center` alone — your GPS fix or a
+   * hand-picked city — so panning the map moved the camera over a fixed set of
+   * pins and nothing was ever asked about where you had panned TO. Wander to
+   * the next town and the map was empty, correctly reporting the bars near a
+   * place you were no longer looking at.
+   */
+  onArea?: (area: { lat: number; lng: number; radiusM: number }) => void;
 }
 
 /**
@@ -57,7 +67,7 @@ export function VenueMap(props: VenueMapProps) {
 
 /* -------------------------------------------------------------- the real one */
 
-function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, focusKey = 0 }: VenueMapProps) {
+function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, focusKey = 0, onArea }: VenueMapProps) {
   const t = useT();
   const Maps = optional(() => require('react-native-maps'));
   const ref = useRef<any>(null);
@@ -119,7 +129,15 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
       provider={provider}
       onMapReady={() => setReady(true)}
       onPress={() => onSelect(null)}
-      onRegionChangeComplete={(r: { latitudeDelta: number }) => setSpan(r.latitudeDelta)}
+      onRegionChangeComplete={(r: { latitude: number; longitude: number; latitudeDelta: number }) => {
+        setSpan(r.latitudeDelta);
+        // Half the visible height in metres, so the request covers roughly
+        // what is on screen. Clamped: below ~700m a small pan asks again for
+        // what it already has, and above ~14km Overpass starts timing out on
+        // a bounding box that size.
+        const radiusM = Math.round(Math.min(14000, Math.max(700, (r.latitudeDelta * 111_000) / 2)));
+        onArea?.({ lat: r.latitude, lng: r.longitude, radiusM });
+      }}
       // The night styling is not decoration: a white map at 1am in a dark app
       // is a flashbang, and this screen is used in exactly that situation.
       // Google-only; Apple Maps takes `userInterfaceStyle` below instead.
@@ -213,7 +231,11 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
     };
   }, [venues, center]);
 
-  const top = topInset + 150;
+  // Below the toolbar, not behind it. The search field, the filter chips and
+  // the "couldn't reach the venue service" line stack to about 130pt from the
+  // top inset, and the caption below sat at +110 — printed straight through
+  // the chips. Measured in a browser at 390pt.
+  const top = topInset + 190;
   const usableH = height - top - 230;
 
   const project = (lat: number, lng: number) => ({
@@ -244,7 +266,7 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
         silently degraded features. It is not only the browser that lands here:
         so does any device without Play services.
       */}
-      <View style={{ position: 'absolute', top: topInset + 110, left: 0, right: 0, alignItems: 'center' }} pointerEvents="none">
+      <View style={{ position: 'absolute', top: topInset + 146, left: 0, right: 0, alignItems: 'center' }} pointerEvents="none">
         <Text variant="caption1" tone="quaternary" style={{ textAlign: 'center', paddingHorizontal: 24 }}>
           {tProjected}
         </Text>
