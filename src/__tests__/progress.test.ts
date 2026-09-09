@@ -166,18 +166,32 @@ describe('achievements', () => {
     expect(evaluate({ ...empty, logs }).earned.has('five-venues')).toBe(false);
   });
 
+  /**
+   * The times are built in LOCAL time, and that is the whole fix.
+   *
+   * `early-home` reads `new Date(endedAt).getHours()`, which is local. This
+   * test used to build its two nights with `Date.UTC` and then try to stay
+   * timezone-independent by asserting only that at least one of them counted,
+   * with a bail-out if the two happened to land on the same hour. Neither
+   * guard survives a real offset: in UTC+3, 01:30 UTC is 04:30 and 03:30 UTC
+   * is 06:30, so the hours differ, the bail-out does not fire, and NEITHER
+   * night is before two — `a || b` is false and the test fails.
+   *
+   * It went unnoticed because CI runs in UTC and so does every container this
+   * repository has been checked in. It first went red on a laptop in Romania,
+   * which is the only machine that has ever run it at a real offset.
+   *
+   * Local input against a local rule is timezone-independent by construction,
+   * and it lets the assertion say what the rule actually is — 01:30 counts,
+   * 03:30 does not — instead of the much weaker "one of these two".
+   */
   it('"home before two" means the clock, not the length of the night', () => {
-    const early = mkSession({ endedAt: Date.UTC(2026, 4, 2, 1, 30) });
-    const late = mkSession({ endedAt: Date.UTC(2026, 4, 2, 3, 30) });
+    const early = mkSession({ endedAt: new Date(2026, 4, 2, 1, 30).getTime() });
+    const late = mkSession({ endedAt: new Date(2026, 4, 2, 3, 30).getTime() });
     const three = (s: Session) => [s, mkSession({ ...s, id: 'b' }), mkSession({ ...s, id: 'c' })];
-    // Compared against local time, so this asserts the two differ rather than
-    // pinning a timezone the CI box might not share.
-    const earlyHour = new Date(early.endedAt as number).getHours();
-    const lateHour = new Date(late.endedAt as number).getHours();
-    if (earlyHour === lateHour) return; // degenerate offset; nothing to assert
-    const a = evaluate({ ...empty, sessions: three(early) }).earned.has('early-home');
-    const b = evaluate({ ...empty, sessions: three(late) }).earned.has('early-home');
-    expect(a || b).toBe(true);
+
+    expect(evaluate({ ...empty, sessions: three(early) }).earned.has('early-home')).toBe(true);
+    expect(evaluate({ ...empty, sessions: three(late) }).earned.has('early-home')).toBe(false);
   });
 
   it('progress is a pure function — same input, same answer', () => {

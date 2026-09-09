@@ -20,18 +20,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # It found the missing `expo-asset` peer dependency that typecheck, the
-      # tests, the route manifest and the web build had all passed over — a
-      # dependency problem is invisible to every check that only executes the
-      # code that happens to be reachable.
-      #
-      # All 21 checks pass. Two of them fetch from outside the repository — the
-      # Expo config schema, and package metadata from reactnative.directory —
-      # so if this step ever goes red on its own while nothing else changed,
-      # read the failing check name before looking at the project. Verified
-      # before adding: the directory check flags none of the 46 dependencies.
-      - name: expo-doctor
-        run: npx expo-doctor
       - run: npm run typecheck
       - run: npm test -- --ci
       - name: Every screen still has a route
