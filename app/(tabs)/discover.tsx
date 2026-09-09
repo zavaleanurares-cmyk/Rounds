@@ -219,31 +219,53 @@ export default function Discover() {
             </View>
           </Glass>
         </Pressable>
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
+        {/*
+          "Find me" lives in this row now.
+
+          It was absolutely positioned at `insets.top + 118`, a constant chosen
+          for a toolbar of a search field and one line of chips. Anything that
+          made the toolbar taller — the "couldn't reach the venue service"
+          warning wrapping to two lines, which is exactly when you most want to
+          recentre — put the button on top of the text. In the row it cannot
+          collide with anything, because flow layout is doing the arithmetic
+          instead of me.
+        */}
+        <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
           <Chip label={t('discover.filterFriends')} compact selected={layers.friends} onPress={() => setLayers((l) => ({ ...l, friends: !l.friends }))} />
           <Chip label={t('discover.filterBeen')} compact selected={layers.been} onPress={() => setLayers((l) => ({ ...l, been: !l.been }))} />
           {canAnswerOpen ? (
             <Chip label={t('discover.filterOpen')} compact selected={layers.open} onPress={() => setLayers((l) => ({ ...l, open: !l.open }))} />
           ) : null}
+          <View style={{ flex: 1 }} />
+          <Pressable
+            onPress={() => void findMe()}
+            accessibilityRole="button"
+            accessibilityLabel={t('discover.findMe')}
+            hitSlop={8}
+          >
+            <Glass radius={18}>
+              <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="location" size={18} color={status === 'granted' ? color.brand.tintLight : color.label.primary} />
+              </View>
+            </Glass>
+          </Pressable>
         </View>
         {stale ? (
           <Text variant="caption1" color={color.warning}>{t('discover.stale')}</Text>
         ) : null}
-      </View>
+        {/*
+          Say what this is, and say it in the toolbar rather than floating over
+          the map at a fixed offset.
 
-      {/* recentre */}
-      <Pressable
-        onPress={() => void findMe()}
-        accessibilityRole="button"
-        accessibilityLabel={t('discover.findMe')}
-        style={{ position: 'absolute', right: geometry.screenMargin, top: insets.top + 118 }}
-      >
-        <Glass radius={20}>
-          <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="location" size={18} color={status === 'granted' ? color.brand.tintLight : color.label.primary} />
-          </View>
-        </Glass>
-      </Pressable>
+          Without a line of explanation a screen of drifting pins reads as a
+          map that failed to load, which is exactly the conclusion a person
+          draws. It used to be positioned absolutely inside the map layer and
+          collided with whatever the toolbar happened to be that day.
+        */}
+        {!capabilities().map ? (
+          <Text variant="caption1" tone="quaternary">{t('discover.mapProjected')}</Text>
+        ) : null}
+      </View>
 
       {/* the bottom slot: denial notice, then peek, then friends */}
       <View style={{ position: 'absolute', left: geometry.screenMargin, right: geometry.screenMargin, bottom: TAB_BAR_CLEARANCE + insets.bottom }}>

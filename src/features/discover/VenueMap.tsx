@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Pressable, useWindowDimensions, StyleSheet, Platform } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Text, Icon } from '@/ui';
 import { capabilities, optional } from '@/services/optional';
 import { useT } from '@/i18n';
@@ -160,36 +161,18 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
         // zooms rather than guessing which of the places under it you meant.
         if (c.items.length === 1) {
           const venue = c.items[0];
-          const been = visited.has(venue.id);
-          const selected = venue.id === selectedId;
           return (
-            <Marker
+            <VenuePin
               key={venue.id}
-              coordinate={{ latitude: c.lat, longitude: c.lng }}
+              Marker={Marker}
+              venue={venue}
+              lat={c.lat}
+              lng={c.lng}
+              been={visited.has(venue.id)}
+              selected={venue.id === selectedId}
               onPress={() => onSelect(venue)}
-              tracksViewChanges={false}
-              // The padding below grows the marker's bounds, and a marker is
-              // anchored by its top-left corner unless told otherwise — without
-              // this every pin would sit down-and-right of its actual venue.
-              anchor={{ x: 0.5, y: 0.5 }}
-              accessibilityLabel={been ? t('common.mapPinVisited', { name: venue.name }) : venue.name}
-            >
-              {/*
-                A marker's touch target is the bounds of its child, and the
-                child is a 16pt dot — roughly a third of the 44pt minimum, on a
-                map, one-handed, at night. `hitSlop` does not apply to a marker
-                the way it does to a Pressable, so the area has to come from
-                transparent padding around the artwork.
-              */}
-              <View style={{ padding: 14 }}>
-                <Pin
-                  name={venue.name}
-                  kind={venueKind(venue.category)}
-                  been={been}
-                  selected={selected}
-                />
-              </View>
-            </Marker>
+              t={t}
+            />
           );
         }
         const anyVisited = c.items.some((v) => visited.has(v.id));
@@ -214,7 +197,6 @@ function NativeMap({ center, venues, visited, selectedId, onSelect, topInset, fo
 function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset, me }: VenueMapProps) {
   const { width, height } = useWindowDimensions();
   const t = useT();
-  const tProjected = t('discover.mapProjected');
   const tDismiss = t('ui.close');
 
   const bounds = useMemo(() => {
@@ -258,20 +240,6 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
         />
       ) : null}
       {/*
-        Say what this is.
-
-        Without a line of explanation a screen of floating dots reads as a map
-        that failed to load — which is exactly the conclusion a person draws,
-        and `useLocation` in this repo already makes the same point about
-        silently degraded features. It is not only the browser that lands here:
-        so does any device without Play services.
-      */}
-      <View style={{ position: 'absolute', top: topInset + 146, left: 0, right: 0, alignItems: 'center' }} pointerEvents="none">
-        <Text variant="caption1" tone="quaternary" style={{ textAlign: 'center', paddingHorizontal: 24 }}>
-          {tProjected}
-        </Text>
-      </View>
-      {/*
         You are here.
 
         `showsUserLocation` is a react-native-maps prop, so the projected
@@ -298,25 +266,87 @@ function ProjectedMap({ center, venues, visited, selectedId, onSelect, topInset,
       {venues.map(({ venue }) => {
         if (venue.lat == null || venue.lng == null) return null;
         const p = project(venue.lat, venue.lng);
+        const been = visited.has(venue.id);
+        const sel = venue.id === selectedId;
+        const g = geometry(sel ? 'selected' : been ? 'been' : 'plain');
         return (
           <Pressable
             key={venue.id}
             onPress={() => onSelect(venue)}
             accessibilityRole="button"
             accessibilityLabel={venue.name}
-            hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
-            style={{ position: 'absolute', left: p.x - 30, top: p.y - 22, width: 60, alignItems: 'center' }}
+            // Offset by the same tip the native anchor uses, so the browser
+            // fallback marks the venue in the same place the real map does.
+            style={{ position: 'absolute', left: p.x - g.boxW / 2, top: p.y - g.tipY, zIndex: sel ? 20 : been ? 10 : 1 }}
           >
-            <Pin
-              name={venue.name}
-              kind={venueKind(venue.category)}
-              been={visited.has(venue.id)}
-              selected={venue.id === selectedId}
-            />
+            <Pin name={venue.name} kind={venueKind(venue.category)} been={been} selected={sel} />
           </Pressable>
         );
       })}
     </View>
+  );
+}
+
+/**
+ * One venue as a map marker.
+ *
+ * Its own component for two reasons, both of which were bugs.
+ *
+ * `tracksViewChanges={false}` is what keeps a map with three hundred pins on
+ * it smooth — the marker is rasterised once and never re-rendered. It was set
+ * unconditionally, so on Android selecting a pin changed the React tree and
+ * the map kept showing the old bitmap: the pin you tapped never grew, never
+ * got its ring, never showed its name. Tracking is turned back on for a beat
+ * whenever the state changes, then off again.
+ *
+ * And the anchor. A marker is positioned by its top-left corner unless told
+ * otherwise, and the old code corrected that with `{x: 0.5, y: 0.5}` — the
+ * CENTRE of a box whose height changed when the name label appeared. So the
+ * selected pin jumped, and every pin marked its venue with the middle of a
+ * circle rather than with a point. `geometry()` says where the tip is; the
+ * anchor is that, and the label slot is reserved whether or not it is filled
+ * so the number does not move.
+ */
+function VenuePin({
+  Marker,
+  venue,
+  lat,
+  lng,
+  been,
+  selected,
+  onPress,
+  t,
+}: {
+  Marker: any;
+  venue: Venue;
+  lat: number;
+  lng: number;
+  been: boolean;
+  selected: boolean;
+  onPress: () => void;
+  t: ReturnType<typeof useT>;
+}) {
+  const [tracking, setTracking] = useState(true);
+  useEffect(() => {
+    setTracking(true);
+    const id = setTimeout(() => setTracking(false), 450);
+    return () => clearTimeout(id);
+  }, [selected, been]);
+
+  const g = geometry(selected ? 'selected' : been ? 'been' : 'plain');
+
+  return (
+    <Marker
+      coordinate={{ latitude: lat, longitude: lng }}
+      onPress={onPress}
+      tracksViewChanges={tracking}
+      anchor={{ x: 0.5, y: g.tipY / g.boxH }}
+      // Selected draws over its neighbours instead of under them.
+      zIndex={selected ? 20 : been ? 10 : 1}
+      accessibilityLabel={been ? t('common.mapPinVisited', { name: venue.name }) : venue.name}
+    >
+      <Pin name={venue.name} kind={venueKind(venue.category)} been={been} selected={selected} />
+    </Marker>
   );
 }
 
@@ -331,20 +361,51 @@ const KIND_ICON: Record<VenueKind, 'wineglass' | 'moon.stars' | 'fork.knife' | '
 };
 
 /**
- * Three sizes, and only one of them carries a name.
+ * Pin geometry, in one place because four things have to agree about it: the
+ * artwork, the touch padding, the marker's anchor and the projected map's
+ * offset. They did not agree before, and the pin sat above its own venue.
  *
- * Every pin used to be the same 28px circle with the venue's name printed
- * under it. With bars only and a `.slice(0, 40)` that was busy; with
- * restaurants and cafés on the map too it is a wall of text, and the labels
- * collide with each other long before the pins do.
+ * `r` is the head's radius. The tail runs from the head down to a point, and
+ * that point — not the middle of the head — is what marks the place.
+ */
+const PIN = {
+  plain: { r: 12, pad: 12 },
+  been: { r: 15, pad: 11 },
+  selected: { r: 19, pad: 10 },
+} as const;
+
+/** Reserved whether or not the name is showing, so the anchor never moves. */
+const LABEL_H = 15;
+
+function geometry(state: keyof typeof PIN) {
+  const { r, pad } = PIN[state];
+  const head = r * 2;
+  const tail = r * 1.05;
+  const art = head + tail;
+  return {
+    r,
+    pad,
+    art,
+    /** The whole marker box, including the touch padding and the label slot. */
+    boxW: head + pad * 2,
+    boxH: art + pad * 2 + LABEL_H,
+    /** Where the tip sits inside that box. */
+    tipY: pad + art,
+  };
+}
+
+/**
+ * One pin: a head you can read and a point that marks the spot.
  *
- * So the name appears on the selected pin and nowhere else, and size carries
- * the hierarchy instead: somewhere you have been is bigger than somewhere you
- * have not. That is the right emphasis for this app — the venue screen is
- * headed "YOUR HISTORY HERE", not a directory listing — and it means a screen
- * full of unknown places reads as texture rather than as a demand.
+ * The old one was a flat circle — 16px for a place you had not been, which is
+ * a third of the 44pt minimum and reads as a speck on a dark map. Worse, a
+ * circle has no point: it was centred on the venue, so the artwork covered the
+ * thing it was pointing at and two nearby bars looked like one smudge.
  *
- * Colour carries the kind. A restaurant should not look like a nightclub.
+ * Three states, and size carries the hierarchy: somewhere you have been is
+ * bigger than somewhere you have not, and the selected one is bigger again.
+ * Colour carries the kind, matching the passport stamp and the venue screen,
+ * so a wine bar is the same red in all three places.
  */
 function Pin({
   name,
@@ -357,38 +418,60 @@ function Pin({
   been: boolean;
   selected: boolean;
 }) {
+  const state = selected ? 'selected' : been ? 'been' : 'plain';
+  const g = geometry(state);
   const tint = color.venue[kind];
-  const size = selected ? 34 : been ? 26 : 16;
+  const cx = g.r;
+  const cy = g.r;
+
+  // Head plus a tail that narrows to a point. Drawn as one path so the outline
+  // is continuous — a circle with a triangle under it shows a seam where the
+  // two strokes meet.
+  const path = [
+    `M ${cx - g.r * 0.5} ${cy + g.r * 0.82}`,
+    `L ${cx} ${g.art}`,
+    `L ${cx + g.r * 0.5} ${cy + g.r * 0.82}`,
+    'Z',
+  ].join(' ');
 
   return (
-    <View style={{ alignItems: 'center', width: selected ? 96 : 40 }}>
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: been || selected ? tint : color.surface.tertiary,
-          borderWidth: 2,
-          borderColor: selected ? '#fff' : been ? 'rgba(255,255,255,0.65)' : tint,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOpacity: 0.5,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
-        }}
-      >
-        {/* Below 26px a glyph is a smudge, so a small pin is just a dot with a
-            coloured ring. The kind still reads; the detail does not fight it. */}
-        {size >= 26 ? (
-          <Icon name={KIND_ICON[kind]} size={selected ? 15 : 13} color="#fff" />
+    <View style={{ width: g.boxW, height: g.boxH, alignItems: 'center' }}>
+      <View style={{ marginTop: g.pad, width: g.r * 2, height: g.art }}>
+        <Svg width={g.r * 2} height={g.art}>
+          {/* Tail first, so the head's stroke draws over where they join. */}
+          <Path d={path} fill={been || selected ? tint : color.surface.tertiary} />
+          <Circle
+            cx={cx}
+            cy={cy}
+            r={g.r - 1.5}
+            fill={been || selected ? tint : color.surface.tertiary}
+            stroke={selected ? '#fff' : been ? 'rgba(255,255,255,0.8)' : tint}
+            strokeWidth={selected ? 3 : 2}
+          />
+          {/* A highlight across the top of the head. Two flat circles side by
+              side read as stickers; a lit one reads as an object. */}
+          <Circle cx={cx} cy={cy - g.r * 0.34} r={g.r * 0.5} fill="rgba(255,255,255,0.16)" />
+        </Svg>
+
+        {g.r >= 13 ? (
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', top: 0, left: 0, width: g.r * 2, height: g.r * 2, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name={KIND_ICON[kind]} size={selected ? 16 : 13} color="#fff" />
+          </View>
         ) : null}
       </View>
-      {selected ? (
-        <Text variant="caption2" tone="primary" numberOfLines={1} center style={{ marginTop: 3 }}>
-          {name}
-        </Text>
-      ) : null}
+
+      {/* The slot is always here; only the text comes and goes. That is what
+          keeps `tipY` constant, and the anchor with it. */}
+      <View style={{ height: LABEL_H, justifyContent: 'center' }}>
+        {selected ? (
+          <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 7, backgroundColor: 'rgba(10,12,20,0.85)' }}>
+            <Text variant="caption2" tone="primary" numberOfLines={1}>{name}</Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
